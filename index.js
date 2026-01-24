@@ -28,7 +28,7 @@ app.listen(PORT, "0.0.0.0", () => {
 const TARGET_USER_ID = process.env.TARGET_USER_ID;
 const CHANNEL_ID = process.env.CHANNEL_ID;
 const TZ = process.env.TZ || "Europe/Lisbon";
-const DAILY_CRON = "0 9 * * *"; // 09:00 every day (Portugal time)
+const DAILY_CRON = "10 9 * * *"; // 09:00 every day (Portugal time)
 
 // =======================
 // FILES (compliments from file + no-repeat state)
@@ -106,7 +106,7 @@ function getCrazyPack(mode) {
 // =======================
 let lastSentDate = null;
 
-async function sendDailyGoodMorning() {
+async function sendDailyCompliment() {
   if (!TARGET_USER_ID || !CHANNEL_ID) return;
 
   const today = new Date().toISOString().slice(0, 10);
