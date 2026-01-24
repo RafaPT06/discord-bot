@@ -106,25 +106,17 @@ function getCrazyPack(mode) {
 // =======================
 let lastSentDate = null;
 
-async function sendDailyCompliment() {
+async function sendDailyGoodMorning() {
   if (!TARGET_USER_ID || !CHANNEL_ID) return;
 
   const today = new Date().toISOString().slice(0, 10);
   if (lastSentDate === today) return;
 
-  const compliments = loadCompliments();
-  if (!compliments.length) return;
-
-  const used = loadUsed();
-  const chosen = pickNoRepeat(compliments, used);
-
   const channel = await client.channels.fetch(CHANNEL_ID).catch(() => null);
   if (!channel || !channel.isTextBased()) return;
 
-  await channel.send(`💖 <@${TARGET_USER_ID}>, ${chosen}`);
+  await channel.send(`☀️ Good morning <@${TARGET_USER_ID}>! Hope you have a great day 💛`);
 
-  used.push(chosen);
-  saveUsed(used);
   lastSentDate = today;
 }
 
