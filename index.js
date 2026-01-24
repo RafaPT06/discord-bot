@@ -183,7 +183,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         "🛠️ **Built with:** discord.js v14",
         "⚙️ **Features:** Daily compliments, slash commands, cron scheduling"
       ].join("\n");
-      return interaction.reply({ content: statusMessage, ephemeral: true });
+      return interaction.reply({ content: statusMessage, ephemeral: false });
     }
 
     // /cat
