@@ -161,22 +161,22 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
     // /status
     if (interaction.commandName === "status") {
-      const uptime = Math.floor(process.uptime());
-      const hours = Math.floor(uptime / 3600);
-      const minutes = Math.floor((uptime % 3600) / 60);
-      const seconds = uptime % 60;
-      
-      const statusMessage = [
-        "**Bot Status & Details:**",
-        `🤖 **Tag:** ${client.user.tag}`,
-        `⏱️ **Uptime:** ${hours}h ${minutes}m ${seconds}s`,
-        `📡 **Ping:** ${client.ws.ping}ms`,
-        `📦 **Platform:** Node.js ${process.version}`,
-        "🛠️ **Built with:** discord.js v14",
-        "⚙️ **Features:** Daily compliments, slash commands, cron scheduling"
-      ].join("\n");
-      return interaction.reply({ content: statusMessage, ephemeral: false });
-    }
+  const startedAt = Math.floor(
+    (Date.now() - process.uptime() * 1000) / 1000
+  );
+
+  const statusMessage = [
+    "**Bot Status & Details:**",
+    `🤖 **Tag:** ${client.user.tag}`,
+    `⏱️ **Uptime:** <t:${startedAt}:R>`,
+    `📡 **Ping:** ${client.ws.ping}ms`,
+    `📦 **Platform:** Node.js ${process.version}`,
+    "🛠️ **Built with:** discord.js v14",
+    "⚙️ **Features:** Daily compliments, slash commands, cron scheduling"
+  ].join("\n");
+
+  return interaction.reply({ content: statusMessage, ephemeral: false });
+      }
 
     // /cat
     if (interaction.commandName === "cat") {
@@ -293,7 +293,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
 // =======================
 // READY + scheduler
 // =======================
-client.once(Events.ClientReady, () => {
+/*client.once(Events.ClientReady, () => {
   console.log(`✅ Logged in as ${client.user.tag}`);
   console.log(`⏰ Daily compliment scheduled for 09:00 (${TZ})`);
 
@@ -302,6 +302,6 @@ client.once(Events.ClientReady, () => {
     () => sendDailyCompliment().catch((e) => console.error("Daily failed:", e)),
     { timezone: TZ }
   );
-});
+});*/
 
 client.login(process.env.BOT_TOKEN);
