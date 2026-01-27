@@ -6,6 +6,7 @@ const {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
+  ChannelType,
 } = require("discord.js");
 const cron = require("node-cron");
 const fs = require("fs");
@@ -15,11 +16,17 @@ const pkg = require("./package.json");
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
-process.on("unhandledRejection", (reason) => console.error("UnhandledRejection:", reason));
-process.on("uncaughtException", (err) => console.error("UncaughtException:", err));
+// -----------------------
+// Crash + graceful shutdown
+// -----------------------
+process.on("unhandledRejection", (reason) =>
+  console.error("UnhandledRejection:", reason)
+);
+process.on("uncaughtException", (err) =>
+  console.error("UncaughtException:", err)
+);
 
 let isShuttingDown = false;
-
 async function shutdown(signal) {
   if (isShuttingDown) return;
   isShuttingDown = true;
@@ -32,7 +39,6 @@ async function shutdown(signal) {
     process.exit(0);
   }
 }
-
 process.on("SIGTERM", () => shutdown("SIGTERM"));
 process.on("SIGINT", () => shutdown("SIGINT"));
 
@@ -59,14 +65,54 @@ const TZ = process.env.TZ || "Europe/Lisbon";
 const DAILY_CRON = "10 9 * * *";
 
 // =======================
-// FILES
+// FILES (compliments)
 // =======================
 const COMPLIMENTS_FILE = path.join(__dirname, "compliments.txt");
 const USED_FILE = path.join(__dirname, "used.json");
 const DEPLOY_FILE = path.join(__dirname, "last_deploy.json");
 
+// -----------------------
+// Compliments helpers
+// -----------------------
+function loadCompliments() {
+  try {
+    return fs
+      .readFileSync(COMPLIMENTS_FILE, "utf8")
+      .split("\n")
+      .map((l) => l.trim())
+      .filter(Boolean);
+  } catch {
+    console.error("❌ Could not read compliments.txt");
+    return [];
+  }
+}
+
+function pickRandom(arr) {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
 // =======================
-// DEPLOY HELPERS
+// DAILY good morning sender (optional)
+// =======================
+let lastSentDate = null;
+async function sendDailyGoodMorning() {
+  if (!TARGET_USER_ID || !CHANNEL_ID) return;
+
+  const today = new Date().toISOString().slice(0, 10);
+  if (lastSentDate === today) return;
+
+  const channel = await client.channels.fetch(CHANNEL_ID).catch(() => null);
+  if (!channel || !channel.isTextBased()) return;
+
+  await channel.send(
+    `☀️ Good morning <@${TARGET_USER_ID}>! Hope you have a great day 💛`
+  );
+
+  lastSentDate = today;
+}
+
+// =======================
+// DEPLOY HELPERS (notify channel on deploy)
 // =======================
 function getRailwayEnvName() {
   return (
@@ -83,15 +129,12 @@ async function getCommitInfo(sha) {
   if (!token || !repo) return null;
 
   try {
-    const res = await fetch(
-      `https://api.github.com/repos/${repo}/commits/${sha}`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "User-Agent": "railway-discord-bot",
-        },
-      }
-    );
+    const res = await fetch(`https://api.github.com/repos/${repo}/commits/${sha}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "User-Agent": "railway-discord-bot",
+      },
+    });
 
     if (!res.ok) return null;
     const data = await res.json();
@@ -136,7 +179,7 @@ async function notifyOnDeploy() {
         `• **GitHub:** ${commitInfo.url}\n`
       : "") +
     `• **Node:** \`${process.version}\`\n` +
-    `• **Time:** <t:${ts}:F> (<t:${ts}:R>)\n`;
+    `• **Time:** <t:${ts}:F> (<t:${ts}:R>)`;
 
   try {
     const channel = await client.channels.fetch(CHANNEL_ID);
@@ -147,16 +190,167 @@ async function notifyOnDeploy() {
 }
 
 // =======================
+// Cooldowns
+// =======================
+const crazyCooldown = new Map();
+const CRAZY_COOLDOWN_MS = 15_000;
+const CRAZY_MAX_TIMES = 3;
+const CRAZY_MAX_TOTAL_LINES = 25;
+
+const complimentCooldown = new Map();
+const COMPLIMENT_COOLDOWN_MS = 10_000;
+
+// =======================
+// CRAZY pack
+// =======================
+function getCrazyPack() {
+  return [
+    "That's crazy...",
+    "Crazy?",
+    "I was crazy once.",
+    "They locked me in a room.",
+    "A rubber room.",
+    "A rubber room with rats.",
+    "And rats make me crazy.",
+  ];
+}
+
+// =======================
+// INTERACTIONS (THIS WAS MISSING)
+// =======================
+client.on(Events.InteractionCreate, async (interaction) => {
+  if (interaction.isChatInputCommand()) {
+    // /help
+    if (interaction.commandName === "help") {
+      const helpMessage = [
+        "**Commands:**",
+        "• `/help`",
+        "• `/status` (uptime)",
+        "• `/ping`",
+        "• `/crazy [times]`",
+        "• `/compliment [user]`",
+      ].join("\n");
+      return interaction.reply({ content: helpMessage });
+    }
+
+    // /status (auto-updating uptime)
+    if (interaction.commandName === "status") {
+      const startedAt = Math.floor(
+        (Date.now() - process.uptime() * 1000) / 1000
+      );
+
+      const msg =
+        `⏱️ **Uptime:** <t:${startedAt}:R>\n` +
+        `👨‍💻 **Made by:** Rafa @(atuaprima_)`;
+
+      return interaction.reply({ content: msg });
+    }
+
+    // /ping
+    if (interaction.commandName === "ping") {
+      return interaction.reply({ content: `📡 **Ping:** ${client.ws.ping}ms` });
+    }
+
+    // /compliment (DM + guild)
+    if (interaction.commandName === "compliment") {
+      const now = Date.now();
+      const prev = complimentCooldown.get(interaction.user.id) ?? 0;
+      if (now - prev < COMPLIMENT_COOLDOWN_MS) {
+        return interaction.reply({ content: "⏳ Cooldown — wait a bit.", ephemeral: true });
+      }
+      complimentCooldown.set(interaction.user.id, now);
+
+      const fromFile = loadCompliments();
+      const fallback = [
+        "You’ve got really good vibes.",
+        "You’re doing better than you think.",
+        "You make things feel easier for people.",
+      ];
+      const pool = fromFile.length ? fromFile : fallback;
+
+      const target = interaction.options.getUser("user");
+
+      // DM: just compliment the invoker
+      if (!interaction.inGuild()) {
+        return interaction.reply({ content: `✨ ${pickRandom(pool)}` });
+      }
+
+      const who = target ?? interaction.user;
+      return interaction.reply({
+        content: `Hey <@${who.id}> — ${pickRandom(pool)} ✨`,
+      });
+    }
+
+    // /crazy (works in DMs)
+    if (interaction.commandName === "crazy") {
+      const now = Date.now();
+      const prev = crazyCooldown.get(interaction.user.id) ?? 0;
+      if (now - prev < CRAZY_COOLDOWN_MS) {
+        return interaction.reply({ content: "⏳ Cooldown — wait a bit.", ephemeral: true });
+      }
+      crazyCooldown.set(interaction.user.id, now);
+
+      const timesRaw = interaction.options.getInteger("times") ?? 1;
+      const times = Math.max(1, Math.min(timesRaw, CRAZY_MAX_TIMES));
+
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId(`crazy_go_${times}_${interaction.user.id}`)
+          .setLabel("Go Crazy")
+          .setStyle(ButtonStyle.Danger)
+      );
+
+      // IMPORTANT: don't use ephemeral in DMs
+      const payload = { content: `Ready? Times: **${times}**`, components: [row] };
+      if (interaction.inGuild()) payload.ephemeral = true;
+
+      return interaction.reply(payload);
+    }
+  }
+
+  // Buttons for crazy
+  if (interaction.isButton()) {
+    const [tag, action, timesStr, ownerId] = interaction.customId.split("_");
+    if (tag !== "crazy") return;
+
+    if (interaction.user.id !== ownerId) {
+      const deny = { content: "Not your buttons 🙂" };
+      if (interaction.inGuild()) deny.ephemeral = true;
+      return interaction.reply(deny);
+    }
+
+    const times = Math.max(1, Math.min(parseInt(timesStr, 10) || 1, CRAZY_MAX_TIMES));
+    const lines = getCrazyPack();
+
+    const ack = { content: `Sending x${times}...` };
+    if (interaction.inGuild()) ack.ephemeral = true;
+    await interaction.reply(ack);
+
+    const outChannel = interaction.channel ?? (await interaction.user.createDM());
+
+    let sent = 0;
+    for (let t = 0; t < times; t++) {
+      for (const line of lines) {
+        if (sent >= CRAZY_MAX_TOTAL_LINES) return;
+        await outChannel.send(line).catch(() => null);
+        sent++;
+      }
+    }
+  }
+});
+
+// =======================
 // READY
 // =======================
 client.once(Events.ClientReady, async () => {
   console.log(`✅ Logged in as ${client.user.tag}`);
+
   await notifyOnDeploy();
 
   // Enable if you want daily message
   // cron.schedule(
   //   DAILY_CRON,
-  //   () => sendDailyCompliment().catch(console.error),
+  //   () => sendDailyGoodMorning().catch(console.error),
   //   { timezone: TZ }
   // );
 });
