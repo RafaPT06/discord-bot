@@ -1,11 +1,7 @@
 require("dotenv").config();
-const {
-  REST,
-  Routes,
-  SlashCommandBuilder,
-  InteractionContextType,
-} = require("discord.js");
+const { REST, Routes, SlashCommandBuilder, InteractionContextType } = require("discord.js");
 
+// Build your commands exactly like before
 const commands = [
   new SlashCommandBuilder()
     .setName("help")
@@ -27,7 +23,6 @@ const commands = [
     )
     .toJSON(),
 
-  // ✅ NEW: /ping
   new SlashCommandBuilder()
     .setName("ping")
     .setDescription("Shows bot latency.")
@@ -101,14 +96,26 @@ const commands = [
     .toJSON(),
 ];
 
-const rest = new REST({ version: "10" }).setToken(process.env.BOT_TOKEN);
+async function deployCommands() {
+  const token = process.env.BOT_TOKEN;
+  const appId = process.env.APP_ID;
 
-(async () => {
+  if (!token || !appId) {
+    console.warn("⚠️ BOT_TOKEN or APP_ID missing — skipping command deploy.");
+    return false;
+  }
+
+  const rest = new REST({ version: "10" }).setToken(token);
+
   try {
-    await rest.put(Routes.applicationCommands(process.env.APP_ID), { body: commands });
+    await rest.put(Routes.applicationCommands(appId), { body: commands });
     console.log("✅ Global commands registered.");
+    return true;
   } catch (err) {
     console.error("❌ Failed to register commands:", err);
-    // don't exit the whole container
+    return false;
   }
-})();
+}
+
+// Export for index.js to call
+module.exports = { deployCommands, commands };
