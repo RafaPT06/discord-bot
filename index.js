@@ -115,8 +115,7 @@ async function notifyOnDeploy() {
         `• **GitHub:** ${commitInfo.url}\n`
       : "") +
     `• **Node:** \`${process.version}\`\n` +
-    `• **Time:** <t:${ts}:F> (<t:${ts}:R>)\n` +
-    `🔁 **Uptime reset**`;
+    `• **Time:** <t:${ts}:F> (<t:${ts}:R>)\n`;
 
   try {
     const channel = await client.channels.fetch(CHANNEL_ID);
