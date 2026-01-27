@@ -11,6 +11,7 @@ const cron = require("node-cron");
 const fs = require("fs");
 const path = require("path");
 const express = require("express");
+const pkg = require("./package.json");
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
@@ -145,6 +146,68 @@ function toSpongeCase(text) {
     .split("")
     .map((char, i) => (i % 2 === 0 ? char.toLowerCase() : char.toUpperCase()))
     .join("");
+}
+
+// =======================
+// DEPLOY NOTIFIER (send to CHANNEL_ID on new deploy)
+// =======================
+const DEPLOY_FILE = path.join(__dirname, "last_deploy.json");
+
+function getRailwayEnvName() {
+  return (
+    process.env.RAILWAY_ENVIRONMENT_NAME ||
+    process.env.RAILWAY_ENVIRONMENT ||
+    process.env.RAILWAY_ENV_NAME ||
+    "unknown"
+  );
+}
+
+async function notifyOnDeploy() {
+  const channelId = process.env.CHANNEL_ID;
+  const sha = process.env.RAILWAY_GIT_COMMIT_SHA;
+
+  // If not running on Railway or channel not set, do nothing
+  if (!channelId || !sha) return;
+
+  let lastSha = null;
+  try {
+    lastSha = JSON.parse(fs.readFileSync(DEPLOY_FILE, "utf8")).sha;
+  } catch {
+    // first run
+  }
+
+  // Avoid spam if restart without new deploy
+  if (lastSha === sha) return;
+
+  // Save SHA
+  try {
+    fs.writeFileSync(DEPLOY_FILE, JSON.stringify({ sha }, null, 2));
+  } catch (e) {
+    console.error("Failed to write last_deploy.json:", e);
+  }
+
+  const envName = getRailwayEnvName();
+  const ts = Math.floor(Date.now() / 1000);
+  const shortSha = sha.slice(0, 7);
+  const version = pkg?.version ?? "unknown";
+  const guilds = client.guilds.cache.size;
+
+  const message =
+    `🚀 **New deploy detected!**\n` +
+    `• **Env:** \`${envName}\`\n` +
+    `• **Version:** \`${version}\`\n` +
+    `• **Commit:** \`${shortSha}\`\n` +
+    `• **Node:** \`${process.version}\`\n` +
+    `• **Servers:** \`${guilds}\`\n` +
+    `• **Time:** <t:${ts}:F> (<t:${ts}:R>)\n` +
+    `🔁 **Uptime reset** (fresh boot)`;
+
+  try {
+    const ch = await client.channels.fetch(channelId);
+    if (ch && ch.isTextBased()) await ch.send(message);
+  } catch (err) {
+    console.error("Could not send deploy message:", err);
+  }
 }
 
 // =======================
@@ -332,15 +395,18 @@ client.on(Events.InteractionCreate, async (interaction) => {
 // =======================
 // READY + scheduler
 // =======================
-/*client.once(Events.ClientReady, () => {
+client.once(Events.ClientReady, async () => {
   console.log(`✅ Logged in as ${client.user.tag}`);
-  console.log(`⏰ Daily compliment scheduled for 09:00 (${TZ})`);
 
-  cron.schedule(
-    DAILY_CRON,
-    () => sendDailyCompliment().catch((e) => console.error("Daily failed:", e)),
-    { timezone: TZ }
-  );
-});*/
+  // 🚀 Notify deploy in CHANNEL_ID
+  await notifyOnDeploy();
+
+  // ⏰ Daily message (optional - enable if you want)
+  // cron.schedule(
+  //   DAILY_CRON,
+  //   () => sendDailyCompliment().catch((e) => console.error("Daily failed:", e)),
+  //   { timezone: TZ }
+  // );
+});
 
 client.login(process.env.BOT_TOKEN);
