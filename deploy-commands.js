@@ -104,6 +104,12 @@ const commands = [
 const rest = new REST({ version: "10" }).setToken(process.env.BOT_TOKEN);
 
 (async () => {
-  await rest.put(Routes.applicationCommands(process.env.APP_ID), { body: commands });
-  console.log("✅ Global commands registered.");
+  try {
+    await rest.put(Routes.applicationCommands(process.env.APP_ID), { body: commands });
+    console.log("✅ Global commands registered.");
+    process.exit(0);
+  } catch (err) {
+    console.error("❌ Failed to register commands:", err);
+    process.exit(1);
+  }
 })();
