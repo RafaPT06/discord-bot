@@ -1,6 +1,12 @@
 require("dotenv").config();
-const { Client, GatewayIntentBits, Events,
-  ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
+const {
+  Client,
+  GatewayIntentBits,
+  Events,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+} = require("discord.js");
 const cron = require("node-cron");
 const fs = require("fs");
 const path = require("path");
@@ -28,7 +34,7 @@ app.listen(PORT, "0.0.0.0", () => {
 const TARGET_USER_ID = process.env.TARGET_USER_ID;
 const CHANNEL_ID = process.env.CHANNEL_ID;
 const TZ = process.env.TZ || "Europe/Lisbon";
-const DAILY_CRON = "10 9 * * *"; // 09:00 every day (Portugal time)
+const DAILY_CRON = "10 9 * * *"; // 09:10 every day (Portugal time)
 
 // =======================
 // FILES (compliments from file + no-repeat state)
@@ -115,7 +121,9 @@ async function sendDailyCompliment() {
   const channel = await client.channels.fetch(CHANNEL_ID).catch(() => null);
   if (!channel || !channel.isTextBased()) return;
 
-  await channel.send(`☀️ Good morning <@${TARGET_USER_ID}>! Hope you have a great day 💛`);
+  await channel.send(
+    `☀️ Good morning <@${TARGET_USER_ID}>! Hope you have a great day 💛`
+  );
 
   lastSentDate = today;
 }
@@ -149,34 +157,39 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const helpMessage = [
         "**Available Commands:**",
         "🔹 `/help` - Shows this help message.",
-        "🔹 `/status` - Shows technical details about the bot.",
+        "🔹 `/status` - Shows uptime + who made the bot.",
+        "🔹 `/ping` - Shows bot latency.",
         "🔹 `/crazy [times]` - Sends the 'crazy' copypasta. (times: 1-3)",
         "🔹 `/compliment [user]` - Sends a random compliment to you or a tagged user.",
         "🔹 `/cat` - Fetches a random chaotic cat image.",
         "🔹 `/mimic <text>` - Repeats your text in SpOnGeBoB cAsE.",
-        "🔹 `/roast [user]` - Roasts you or a tagged user. 🔥"
+        "🔹 `/roast [user]` - Roasts you or a tagged user. 🔥",
       ].join("\n");
       return interaction.reply({ content: helpMessage, ephemeral: false });
     }
 
-    // /status
+    // ✅ /status (ONLY uptime that auto-updates + credit)
     if (interaction.commandName === "status") {
-  const startedAt = Math.floor(
-    (Date.now() - process.uptime() * 1000) / 1000
-  );
+      // unix seconds when process started
+      const startedAt = Math.floor(
+        (Date.now() - process.uptime() * 1000) / 1000
+      );
 
-  const statusMessage = [
-    "**Bot Status & Details:**",
-    `🤖 **Tag:** ${client.user.tag}`,
-    `⏱️ **Uptime:** <t:${startedAt}:R>`,
-    `📡 **Ping:** ${client.ws.ping}ms`,
-    `📦 **Platform:** Node.js ${process.version}`,
-    "🛠️ **Built with:** discord.js v14",
-    "⚙️ **Features:** Daily compliments, slash commands, cron scheduling"
-  ].join("\n");
+      const statusMessage = [
+        `⏱️ **Uptime:** <t:${startedAt}:R>`,
+        `👨‍💻 **Made by:** Rafa @(atuaprima_)`,
+      ].join("\n");
 
-  return interaction.reply({ content: statusMessage, ephemeral: false });
-      }
+      return interaction.reply({ content: statusMessage, ephemeral: false });
+    }
+
+    // ✅ /ping (NEW)
+    if (interaction.commandName === "ping") {
+      return interaction.reply({
+        content: `📡 **Ping:** ${client.ws.ping}ms`,
+        ephemeral: false,
+      });
+    }
 
     // /cat
     if (interaction.commandName === "cat") {
@@ -186,7 +199,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
         const data = await response.json();
         const catUrl = data[0]?.url;
         if (catUrl) {
-          return interaction.editReply({ content: "🐱 Here is a chaotic cat!", files: [catUrl] });
+          return interaction.editReply({
+            content: "🐱 Here is a chaotic cat!",
+            files: [catUrl],
+          });
         }
         return interaction.editReply("😿 No cats found today...");
       } catch (error) {
@@ -213,7 +229,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const now = Date.now();
       const prev = complimentCooldown.get(interaction.user.id) ?? 0;
       if (now - prev < COMPLIMENT_COOLDOWN_MS) {
-        return interaction.reply({ content: "⏳ Cooldown — wait a bit.", ephemeral: true });
+        return interaction.reply({
+          content: "⏳ Cooldown — wait a bit.",
+          ephemeral: true,
+        });
       }
       complimentCooldown.set(interaction.user.id, now);
 
@@ -233,15 +252,20 @@ client.on(Events.InteractionCreate, async (interaction) => {
       }
 
       const who = target ?? interaction.user;
-      return interaction.reply({ content: `Hey <@${who.id}> — ${pickRandom(pool)} ✨` });
+      return interaction.reply({
+        content: `Hey <@${who.id}> — ${pickRandom(pool)} ✨`,
+      });
     }
 
-    // /crazy -> show buttons
+    // ✅ /crazy -> WORKS IN DMs (no ephemeral in DMs)
     if (interaction.commandName === "crazy") {
       const now = Date.now();
       const prev = crazyCooldown.get(interaction.user.id) ?? 0;
       if (now - prev < CRAZY_COOLDOWN_MS) {
-        return interaction.reply({ content: "⏳ Cooldown — wait a bit.", ephemeral: true });
+        return interaction.reply({
+          content: "⏳ Cooldown — wait a bit.",
+          ephemeral: true, // cooldown warning can stay ephemeral (this is usually guild-use anyway)
+        });
       }
       crazyCooldown.set(interaction.user.id, now);
 
@@ -255,11 +279,15 @@ client.on(Events.InteractionCreate, async (interaction) => {
           .setStyle(ButtonStyle.Danger)
       );
 
-      return interaction.reply({
+      const replyPayload = {
         content: `Ready to go crazy? Times: **${times}** (max ${CRAZY_MAX_TIMES}).`,
         components: [row],
-        ephemeral: true,
-      });
+      };
+
+      // 🔥 Key fix: ephemeral is NOT supported in DMs -> can break the command
+      if (interaction.inGuild()) replyPayload.ephemeral = true;
+
+      return interaction.reply(replyPayload);
     }
   }
 
@@ -270,20 +298,30 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
     // only the original user can use these buttons
     if (interaction.user.id !== ownerId) {
-      return interaction.reply({ content: "Not your buttons 🙂", ephemeral: true });
+      const denyPayload = { content: "Not your buttons 🙂" };
+      if (interaction.inGuild()) denyPayload.ephemeral = true;
+      return interaction.reply(denyPayload);
     }
 
     const mode = "crazy";
-    const times = Math.max(1, Math.min(parseInt(timesStr, 10) || 1, CRAZY_MAX_TIMES));
+    const times = Math.max(
+      1,
+      Math.min(parseInt(timesStr, 10) || 1, CRAZY_MAX_TIMES)
+    );
     const lines = getCrazyPack(mode);
 
-    await interaction.reply({ content: `Sending **${mode}** x${times} (limited).`, ephemeral: true });
+    const ackPayload = { content: `Sending **${mode}** x${times} (limited).` };
+    if (interaction.inGuild()) ackPayload.ephemeral = true;
+    await interaction.reply(ackPayload);
+
+    // Ensure we have a channel (DM or guild)
+    const outChannel = interaction.channel ?? (await interaction.user.createDM());
 
     let sent = 0;
     for (let t = 0; t < times; t++) {
       for (const line of lines) {
         if (sent >= CRAZY_MAX_TOTAL_LINES) return;
-        await interaction.channel?.send(line).catch(() => null);
+        await outChannel.send(line).catch(() => null);
         sent++;
       }
     }
