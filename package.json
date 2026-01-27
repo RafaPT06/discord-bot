@@ -17,3 +17,9 @@
     "node-cron": "^4.2.1"
   }
 }
+{
+  "scripts": {
+    "deploy:commands": "node deploy-commands.js",
+    "start": "node index.js"
+  }
+}
