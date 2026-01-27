@@ -19,7 +19,18 @@ const commands = [
 
   new SlashCommandBuilder()
     .setName("status")
-    .setDescription("Shows technical details and uptime of the bot.")
+    .setDescription("Shows uptime + who made the bot.")
+    .setContexts(
+      InteractionContextType.Guild,
+      InteractionContextType.BotDM,
+      InteractionContextType.PrivateChannel
+    )
+    .toJSON(),
+
+  // ✅ NEW: /ping
+  new SlashCommandBuilder()
+    .setName("ping")
+    .setDescription("Shows bot latency.")
     .setContexts(
       InteractionContextType.Guild,
       InteractionContextType.BotDM,
