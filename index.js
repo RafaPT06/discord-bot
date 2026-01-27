@@ -177,7 +177,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
       const statusMessage = [
         `⏱️ **Uptime:** <t:${startedAt}:R>`,
-        `👨‍💻 **Made by:** Rafa <@atuaprima_>`,
+        `👨‍💻 **Made by:** Rafa (<@atuaprima_>)`,
       ].join("\n");
 
       return interaction.reply({ content: statusMessage, ephemeral: false });
