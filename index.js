@@ -31,6 +31,7 @@ app.listen(PORT, "0.0.0.0", () => {
 // =======================
 // CONFIG (daily compliments)
 // =======================
+const OWNER_ID = process.env.OWNER_ID;
 const TARGET_USER_ID = process.env.TARGET_USER_ID;
 const CHANNEL_ID = process.env.CHANNEL_ID;
 const TZ = process.env.TZ || "Europe/Lisbon";
@@ -177,7 +178,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
       const statusMessage = [
         `⏱️ **Uptime:** <t:${startedAt}:R>`,
-        `👨‍💻 **Made by:** Rafa (<@atuaprima_>)`,
+        `👨‍💻 **Made by:** Rafa (<@${OWNER_ID}>)`,
       ].join("\n");
 
       return interaction.reply({ content: statusMessage, ephemeral: false });
