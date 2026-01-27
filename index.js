@@ -15,6 +15,27 @@ const pkg = require("./package.json");
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
+process.on("unhandledRejection", (reason) => console.error("UnhandledRejection:", reason));
+process.on("uncaughtException", (err) => console.error("UncaughtException:", err));
+
+let isShuttingDown = false;
+
+async function shutdown(signal) {
+  if (isShuttingDown) return;
+  isShuttingDown = true;
+  console.log(`🛑 Received ${signal}. Closing Discord client...`);
+  try {
+    await client.destroy();
+  } catch (e) {
+    console.error("Error during client.destroy():", e);
+  } finally {
+    process.exit(0);
+  }
+}
+
+process.on("SIGTERM", () => shutdown("SIGTERM"));
+process.on("SIGINT", () => shutdown("SIGINT"));
+
 // =======================
 // WEB SERVER (keep-alive)
 // =======================
