@@ -244,41 +244,55 @@ client.on(Events.InteractionCreate, async (interaction) => {
   if (interaction.isChatInputCommand()) {
     // OWNER-ONLY deploy commands
     if (interaction.commandName === "set_deploy_channel") {
-      if (!interaction.inGuild()) {
-        return interaction.reply({
-          content: "This command can only be used in a server.",
-          ephemeral: true,
-        });
-      }
-      if (!isOwner(interaction)) {
-        return interaction.reply({ content: "You can’t use this command.", ephemeral: true });
-      }
+  if (!interaction.inGuild()) {
+    return interaction.reply({ content: "This command can only be used in a server.", ephemeral: true });
+  }
+  if (!isOwner(interaction)) {
+    return interaction.reply({ content: "You can’t use this command.", ephemeral: true });
+  }
 
-      const ch = interaction.options.getChannel("channel", true);
+  // Try by the expected name first…
+  let ch = interaction.options.getChannel("channel");
 
-      // must be text-based
-      if (!ch?.isTextBased?.()) {
-        return interaction.reply({ content: "⚠️ Pick a text channel.", ephemeral: true });
-      }
+  // …but if Discord sent it under a different name, grab the first channel option.
+  if (!ch) {
+    const first = interaction.options.data?.find((o) => o.type === 7); // 7 = CHANNEL
+    if (first?.value) ch = await client.channels.fetch(first.value).catch(() => null);
+  }
 
-      // ensure BOT can post there (channel picker shows user-visible channels, not bot-visible)
-      const me = interaction.guild.members.me;
-      const perms = me ? ch.permissionsFor(me) : null;
-      if (!perms?.has([PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages])) {
-        return interaction.reply({
-          content:
-            "⚠️ I don’t have permission to post in that channel.\n" +
-            "Give me **View Channel** + **Send Messages**, then try again.",
-          ephemeral: true,
-        });
-      }
+  // Final guard + helpful debug output
+  if (!ch?.id) {
+    const debug = interaction.options.data?.map(o => ({
+      name: o.name, type: o.type, value: o.value
+    })) ?? [];
 
-      await dbSetDeployChannel(interaction.guildId, ch.id);
-      return interaction.reply({
-        content: `✅ Deployment updates channel set to <#${ch.id}>`,
-        ephemeral: true,
-      });
-    }
+    return interaction.reply({
+      content:
+        "❌ I didn’t receive a valid channel id from Discord.\n" +
+        "Debug (send this to Dinis):\n" +
+        "```json\n" + JSON.stringify(debug, null, 2) + "\n```",
+      ephemeral: true,
+    });
+  }
+
+  // Optional: ensure bot can post there
+  const me = interaction.guild.members.me;
+  const perms = me ? ch.permissionsFor(me) : null;
+  if (!perms?.has(["ViewChannel", "SendMessages"])) {
+    return interaction.reply({
+      content:
+        "⚠️ I don’t have permission to post in that channel.\n" +
+        "Give me **View Channel** + **Send Messages**, then try again.",
+      ephemeral: true,
+    });
+  }
+
+  await dbSetDeployChannel(interaction.guildId, ch.id);
+  return interaction.reply({
+    content: `✅ Deployment updates channel set to <#${ch.id}>`,
+    ephemeral: true,
+  });
+}
 
     if (interaction.commandName === "show_deploy_channel") {
       if (!interaction.inGuild()) {
