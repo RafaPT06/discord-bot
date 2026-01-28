@@ -19,12 +19,15 @@ const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 // WEB SERVER (keep-alive)
 // =======================
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = Number(process.env.PORT || 8080);
 
-app.get("/", (req, res) => res.send("Bot is alive! 🤖"));
-app.listen(PORT, "0.0.0.0", () =>
-  console.log(`🌐 Web server running on port ${PORT}`)
-);
+app.get("/", (req, res) => {
+  res.status(200).send("Bot is alive! 🤖");
+});
+
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`🌐 Web server running on port ${PORT}`);
+});
 
 // =======================
 // CONFIG
