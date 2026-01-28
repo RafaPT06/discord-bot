@@ -7,6 +7,7 @@ const {
   ButtonBuilder,
   ButtonStyle,
   PermissionFlagsBits,
+  EmbedBuilder,
 } = require("discord.js");
 const fs = require("fs");
 const path = require("path");
@@ -332,26 +333,57 @@ client.on(Events.InteractionCreate, async (interaction) => {
       });
     }
 
-    // /help (keep your layout)
     if (interaction.commandName === "help") {
-      const helpMessage = [
-        "Available Commands:",
-        "🔹 /help - Shows this help message.",
-        "🔹 /status - Shows uptime + who made the bot.",
-        "🔹 /ping - Shows bot latency.",
-        "🔹 /crazy [times] - Sends the 'crazy' copypasta. (times: 1-3)",
-        "🔹 /compliment [user] - Sends a random compliment to you or a tagged user.",
-        "🔹 /cat - Fetches a random chaotic cat image.",
-        "🔹 /mimic <text> - Repeats your text in SpOnGeBoB cAsE.",
-        "🔹 /roast [user] - Roasts you or a tagged user. 🔥",
-        "🔹 /set_deploy_channel #channel - Set deploy updates channel. (owner only)",
-        "🔹 /show_deploy_channel - Show deploy updates channel. (owner only)",
-        "🔹 /reset_deploy_channel - Reset deploy updates channel. (owner only)",
-      ].join("\n");
-      return interaction.reply({ content: helpMessage, ephemeral: false });
-    }
+  const isGuild = interaction.inGuild();
+  const owner = isOwner(interaction);
 
-    // /status (uptime auto-updates + credit)
+  const embed = new EmbedBuilder()
+    .setTitle("🤖 Bot Commands")
+    .setDescription("Here’s everything you can use:")
+    .addFields(
+      {
+        name: "✨ Fun / Social",
+        value: [
+          "• `/compliment [user]` — send a random compliment",
+          "• `/roast [user]` — roast someone 🔥",
+          "• `/mimic <text>` — SpOnGeBoB cAsE",
+          "• `/cat` — random chaotic cat 🐱",
+          "• `/crazy [times]` — the crazy copypasta (1–3)",
+        ].join("\n"),
+        inline: false,
+      },
+      {
+        name: "📊 Status",
+        value: [
+          "• `/status` — uptime + who made the bot",
+          "• `/ping` — bot latency",
+        ].join("\n"),
+        inline: false,
+      }
+    )
+    .setFooter({ text: "Made by Rafa @(atuaprima_)" })
+  if (isGuild && owner) {
+    embed.addFields({
+      name: "🚀 Deploy Updates (Owner Only)",
+      value: [
+        "• `/set_deploy_channel #channel` — set deploy updates channel",
+        "• `/show_deploy_channel` — show current deploy channel",
+        "• `/reset_deploy_channel` — reset deploy channel",
+      ].join("\n"),
+      inline: false,
+    });
+  } else if (isGuild && !owner) {
+    embed.addFields({
+      name: "🚀 Deploy Updates",
+      value: "Owner-only commands are available in this server.",
+      inline: false,
+    });
+  }
+
+  return interaction.reply({ embeds: [embed], ephemeral: false });
+    }
+    
+    // /status
     if (interaction.commandName === "status") {
       const startedAt = Math.floor((Date.now() - process.uptime() * 1000) / 1000);
       const msg = [
