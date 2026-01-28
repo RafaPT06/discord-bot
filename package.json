@@ -1,15 +1,12 @@
 {
-  "name": "nodejs",
+  "name": "discord-bot",
   "version": "1.0.0",
-  "description": "",
   "main": "index.js",
   "scripts": {
     "deploy:commands": "node deploy-commands.js",
-    "start": "node index.js"
+    "start": "node index.js",
+    "build": "npm run deploy:commands"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
   "dependencies": {
     "@types/node": "^22.13.11",
     "discord.js": "^14.25.1",
