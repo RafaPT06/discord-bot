@@ -33,7 +33,8 @@ app.listen(PORT, "0.0.0.0", () => {
 const OWNER_ID = process.env.OWNER_ID;
 const CHANNEL_ID = process.env.CHANNEL_ID; // fallback if DB not set
 const TZ = process.env.TZ || "Europe/Lisbon";
-const ownerDisplay = `Rafa (<@${OWNER_ID}>)`;
+const ownerDisplay = "Rafa (atuaprima_)";
+const ownerDisplayId = `Rafa (<@${OWNER_ID}>)`;
 
 // =======================
 // FILES
