@@ -1,6 +1,7 @@
 require("dotenv").config();
 const { REST, Routes, SlashCommandBuilder, InteractionContextType } = require("discord.js");
-
+const { ChannelType } =
+  require("discord.js");
 // Build your commands exactly like before
 const commands = [
   new SlashCommandBuilder()
@@ -94,6 +95,30 @@ const commands = [
       InteractionContextType.PrivateChannel
     )
     .toJSON(),
+  new SlashCommandBuilder()
+  .setName("set_deploy_channel")
+  .setDescription("Set the channel for deployment updates.")
+  .addChannelOption((opt) =>
+    opt
+      .setName("channel")
+      .setDescription("Channel to post deploy updates in")
+      .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement)
+      .setRequired(true)
+  )
+  .setContexts(InteractionContextType.Guild)
+  .toJSON(),
+
+new SlashCommandBuilder()
+  .setName("show_deploy_channel")
+  .setDescription("Show the current deployment updates channel.")
+  .setContexts(InteractionContextType.Guild)
+  .toJSON(),
+
+new SlashCommandBuilder()
+  .setName("reset_deploy_channel")
+  .setDescription("Reset the deployment updates channel for this server.")
+  .setContexts(InteractionContextType.Guild)
+  .toJSON(),
 ];
 
 async function deployCommands() {
