@@ -33,7 +33,7 @@ app.listen(PORT, "0.0.0.0", () => {
 const OWNER_ID = process.env.OWNER_ID;
 const CHANNEL_ID = process.env.CHANNEL_ID; // fallback if DB not set
 const TZ = process.env.TZ || "Europe/Lisbon";
-const owner = `Rafa (<@${OWNER_ID}>)`;
+const ownerDisplay = `Rafa (<@${OWNER_ID}>)`;
 
 // =======================
 // FILES
@@ -362,7 +362,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         inline: false,
       }
     )
-    .setFooter({ text: `Made by ${owner}` })
+    .setFooter({ text: `Made by ${ownerDisplay}` })
   if (isGuild && owner) {
     embed.addFields({
       name: "🚀 Deploy Updates (Owner Only)",
@@ -389,7 +389,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const startedAt = Math.floor((Date.now() - process.uptime() * 1000) / 1000);
       const msg = [
         `⏱️ **Uptime:** <t:${startedAt}:R>`,
-        `👨‍💻 **Made by:** ${owner}`,
+        `👨‍💻 **Made by:** ${ownerDisplay}`,
       ].join("\n");
       return interaction.reply({ content: msg, ephemeral: false });
     }
