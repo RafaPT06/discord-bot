@@ -3,9 +3,7 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "deploy:commands": "node deploy-commands.js",
-    "start": "node index.js",
-    "build": "npm run deploy:commands"
+    "start": "node index.js"
   },
   "dependencies": {
     "@types/node": "^22.13.11",
