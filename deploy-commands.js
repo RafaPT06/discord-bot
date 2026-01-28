@@ -1,146 +1,76 @@
 require("dotenv").config();
-const { REST, Routes, SlashCommandBuilder, InteractionContextType } = require("discord.js");
-const { ChannelType } =
-  require("discord.js");
-// Build your commands exactly like before
+const {
+  REST,
+  Routes,
+  SlashCommandBuilder,
+  InteractionContextType,
+  ChannelType,
+} = require("discord.js");
+
 const commands = [
-  new SlashCommandBuilder()
-    .setName("help")
-    .setDescription("Shows a list of all commands and what they do.")
+  new SlashCommandBuilder().setName("help").setDescription("Shows help.")
     .setContexts(
       InteractionContextType.Guild,
       InteractionContextType.BotDM,
       InteractionContextType.PrivateChannel
-    )
-    .toJSON(),
+    ).toJSON(),
 
-  new SlashCommandBuilder()
-    .setName("status")
-    .setDescription("Shows uptime + who made the bot.")
+  new SlashCommandBuilder().setName("status").setDescription("Shows uptime.")
     .setContexts(
       InteractionContextType.Guild,
       InteractionContextType.BotDM,
       InteractionContextType.PrivateChannel
-    )
-    .toJSON(),
+    ).toJSON(),
 
-  new SlashCommandBuilder()
-    .setName("ping")
-    .setDescription("Shows bot latency.")
+  new SlashCommandBuilder().setName("ping").setDescription("Bot latency.")
     .setContexts(
       InteractionContextType.Guild,
       InteractionContextType.BotDM,
       InteractionContextType.PrivateChannel
+    ).toJSON(),
+
+  new SlashCommandBuilder()
+    .setName("set_deploy_channel")
+    .setDescription("Set deploy updates channel.")
+    .addChannelOption(o =>
+      o.setName("channel")
+        .setDescription("Target channel")
+        .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement)
+        .setRequired(true)
     )
+    .setContexts(InteractionContextType.Guild)
     .toJSON(),
 
   new SlashCommandBuilder()
-    .setName("crazy")
-    .setDescription("Send the crazy copypasta with buttons (rate-limited).")
-    .addIntegerOption((o) =>
-      o.setName("times").setDescription("How many cycles (1-3)").setRequired(false)
-    )
-    .setContexts(
-      InteractionContextType.Guild,
-      InteractionContextType.BotDM,
-      InteractionContextType.PrivateChannel
-    )
+    .setName("show_deploy_channel")
+    .setDescription("Show deploy updates channel.")
+    .setContexts(InteractionContextType.Guild)
     .toJSON(),
 
   new SlashCommandBuilder()
-    .setName("compliment")
-    .setDescription("Send a random compliment.")
-    .addUserOption((opt) =>
-      opt.setName("user").setDescription("Who to compliment (server only)").setRequired(false)
-    )
-    .setContexts(
-      InteractionContextType.Guild,
-      InteractionContextType.BotDM,
-      InteractionContextType.PrivateChannel
-    )
+    .setName("reset_deploy_channel")
+    .setDescription("Reset deploy updates channel.")
+    .setContexts(InteractionContextType.Guild)
     .toJSON(),
-
-  new SlashCommandBuilder()
-    .setName("cat")
-    .setDescription("Get a random chaotic cat picture.")
-    .setContexts(
-      InteractionContextType.Guild,
-      InteractionContextType.BotDM,
-      InteractionContextType.PrivateChannel
-    )
-    .toJSON(),
-
-  new SlashCommandBuilder()
-    .setName("mimic")
-    .setDescription("The bot mimics you in SpOnGeBoB cAsE.")
-    .addStringOption((opt) =>
-      opt.setName("text").setDescription("The text to mimic").setRequired(true)
-    )
-    .setContexts(
-      InteractionContextType.Guild,
-      InteractionContextType.BotDM,
-      InteractionContextType.PrivateChannel
-    )
-    .toJSON(),
-
-  new SlashCommandBuilder()
-    .setName("roast")
-    .setDescription("The bot roasts someone.")
-    .addUserOption((opt) =>
-      opt.setName("user").setDescription("Who to roast").setRequired(false)
-    )
-    .setContexts(
-      InteractionContextType.Guild,
-      InteractionContextType.BotDM,
-      InteractionContextType.PrivateChannel
-    )
-    .toJSON(),
-  new SlashCommandBuilder()
-  .setName("set_deploy_channel")
-  .setDescription("Set the channel for deployment updates.")
-  .addChannelOption((opt) =>
-    opt
-      .setName("channel")
-      .setDescription("Channel to post deploy updates in")
-      .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement)
-      .setRequired(true)
-  )
-  .setContexts(InteractionContextType.Guild)
-  .toJSON(),
-
-new SlashCommandBuilder()
-  .setName("show_deploy_channel")
-  .setDescription("Show the current deployment updates channel.")
-  .setContexts(InteractionContextType.Guild)
-  .toJSON(),
-
-new SlashCommandBuilder()
-  .setName("reset_deploy_channel")
-  .setDescription("Reset the deployment updates channel for this server.")
-  .setContexts(InteractionContextType.Guild)
-  .toJSON(),
 ];
 
 async function deployCommands() {
   const token = process.env.BOT_TOKEN;
   const appId = process.env.APP_ID;
-
   if (!token || !appId) {
-    console.warn("⚠️ BOT_TOKEN or APP_ID missing — skipping command deploy.");
-    return false;
+    console.warn("⚠️ BOT_TOKEN or APP_ID missing");
+    return;
   }
 
   const rest = new REST({ version: "10" }).setToken(token);
-
-  try {
-    await rest.put(Routes.applicationCommands(appId), { body: commands });
-    console.log("✅ Global commands registered.");
-    return true;
-  } catch (err) {
-    console.error("❌ Failed to register commands:", err);
-    return false;
-  }
+  await rest.put(Routes.applicationCommands(appId), { body: commands });
+  console.log("✅ Global commands registered.");
 }
 
-// Export for index.js to call
+// run directly
+if (require.main === module) {
+  deployCommands().catch(console.error);
+}
+
+// export for index.js if needed
 module.exports = { deployCommands, commands };
