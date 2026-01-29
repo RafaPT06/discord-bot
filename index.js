@@ -61,6 +61,17 @@ async function initDb() {
       deploy_channel_id TEXT
     );
   `);
+
+await pool.query(`
+  CREATE TABLE IF NOT EXISTS todo_items (
+    id BIGSERIAL PRIMARY KEY,
+    guild_id TEXT NOT NULL,
+    text TEXT NOT NULL,
+    is_done BOOLEAN NOT NULL DEFAULT FALSE,
+    created_by TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  );
+`);
 }
 
 async function dbSetDeployChannel(guildId, channelId) {
@@ -101,8 +112,50 @@ async function dbGetAllDeployChannels() {
   return res.rows;
 }
 
+
+async function dbAddTodo(guildId, text, userId) {
+  if (!pool) return null;
+  const res = await pool.query(
+    `INSERT INTO todo_items (guild_id, text, created_by)
+     VALUES ($1,$2,$3)
+     RETURNING id`,
+    [guildId, text, userId]
+  );
+  return res.rows[0]?.id ?? null;
+}
+
+async function dbListTodos(guildId, includeDone = false, limit = 20) {
+  if (!pool) return [];
+  const res = await pool.query(
+    `SELECT id, text, is_done FROM todo_items
+     WHERE guild_id=$1 AND ($2 OR is_done = FALSE)
+     ORDER BY is_done ASC, id DESC
+     LIMIT $3`,
+    [guildId, includeDone, limit]
+  );
+  return res.rows;
+}
+
+async function dbDoneTodo(guildId, id) {
+  if (!pool) return false;
+  const res = await pool.query(
+    `UPDATE todo_items SET is_done=TRUE
+     WHERE guild_id=$1 AND id=$2`,
+    [guildId, id]
+  );
+  return (res.rowCount ?? 0) > 0;
+}
+
 function isOwner(interaction) {
   return OWNER_ID && interaction.user.id === OWNER_ID;
+}
+
+function canManageTodos(interaction) {
+  if (!interaction.inGuild()) return false;
+  return (
+    isOwner(interaction) ||
+    interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild)
+  );
 }
 
 // =======================
@@ -334,6 +387,57 @@ client.on(Events.InteractionCreate, async (interaction) => {
         ephemeral: true,
       });
     }
+
+
+// TODO COMMANDS (server-only)
+if (interaction.commandName === "todo_add") {
+  if (!interaction.inGuild()) {
+    return interaction.reply({ content: "This command can only be used in a server.", ephemeral: true });
+  }
+  if (!canManageTodos(interaction)) {
+    return interaction.reply({ content: "❌ You need **Manage Server** (or be the owner) to do that.", ephemeral: true });
+  }
+  const text = interaction.options.getString("text", true).trim();
+  if (!text) return interaction.reply({ content: "❌ TODO text is required.", ephemeral: true });
+
+  const id = await dbAddTodo(interaction.guildId, text, interaction.user.id);
+  if (!id) return interaction.reply({ content: "⚠️ Database not available (DATABASE_URL missing).", ephemeral: true });
+
+  return interaction.reply({ content: `✅ Added TODO **#${id}** — ${text}`, ephemeral: false });
+}
+
+if (interaction.commandName === "todo_list") {
+  if (!interaction.inGuild()) {
+    return interaction.reply({ content: "This command can only be used in a server.", ephemeral: true });
+  }
+  if (!canManageTodos(interaction)) {
+    return interaction.reply({ content: "❌ You need **Manage Server** (or be the owner) to do that.", ephemeral: true });
+  }
+
+  const includeDone = interaction.options.getBoolean("all") ?? false;
+  const items = await dbListTodos(interaction.guildId, includeDone, 20);
+
+  if (!items.length) return interaction.reply({ content: "📭 No TODOs yet.", ephemeral: false });
+
+  const lines = items.map(i => `${i.is_done ? "✅" : "🟨"} **#${i.id}** — ${i.text}`);
+  return interaction.reply({ content: `📝 **TODOs**\n${lines.join("\n")}`, ephemeral: false });
+}
+
+if (interaction.commandName === "todo_done") {
+  if (!interaction.inGuild()) {
+    return interaction.reply({ content: "This command can only be used in a server.", ephemeral: true });
+  }
+  if (!canManageTodos(interaction)) {
+    return interaction.reply({ content: "❌ You need **Manage Server** (or be the owner) to do that.", ephemeral: true });
+  }
+
+  const id = interaction.options.getInteger("id", true);
+  const ok = await dbDoneTodo(interaction.guildId, id);
+
+  return interaction.reply({ content: ok ? `✅ Marked TODO **#${id}** as done.` : `❌ TODO **#${id}** not found.`, ephemeral: false });
+}
+
+
 
     if (interaction.commandName === "help") {
   const isGuild = interaction.inGuild();

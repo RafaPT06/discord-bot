@@ -125,6 +125,34 @@ const commands = [
     .setDescription("Reset the deployment updates channel for this server.")
     .setContexts(InteractionContextType.Guild)
     .toJSON(),
+
+new SlashCommandBuilder()
+  .setName("todo_add")
+  .setDescription("Add a TODO item for this server.")
+  .addStringOption((o) =>
+    o.setName("text").setDescription("What needs to be done").setRequired(true)
+  )
+  .setContexts(InteractionContextType.Guild)
+  .toJSON(),
+
+new SlashCommandBuilder()
+  .setName("todo_list")
+  .setDescription("List TODO items for this server.")
+  .addBooleanOption((o) =>
+    o.setName("all").setDescription("Include done items").setRequired(false)
+  )
+  .setContexts(InteractionContextType.Guild)
+  .toJSON(),
+
+new SlashCommandBuilder()
+  .setName("todo_done")
+  .setDescription("Mark a TODO as done.")
+  .addIntegerOption((o) =>
+    o.setName("id").setDescription("TODO id").setRequired(true)
+  )
+  .setContexts(InteractionContextType.Guild)
+  .toJSON(),
+
 ];
 
 async function deployCommands() {
