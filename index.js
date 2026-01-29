@@ -494,7 +494,7 @@ if (interaction.commandName === "todo_done") {
       const startedAt = Math.floor((Date.now() - process.uptime() * 1000) / 1000);
       const msg = [
         `⏱️ **Uptime:** <t:${startedAt}:R>`,
-        `👨‍💻 **Made by:** ${ownerDisplayId}`,
+        `👨‍💻 **Made by:** ${ownerDisplay}`,
       ].join("\n");
       return interaction.reply({ content: msg, ephemeral: false });
     }
