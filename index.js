@@ -477,6 +477,15 @@ if (interaction.commandName === "todo_done") {
         "• `/reset_deploy_channel` — reset deploy channel",
       ].join("\n"),
       inline: false,
+    },
+    {
+      name: "TODO commands (Owner/User with manage server perm Only)",
+      value: [
+        "• `/todo_add #text` — adds a TODO text",
+        "• `/todo_list [id]` — shows TODO list",
+        "• `/todo_done <id>` — sets a TODO as done",
+      ].join("\n"),
+      inline: false,
     });
   } else if (isGuild && !owner) {
     embed.addFields({
