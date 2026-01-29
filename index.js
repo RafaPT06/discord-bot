@@ -203,7 +203,7 @@ async function notifyOnDeploy() {
   const commitInfo = sha ? await getCommitInfo(sha) : null;
 
   const message =
-    `🚀 **New deploy detected!**\n` +
+    `**New deploy detected!**\n` +
     `• **Env:** \`${envName}\`\n` +
     (shortSha ? `• **Commit:** \`${shortSha}\`\n` : "") +
     (commitInfo
@@ -444,22 +444,22 @@ if (interaction.commandName === "todo_done") {
   const owner = isOwner(interaction);
 
   const embed = new EmbedBuilder()
-    .setTitle("🤖 Bot Commands")
+    .setTitle("Bot Commands")
     .setDescription("Here’s everything you can use:")
     .addFields(
       {
-        name: "✨ Fun / Social",
+        name: "Fun / Social",
         value: [
           "• `/compliment [user]` — send a random compliment",
-          "• `/roast [user]` — roast someone 🔥",
+          "• `/roast [user]` — roast someone",
           "• `/mimic <text>` — SpOnGeBoB cAsE",
-          "• `/cat` — random chaotic cat 🐱",
+          "• `/cat` — random chaotic cat",
           "• `/crazy [times]` — the crazy copypasta (1–3)",
         ].join("\n"),
         inline: false,
       },
       {
-        name: "📊 Status",
+        name: "Status",
         value: [
           "• `/status` — uptime + who made the bot",
           "• `/ping` — bot latency",
@@ -470,7 +470,7 @@ if (interaction.commandName === "todo_done") {
     .setFooter({ text: `Made by ${ownerDisplay}` })
   if (isGuild && owner) {
     embed.addFields({
-      name: "🚀 Deploy Updates (Owner Only)",
+      name: "Deploy Updates (Owner Only)",
       value: [
         "• `/set_deploy_channel #channel` — set deploy updates channel",
         "• `/show_deploy_channel` — show current deploy channel",
@@ -489,7 +489,7 @@ if (interaction.commandName === "todo_done") {
     });
   } else if (isGuild && !owner) {
     embed.addFields({
-      name: "🚀 Deploy Updates",
+      name: "Deploy Updates",
       value: "Owner-only commands are available in this server.",
       inline: false,
     });
@@ -502,8 +502,8 @@ if (interaction.commandName === "todo_done") {
     if (interaction.commandName === "status") {
       const startedAt = Math.floor((Date.now() - process.uptime() * 1000) / 1000);
       const msg = [
-        `⏱️ **Uptime:** <t:${startedAt}:R>`,
-        `👨‍💻 **Made by:** ${ownerDisplay}`,
+        `**Uptime:** <t:${startedAt}:R>`,
+        `**Made by:** ${ownerDisplay}`,
       ].join("\n");
       return interaction.reply({ content: msg, ephemeral: false });
     }
@@ -511,7 +511,7 @@ if (interaction.commandName === "todo_done") {
     // /ping
     if (interaction.commandName === "ping") {
       return interaction.reply({
-        content: `📡 **Ping:** ${client.ws.ping}ms`,
+        content: `**Ping:** ${client.ws.ping}ms`,
         ephemeral: false,
       });
     }
