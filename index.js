@@ -9,8 +9,6 @@ const {
   PermissionFlagsBits,
   EmbedBuilder,
 } = require("discord.js");
-const fs = require("fs");
-const path = require("path");
 const express = require("express");
 const { Pool } = require("pg");
 
@@ -38,8 +36,6 @@ const ownerDisplayId = `Rafa (<@${OWNER_ID}>)`;
 
 // =======================
 // FILES
-// =======================
-const COMPLIMENTS_FILE = path.join(__dirname, "compliments.txt");
 
 // =======================
 // DATABASE (PostgreSQL) - per server deploy channel
@@ -201,6 +197,16 @@ async function dbListContent(guildId, type, limit = 25, offset = 0) {
   return res.rows;
 }
 
+async function dbCountContent(guildId, kind) {
+  if (!pool) return 0;
+  const res = await pool.query(
+    `SELECT COUNT(*)::int AS count FROM content_items WHERE guild_id = $1 AND kind = $2`,
+    [guildId, kind]
+  );
+  return res.rows[0]?.count ?? 0;
+}
+
+
 async function dbGetRandomContent(guildId, type) {
   if (!pool) return null;
   const res = await pool.query(
@@ -355,17 +361,6 @@ async function notifyOnDeploy() {
 // =======================
 // HELPERS
 // =======================
-function loadCompliments() {
-  try {
-    return fs
-      .readFileSync(COMPLIMENTS_FILE, "utf8")
-      .split("\n")
-      .map((l) => l.trim())
-      .filter(Boolean);
-  } catch {
-    return [];
-  }
-}
 
 function pickRandom(arr) {
   return arr[Math.floor(Math.random() * arr.length)];
@@ -408,6 +403,59 @@ const roasts = [
   "I treasure the time I spend with you, but I treasure my sanity more.",
   "You have the perfect face for radio.",
 ];
+
+// =======================
+// LIST PAGINATION HELPERS (roasts/compliments)
+// =======================
+const CONTENT_PAGE_SIZE = 10;
+
+function buildContentListPayload({ kind, page, totalPages, items, userId }) {
+  const title = kind === "roast" ? "🔥 Saved Roasts" : "✨ Saved Compliments";
+  const lines = items.map((i) => `• **#${i.id}** — ${i.text}`);
+
+  const embed = new EmbedBuilder()
+    .setTitle(`${title} (page ${page}/${Math.max(totalPages, 1)})`)
+    .setDescription(lines.join("\n"));
+
+  const prevBtn = new ButtonBuilder()
+    .setCustomId(`contentlist_${kind}_${page - 1}_${userId}`)
+    .setLabel("Prev")
+    .setStyle(ButtonStyle.Secondary)
+    .setDisabled(page <= 1);
+
+  const nextBtn = new ButtonBuilder()
+    .setCustomId(`contentlist_${kind}_${page + 1}_${userId}`)
+    .setLabel("Next")
+    .setStyle(ButtonStyle.Secondary)
+    .setDisabled(page >= totalPages);
+
+  const row = new ActionRowBuilder().addComponents(prevBtn, nextBtn);
+
+  return { embeds: [embed], components: totalPages > 1 ? [row] : [], ephemeral: true };
+}
+
+async function fetchContentPage(guildId, kind, page) {
+  const limit = CONTENT_PAGE_SIZE;
+  const offset = (page - 1) * limit;
+
+  const [total, items] = await Promise.all([
+    dbCountContent(guildId, kind),
+    dbListContent(guildId, kind, limit, offset),
+  ]);
+
+  const totalPages = Math.max(1, Math.ceil((total || 0) / limit));
+  const safePage = Math.min(Math.max(1, page), totalPages);
+
+  // If page was out of range, refetch items for the clamped page
+  if (safePage !== page) {
+    const offset2 = (safePage - 1) * limit;
+    const items2 = await dbListContent(guildId, kind, limit, offset2);
+    return { totalPages, page: safePage, items: items2 };
+  }
+
+  return { totalPages, page: safePage, items };
+}
+
 
 // =======================
 // INTERACTIONS
@@ -578,48 +626,58 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
 
     if (interaction.commandName === "list_compliments") {
-      if (!interaction.inGuild()) {
-        return interaction.reply({ content: "This command can only be used in a server.", ephemeral: true });
-      }
-      if (!canManageContent(interaction)) {
-        return interaction.reply({ content: "❌ You need **Manage Server** (or be the owner) to do that.", ephemeral: true });
-      }
+  if (!interaction.inGuild()) {
+    return interaction.reply({ content: "This command can only be used in a server.", ephemeral: true });
+  }
+  if (!canManageContent(interaction)) {
+    return interaction.reply({ content: "❌ You need **Manage Server** (or be the owner) to do that.", ephemeral: true });
+  }
 
-      const page = Math.max(1, interaction.options.getInteger("page") ?? 1);
-      const limit = 15;
-      const offset = (page - 1) * limit;
+  const page = Math.max(1, interaction.options.getInteger("page") ?? 1);
 
-      const items = await dbListContent(interaction.guildId, "compliment", limit, offset);
-      if (!items.length) {
-        return interaction.reply({ content: page === 1 ? "✨ No compliments saved yet." : "✨ No more compliments.", ephemeral: true });
-      }
+  const data = await fetchContentPage(interaction.guildId, "compliment", page);
+  if (!data.items.length) {
+    return interaction.reply({ content: page === 1 ? "✨ No compliments saved yet." : "✨ No more compliments.", ephemeral: true });
+  }
 
-      const lines = items.map((i) => `• **#${i.id}** — ${i.text}`);
-      const msg = `✨ **Saved Compliments (page ${page})**\n` + lines.join("\n");
-      return interaction.reply({ content: msg.slice(0, 1900), ephemeral: true });
-    }
+  const payload = buildContentListPayload({
+    kind: "compliment",
+    page: data.page,
+    totalPages: data.totalPages,
+    items: data.items,
+    userId: interaction.user.id,
+  });
+
+  return interaction.reply(payload);
+}
+
 
     if (interaction.commandName === "list_roasts") {
-      if (!interaction.inGuild()) {
-        return interaction.reply({ content: "This command can only be used in a server.", ephemeral: true });
-      }
-      if (!canManageContent(interaction)) {
-        return interaction.reply({ content: "❌ You need **Manage Server** (or be the owner) to do that.", ephemeral: true });
-      }
+  if (!interaction.inGuild()) {
+    return interaction.reply({ content: "This command can only be used in a server.", ephemeral: true });
+  }
+  if (!canManageContent(interaction)) {
+    return interaction.reply({ content: "❌ You need **Manage Server** (or be the owner) to do that.", ephemeral: true });
+  }
 
-      const page = Math.max(1, interaction.options.getInteger("page") ?? 1);
-      const limit = 15;
-      const offset = (page - 1) * limit;
+  const page = Math.max(1, interaction.options.getInteger("page") ?? 1);
 
-      const items = await dbListContent(interaction.guildId, "roast", limit, offset);
-      if (!items.length) {
-        return interaction.reply({ content: page === 1 ? "🔥 No roasts saved yet." : "🔥 No more roasts.", ephemeral: true });
-      }
+  const data = await fetchContentPage(interaction.guildId, "roast", page);
+  if (!data.items.length) {
+    return interaction.reply({ content: page === 1 ? "🔥 No roasts saved yet." : "🔥 No more roasts.", ephemeral: true });
+  }
 
-      const lines = items.map((i) => `• **#${i.id}** — ${i.text}`);
-      const msg = `🔥 **Saved Roasts (page ${page})**\n` + lines.join("\n");
-      return interaction.reply({ content: msg.slice(0, 1900), ephemeral: true });
-    }
+  const payload = buildContentListPayload({
+    kind: "roast",
+    page: data.page,
+    totalPages: data.totalPages,
+    items: data.items,
+    userId: interaction.user.id,
+  });
+
+  return interaction.reply(payload);
+}
+
 
     // /help
     if (interaction.commandName === "help") {
@@ -756,25 +814,22 @@ client.on(Events.InteractionCreate, async (interaction) => {
       if (interaction.inGuild()) {
         picked = await dbGetRandomContentNoRepeat(interaction.guildId, "compliment").catch(() => null);
       }
-
-      const fromFile = loadCompliments();
       const fallback = [
         "You’ve got really good vibes.",
         "You’re doing better than you think.",
         "You make things feel easier for people.",
       ];
-      const pool = fromFile.length ? fromFile : fallback;
 
       const target = interaction.options.getUser("user");
 
       // In DMs: compliment invoker only
       if (!interaction.inGuild()) {
-        if (!picked) picked = pickRandom(pool);
+        if (!picked) picked = pickRandom(fallback);
         return interaction.reply({ content: `✨ ${picked}`, ephemeral: false });
       }
 
       const who = target ?? interaction.user;
-      if (!picked) picked = pickRandom(pool);
+      if (!picked) picked = pickRandom(fallback);
 
       return interaction.reply({
         content: `Hey <@${who.id}> — ${picked} ✨`,
@@ -816,6 +871,39 @@ client.on(Events.InteractionCreate, async (interaction) => {
   // -------- Buttons (/crazy) --------
   if (interaction.isButton()) {
     const parts = interaction.customId.split("_");
+
+    // Pagination buttons for /list_compliments and /list_roasts
+    if (parts[0] === "contentlist") {
+      const kind = parts[1]; // "compliment" | "roast"
+      const page = Math.max(1, parseInt(parts[2], 10) || 1);
+      const ownerId = parts[3];
+
+      // Only the user who ran the command can paginate it
+      if (interaction.user.id !== ownerId) {
+        return interaction.reply({ content: "Not your buttons 🙂", ephemeral: true });
+      }
+
+      if (!interaction.inGuild()) {
+        return interaction.reply({ content: "This only works in servers.", ephemeral: true });
+      }
+
+      const data = await fetchContentPage(interaction.guildId, kind, page);
+      if (!data.items.length) {
+        return interaction.reply({ content: "No items on that page.", ephemeral: true });
+      }
+
+      const payload = buildContentListPayload({
+        kind,
+        page: data.page,
+        totalPages: data.totalPages,
+        items: data.items,
+        userId: ownerId,
+      });
+
+      return interaction.update(payload);
+    }
+
+    // /crazy buttons
     if (parts[0] !== "crazy") return;
 
     const times = Math.max(1, Math.min(parseInt(parts[2], 10) || 1, CRAZY_MAX_TIMES));
