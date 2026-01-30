@@ -690,7 +690,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const page = Math.max(1, interaction.options.getInteger("page") ?? 1);
 
       // Reply fast, then do DB work
-      await interaction.deferReply({ ephemeral: true });
+      await interaction.deferReply({ ephemeral: false });
 
       try {
         const data = await fetchContentPage(interaction.guildId, "compliment", page);
@@ -725,7 +725,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
       const page = Math.max(1, interaction.options.getInteger("page") ?? 1);
 
-      await interaction.deferReply({ ephemeral: true });
+      await interaction.deferReply({ ephemeral: false });
 
       try {
         const data = await fetchContentPage(interaction.guildId, "roast", page);
