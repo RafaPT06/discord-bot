@@ -101,6 +101,29 @@ async function initDb() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
   `);
+
+  // Global bot key/value state (used to de-duplicate deploy notifications)
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS app_state (
+      key TEXT PRIMARY KEY,
+      value TEXT
+    );
+  `);
+}
+
+async function dbGetState(key) {
+  if (!pool) return null;
+  const res = await pool.query(`SELECT value FROM app_state WHERE key = $1`, [key]);
+  return res.rows[0]?.value ?? null;
+}
+
+async function dbSetState(key, value) {
+  if (!pool) return;
+  await pool.query(
+    `INSERT INTO app_state (key, value) VALUES ($1, $2)
+     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
+    [key, value]
+  );
 }
 
 
@@ -647,4 +670,348 @@ client.on(Events.InteractionCreate, async (interaction) => {
         return interaction.reply({ content: "❌ You need **Manage Server** (or be the owner) to do that.", ephemeral: true });
       }
 
-      const text = interaction.
+      const text = interaction.options.getString("text", true).trim();
+      if (!text) return interaction.reply({ content: "❌ Text is required.", ephemeral: true });
+
+      const id = await dbAddContent(interaction.guildId, "roast", text, interaction.user.id);
+      if (!id) return interaction.reply({ content: "⚠️ Database not available (DATABASE_URL missing).", ephemeral: true });
+
+      return interaction.reply({ content: `✅ Added roast **#${id}**.`, ephemeral: true });
+    }
+
+    if (interaction.commandName === "list_compliments") {
+      if (!interaction.inGuild()) {
+        return interaction.reply({ content: "This command can only be used in a server.", ephemeral: true });
+      }
+      if (!canManageContent(interaction)) {
+        return interaction.reply({ content: "❌ You need **Manage Server** (or be the owner) to do that.", ephemeral: true });
+      }
+
+      const page = Math.max(1, interaction.options.getInteger("page") ?? 1);
+
+      // Reply fast, then do DB work
+      await interaction.deferReply({ ephemeral: true });
+
+      try {
+        const data = await fetchContentPage(interaction.guildId, "compliment", page);
+        if (!data.items.length) {
+          return interaction.editReply(page === 1 ? "✨ No compliments saved yet." : "✨ No more compliments.");
+        }
+
+        const payload = buildContentListPayload({
+          kind: "compliment",
+          page: data.page,
+          totalPages: data.totalPages,
+          items: data.items,
+          userId: interaction.user.id,
+        });
+
+        // payload may include embeds/components
+        return interaction.editReply(payload);
+      } catch (e) {
+        console.error("list_compliments failed:", e);
+        return interaction.editReply("❌ Something went wrong while listing compliments. Check Railway logs.");
+      }
+    }
+
+
+    if (interaction.commandName === "list_roasts") {
+      if (!interaction.inGuild()) {
+        return interaction.reply({ content: "This command can only be used in a server.", ephemeral: true });
+      }
+      if (!canManageContent(interaction)) {
+        return interaction.reply({ content: "❌ You need **Manage Server** (or be the owner) to do that.", ephemeral: true });
+      }
+
+      const page = Math.max(1, interaction.options.getInteger("page") ?? 1);
+
+      await interaction.deferReply({ ephemeral: true });
+
+      try {
+        const data = await fetchContentPage(interaction.guildId, "roast", page);
+        if (!data.items.length) {
+          return interaction.editReply(page === 1 ? "🔥 No roasts saved yet." : "🔥 No more roasts.");
+        }
+
+        const payload = buildContentListPayload({
+          kind: "roast",
+          page: data.page,
+          totalPages: data.totalPages,
+          items: data.items,
+          userId: interaction.user.id,
+        });
+
+        return interaction.editReply(payload);
+      } catch (e) {
+        console.error("list_roasts failed:", e);
+        return interaction.editReply("❌ Something went wrong while listing roasts. Check Railway logs.");
+      }
+    }
+
+
+    // /help
+    if (interaction.commandName === "help") {
+      const isGuild = interaction.inGuild();
+      const ownerOnly = isOwner(interaction);
+      const ownerDisplay = OWNER_ID ? `Rafa (<@${OWNER_ID}>)` : "Rafa @(atuaprima_)";
+
+      const embed = new EmbedBuilder()
+        .setTitle("🤖 Bot Commands")
+        .setDescription("Here’s everything you can use:")
+        .addFields(
+          {
+            name: "✨ Fun / Social",
+            value: [
+              "• `/compliment [user]` — send a random compliment",
+              "• `/roast [user]` — roast someone 🔥",
+              "• `/mimic <text>` — SpOnGeBoB cAsE",
+              "• `/cat` — random chaotic cat 🐱",
+              "• `/crazy [times]` — the crazy copypasta (1–3)",
+            ].join("\n"),
+            inline: false,
+          },
+          {
+            name: "📊 Status",
+            value: [
+              "• `/status` — uptime + who made the bot",
+              "• `/ping` — bot latency",
+            ].join("\n"),
+            inline: false,
+          },
+          {
+            name: "🗒️ TODOs (Global)",
+            value: [
+              "• `/todo_add <text>` — add a TODO (Manage Server / Owner)",
+              "• `/todo_list [all]` — list global TODOs (Manage Server / Owner)",
+              "• `/todo_done <id>` — mark a TODO done (Manage Server / Owner)",
+            ].join("\n"),
+            inline: false,
+          }
+        );
+
+      if (isGuild) {
+        embed.addFields({
+          name: "🛠️ Content (Admin)",
+          value: [
+            "• `/add_compliment <text>` — add a compliment (Manage Server / Owner)",
+            "• `/add_roast <text>` — add a roast (Manage Server / Owner)",
+            "• `/list_compliments [page]` — list saved compliments (Admin)",
+            "• `/list_roasts [page]` — list saved roasts (Admin)",
+          ].join("\n"),
+          inline: false,
+        });
+
+        if (ownerOnly) {
+          embed.addFields({
+            name: "🚀 Deploy Updates (Owner Only)",
+            value: [
+              "• `/set_deploy_channel #channel` — set deploy updates channel",
+              "• `/show_deploy_channel` — show current deploy channel",
+              "• `/reset_deploy_channel` — reset deploy channel",
+            ].join("\n"),
+            inline: false,
+          });
+        }
+      }
+
+      embed.setFooter({ text: `Made by ${ownerDisplay}` });
+      return interaction.reply({ embeds: [embed], ephemeral: false });
+    }
+
+    // /status
+    if (interaction.commandName === "status") {
+      const startedAt = Math.floor((Date.now() - process.uptime() * 1000) / 1000);
+      const msg = [
+        `⏱️ **Uptime:** <t:${startedAt}:R>`,
+        `👨‍💻 **Made by:** Rafa @(atuaprima_)`,
+      ].join("\n");
+    }
+
+    // /ping
+    if (interaction.commandName === "ping") {
+      return interaction.reply({ content: `📡 **Ping:** ${client.ws.ping}ms`, ephemeral: false });
+    }
+
+    // /cat
+    if (interaction.commandName === "cat") {
+      await interaction.deferReply();
+      try {
+        const response = await fetch("https://api.thecatapi.com/v1/images/search");
+        const data = await response.json();
+        const catUrl = data?.[0]?.url;
+
+        if (!catUrl) return interaction.editReply("😿 No cats found today...");
+
+        return interaction.editReply({
+          content: "🐱 Here is a chaotic cat!",
+          files: [catUrl],
+        });
+      } catch (e) {
+        console.error("Cat API error:", e);
+        return interaction.editReply("😿 The cats are hiding.");
+      }
+    }
+
+    // /mimic
+    if (interaction.commandName === "mimic") {
+      const text = interaction.options.getString("text", true);
+      return interaction.reply({ content: toSpongeCase(text), ephemeral: false });
+    }
+
+    // /roast (DB no-repeat first, fallback to defaults)
+    if (interaction.commandName === "roast") {
+      const target = interaction.options.getUser("user") || interaction.user;
+
+      let roast = null;
+      if (interaction.inGuild()) {
+        roast = await dbGetRandomContentNoRepeat(interaction.guildId, "roast").catch(() => null);
+      }
+      if (!roast) roast = pickRandom(roasts);
+
+      return interaction.reply({ content: `<@${target.id}>, ${roast}`, ephemeral: false });
+    }
+
+    // /compliment (DB no-repeat first, fallback to file/defaults)
+    if (interaction.commandName === "compliment") {
+      const now = Date.now();
+      const prev = complimentCooldown.get(interaction.user.id) ?? 0;
+      if (now - prev < COMPLIMENT_COOLDOWN_MS) {
+        return interaction.reply({ content: "⏳ Cooldown — wait a bit.", ephemeral: true });
+      }
+      complimentCooldown.set(interaction.user.id, now);
+
+      let picked = null;
+      if (interaction.inGuild()) {
+        picked = await dbGetRandomContentNoRepeat(interaction.guildId, "compliment").catch(() => null);
+      }
+      const fallback = [
+        "You’ve got really good vibes.",
+        "You’re doing better than you think.",
+        "You make things feel easier for people.",
+      ];
+
+      const target = interaction.options.getUser("user");
+
+      // In DMs: compliment invoker only
+      if (!interaction.inGuild()) {
+        if (!picked) picked = pickRandom(fallback);
+        return interaction.reply({ content: `✨ ${picked}`, ephemeral: false });
+      }
+
+      const who = target ?? interaction.user;
+      if (!picked) picked = pickRandom(fallback);
+
+      return interaction.reply({
+        content: `Hey <@${who.id}> — ${picked} ✨`,
+        ephemeral: false,
+      });
+    }
+
+    // /crazy (works in DMs)
+    if (interaction.commandName === "crazy") {
+      const now = Date.now();
+      const prev = crazyCooldown.get(interaction.user.id) ?? 0;
+      if (now - prev < CRAZY_COOLDOWN_MS) {
+        return interaction.reply({ content: "⏳ Cooldown — wait a bit.", ephemeral: true });
+      }
+      crazyCooldown.set(interaction.user.id, now);
+
+      const timesRaw = interaction.options.getInteger("times") ?? 1;
+      const times = Math.max(1, Math.min(timesRaw, CRAZY_MAX_TIMES));
+
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId(`crazy_send_${times}_${interaction.user.id}`)
+          .setLabel("Go Crazy")
+          .setStyle(ButtonStyle.Danger)
+      );
+
+      const payload = {
+        content: `Ready to go crazy? Times: **${times}** (max ${CRAZY_MAX_TIMES}).`,
+        components: [row],
+      };
+
+      // Ephemeral breaks in DMs -> only use in guilds
+      if (interaction.inGuild()) payload.ephemeral = true;
+
+      return interaction.reply(payload);
+    }
+  }
+
+  // -------- Buttons (/crazy) --------
+  if (interaction.isButton()) {
+    const parts = interaction.customId.split("_");
+
+    // Pagination buttons for /list_compliments and /list_roasts
+    if (parts[0] === "contentlist") {
+      const kind = parts[1]; // "compliment" | "roast"
+      const page = Math.max(1, parseInt(parts[2], 10) || 1);
+      const ownerId = parts[3];
+
+      // Only the user who ran the command can paginate it
+      if (interaction.user.id !== ownerId) {
+        return interaction.reply({ content: "Not your buttons 🙂", ephemeral: true });
+      }
+
+      if (!interaction.inGuild()) {
+        return interaction.reply({ content: "This only works in servers.", ephemeral: true });
+      }
+
+      const data = await fetchContentPage(interaction.guildId, kind, page);
+      if (!data.items.length) {
+        return interaction.reply({ content: "No items on that page.", ephemeral: true });
+      }
+
+      const payload = buildContentListPayload({
+        kind,
+        page: data.page,
+        totalPages: data.totalPages,
+        items: data.items,
+        userId: ownerId,
+      });
+
+      return interaction.update(payload);
+    }
+
+    // /crazy buttons
+    if (parts[0] !== "crazy") return;
+
+    const times = Math.max(1, Math.min(parseInt(parts[2], 10) || 1, CRAZY_MAX_TIMES));
+    const ownerId = parts[3];
+
+    if (interaction.user.id !== ownerId) {
+      const deny = { content: "Not your buttons 🙂" };
+      if (interaction.inGuild()) deny.ephemeral = true;
+      return interaction.reply(deny);
+    }
+
+    const lines = getCrazyPack();
+
+    const ack = { content: `Sending crazy x${times} (limited).` };
+    if (interaction.inGuild()) ack.ephemeral = true;
+    await interaction.reply(ack);
+
+    const outChannel = interaction.channel ?? (await interaction.user.createDM());
+
+    let sent = 0;
+    for (let t = 0; t < times; t++) {
+      for (const line of lines) {
+        if (sent >= CRAZY_MAX_TOTAL_LINES) return;
+        await outChannel.send(line).catch(() => null);
+        sent++;
+      }
+    }
+  }
+});
+
+
+// =======================
+// READY
+// =======================
+client.once(Events.ClientReady, async () => {
+  console.log(`✅ Logged in as ${client.user.tag}`);
+  await initDb();
+  await notifyOnDeploy();
+});
+
+client.login(process.env.BOT_TOKEN);
