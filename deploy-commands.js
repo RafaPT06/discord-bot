@@ -132,7 +132,7 @@ new SlashCommandBuilder()
   .addStringOption((o) =>
     o.setName("text").setDescription("What needs to be done").setRequired(true)
   )
-  .setContexts(InteractionContextType.Guild)
+  .setContexts(InteractionContextType.Guild, InteractionContextType.BotDM, InteractionContextType.PrivateChannel)
   .toJSON(),
 
 new SlashCommandBuilder()
@@ -141,7 +141,7 @@ new SlashCommandBuilder()
   .addBooleanOption((o) =>
     o.setName("all").setDescription("Include done items").setRequired(false)
   )
-  .setContexts(InteractionContextType.Guild)
+  .setContexts(InteractionContextType.Guild, InteractionContextType.BotDM, InteractionContextType.PrivateChannel)
   .toJSON(),
 
 new SlashCommandBuilder()
@@ -149,6 +149,43 @@ new SlashCommandBuilder()
   .setDescription("Mark a TODO as done.")
   .addIntegerOption((o) =>
     o.setName("id").setDescription("TODO id").setRequired(true)
+  )
+  .setContexts(InteractionContextType.Guild, InteractionContextType.BotDM, InteractionContextType.PrivateChannel)
+  .toJSON(),
+
+,
+new SlashCommandBuilder()
+  .setName("add_compliment")
+  .setDescription("Add a compliment (Manage Server / Owner).")
+  .addStringOption((o) =>
+    o.setName("text").setDescription("Compliment text").setRequired(true)
+  )
+  .setContexts(InteractionContextType.Guild)
+  .toJSON(),
+
+new SlashCommandBuilder()
+  .setName("add_roast")
+  .setDescription("Add a roast (Manage Server / Owner).")
+  .addStringOption((o) =>
+    o.setName("text").setDescription("Roast text").setRequired(true)
+  )
+  .setContexts(InteractionContextType.Guild)
+  .toJSON(),
+
+new SlashCommandBuilder()
+  .setName("list_compliments")
+  .setDescription("List saved compliments (Admin).")
+  .addIntegerOption((o) =>
+    o.setName("page").setDescription("Page number (default 1)").setRequired(false)
+  )
+  .setContexts(InteractionContextType.Guild)
+  .toJSON(),
+
+new SlashCommandBuilder()
+  .setName("list_roasts")
+  .setDescription("List saved roasts (Admin).")
+  .addIntegerOption((o) =>
+    o.setName("page").setDescription("Page number (default 1)").setRequired(false)
   )
   .setContexts(InteractionContextType.Guild)
   .toJSON(),

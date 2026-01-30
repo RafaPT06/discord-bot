@@ -55,6 +55,7 @@ const pool = process.env.DATABASE_URL
 
 async function initDb() {
   if (!pool) return;
+
   await pool.query(`
     CREATE TABLE IF NOT EXISTS guild_settings (
       guild_id TEXT PRIMARY KEY,
@@ -62,17 +63,47 @@ async function initDb() {
     );
   `);
 
-await pool.query(`
-  CREATE TABLE IF NOT EXISTS todo_items (
-    id BIGSERIAL PRIMARY KEY,
-    guild_id TEXT NOT NULL,
-    text TEXT NOT NULL,
-    is_done BOOLEAN NOT NULL DEFAULT FALSE,
-    created_by TEXT,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  // Global TODOs (shared across all servers)
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS app_todos (
+      id BIGSERIAL PRIMARY KEY,
+      text TEXT NOT NULL,
+      is_done BOOLEAN NOT NULL DEFAULT FALSE,
+      created_by TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+
+  // Per-server content storage (roasts/compliments)
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS content_items (
+      id BIGSERIAL PRIMARY KEY,
+      guild_id TEXT NOT NULL,
+      type TEXT NOT NULL CHECK (type IN ('compliment','roast')),
+      text TEXT NOT NULL,
+      created_by TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+
+  // Add last_used_at for no-repeat mode (safe migration)
+  await pool.query(
+    `ALTER TABLE content_items ADD COLUMN IF NOT EXISTS last_used_at TIMESTAMPTZ;`
   );
-`);
+
+  // Legacy per-server TODO table (kept for backward compatibility; no longer used)
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS todo_items (
+      id BIGSERIAL PRIMARY KEY,
+      guild_id TEXT NOT NULL,
+      text TEXT NOT NULL,
+      is_done BOOLEAN NOT NULL DEFAULT FALSE,
+      created_by TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
 }
+
 
 async function dbSetDeployChannel(guildId, channelId) {
   if (!pool) return;
@@ -113,44 +144,130 @@ async function dbGetAllDeployChannels() {
 }
 
 
-async function dbAddTodo(guildId, text, userId) {
+async function dbAddTodo(text, userId) {
   if (!pool) return null;
   const res = await pool.query(
-    `INSERT INTO todo_items (guild_id, text, created_by)
-     VALUES ($1,$2,$3)
+    `INSERT INTO app_todos (text, created_by)
+     VALUES ($1,$2)
      RETURNING id`,
-    [guildId, text, userId]
+    [text, userId]
   );
   return res.rows[0]?.id ?? null;
 }
 
-async function dbListTodos(guildId, includeDone = false, limit = 20) {
+async function dbListTodos(includeDone = false, limit = 20) {
   if (!pool) return [];
   const res = await pool.query(
-    `SELECT id, text, is_done FROM todo_items
-     WHERE guild_id=$1 AND ($2 OR is_done = FALSE)
+    `SELECT id, text, is_done FROM app_todos
+     WHERE ($1 OR is_done = FALSE)
      ORDER BY is_done ASC, id DESC
-     LIMIT $3`,
-    [guildId, includeDone, limit]
+     LIMIT $2`,
+    [includeDone, limit]
   );
   return res.rows;
 }
 
-async function dbDoneTodo(guildId, id) {
+async function dbDoneTodo(id) {
   if (!pool) return false;
   const res = await pool.query(
-    `UPDATE todo_items SET is_done=TRUE
-     WHERE guild_id=$1 AND id=$2`,
-    [guildId, id]
+    `UPDATE app_todos SET is_done=TRUE
+     WHERE id=$1`,
+    [id]
   );
   return (res.rowCount ?? 0) > 0;
 }
 
+
+async function dbAddContent(guildId, type, text, userId) {
+  if (!pool) return null;
+  const res = await pool.query(
+    `INSERT INTO content_items (guild_id, type, text, created_by)
+     VALUES ($1,$2,$3,$4)
+     RETURNING id`,
+    [guildId, type, text, userId]
+  );
+  return res.rows[0]?.id ?? null;
+}
+
+async function dbListContent(guildId, type, limit = 25, offset = 0) {
+  if (!pool) return [];
+  const res = await pool.query(
+    `SELECT id, text FROM content_items
+     WHERE guild_id=$1 AND type=$2
+     ORDER BY id DESC
+     LIMIT $3 OFFSET $4`,
+    [guildId, type, limit, offset]
+  );
+  return res.rows;
+}
+
+async function dbGetRandomContent(guildId, type) {
+  if (!pool) return null;
+  const res = await pool.query(
+    `SELECT text FROM content_items
+     WHERE guild_id=$1 AND type=$2
+     ORDER BY RANDOM()
+     LIMIT 1`,
+    [guildId, type]
+  );
+  return res.rows[0]?.text ?? null;
+}
 function isOwner(interaction) {
   return OWNER_ID && interaction.user.id === OWNER_ID;
 }
 
+async function dbGetRandomContentNoRepeat(guildId, type) {
+  if (!pool) return null;
+
+  // If nothing unused remains, reset last_used_at then pick again.
+  const unused = await pool.query(
+    `SELECT id, text FROM content_items
+     WHERE guild_id=$1 AND type=$2 AND last_used_at IS NULL
+     ORDER BY RANDOM()
+     LIMIT 1`,
+    [guildId, type]
+  );
+
+  let chosen = unused.rows[0];
+
+  if (!chosen) {
+    // reset cycle
+    await pool.query(
+      `UPDATE content_items SET last_used_at = NULL
+       WHERE guild_id=$1 AND type=$2`,
+      [guildId, type]
+    );
+
+    const again = await pool.query(
+      `SELECT id, text FROM content_items
+       WHERE guild_id=$1 AND type=$2 AND last_used_at IS NULL
+       ORDER BY RANDOM()
+       LIMIT 1`,
+      [guildId, type]
+    );
+    chosen = again.rows[0];
+  }
+
+  if (!chosen) return null;
+
+  await pool.query(
+    `UPDATE content_items SET last_used_at = NOW()
+     WHERE id=$1`,
+    [chosen.id]
+  );
+
+  return chosen.text ?? null;
+}
+
 function canManageTodos(interaction) {
+  if (!interaction.inGuild()) return false;
+  return (
+    isOwner(interaction) ||
+    interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild)
+  );
+}
+
+function canManageContent(interaction) {
   if (!interaction.inGuild()) return false;
   return (
     isOwner(interaction) ||
@@ -203,7 +320,7 @@ async function notifyOnDeploy() {
   const commitInfo = sha ? await getCommitInfo(sha) : null;
 
   const message =
-    `**New deploy detected!**\n` +
+    `🚀 **New deploy detected!**\n` +
     `• **Env:** \`${envName}\`\n` +
     (shortSha ? `• **Commit:** \`${shortSha}\`\n` : "") +
     (commitInfo
@@ -300,62 +417,58 @@ client.on(Events.InteractionCreate, async (interaction) => {
   if (interaction.isChatInputCommand()) {
     // OWNER-ONLY deploy commands
     if (interaction.commandName === "set_deploy_channel") {
-  if (!interaction.inGuild()) {
-    return interaction.reply({ content: "This command can only be used in a server.", ephemeral: true });
-  }
-  if (!isOwner(interaction)) {
-    return interaction.reply({ content: "You can’t use this command.", ephemeral: true });
-  }
+      if (!interaction.inGuild()) {
+        return interaction.reply({ content: "This command can only be used in a server.", ephemeral: true });
+      }
+      if (!isOwner(interaction)) {
+        return interaction.reply({ content: "You can’t use this command.", ephemeral: true });
+      }
 
-  // Try by the expected name first…
-  let ch = interaction.options.getChannel("channel");
+      let ch = interaction.options.getChannel("channel");
 
-  // …but if Discord sent it under a different name, grab the first channel option.
-  if (!ch) {
-    const first = interaction.options.data?.find((o) => o.type === 7); // 7 = CHANNEL
-    if (first?.value) ch = await client.channels.fetch(first.value).catch(() => null);
-  }
+      if (!ch) {
+        const first = interaction.options.data?.find((o) => o.type === 7); // 7 = CHANNEL
+        if (first?.value) ch = await client.channels.fetch(first.value).catch(() => null);
+      }
 
-  // Final guard + helpful debug output
-  if (!ch?.id) {
-    const debug = interaction.options.data?.map(o => ({
-      name: o.name, type: o.type, value: o.value
-    })) ?? [];
+      if (!ch?.id) {
+        const debug = interaction.options.data?.map((o) => ({
+          name: o.name, type: o.type, value: o.value
+        })) ?? [];
 
-    return interaction.reply({
-      content:
-        "❌ I didn’t receive a valid channel id from Discord.\n" +
-        "Debug (send this to Dinis):\n" +
-        "```json\n" + JSON.stringify(debug, null, 2) + "\n```",
-      ephemeral: true,
-    });
-  }
+        return interaction.reply({
+          content:
+            "❌ I didn’t receive a valid channel id from Discord.\n" +
+            "Debug (send this to Dinis):\n" +
+            "```json\n" + JSON.stringify(debug, null, 2) + "\n```",
+          ephemeral: true,
+        });
 
-  // Optional: ensure bot can post there
-  const me = interaction.guild.members.me;
-  const perms = me ? ch.permissionsFor(me) : null;
-  if (!perms?.has(["ViewChannel", "SendMessages"])) {
-    return interaction.reply({
-      content:
-        "⚠️ I don’t have permission to post in that channel.\n" +
-        "Give me **View Channel** + **Send Messages**, then try again.",
-      ephemeral: true,
-    });
-  }
+      }
 
-  await dbSetDeployChannel(interaction.guildId, ch.id);
-  return interaction.reply({
-    content: `✅ Deployment updates channel set to <#${ch.id}>`,
-    ephemeral: true,
-  });
-}
+      // ensure bot can post there
+      const me = interaction.guild.members.me;
+      const perms = me ? ch.permissionsFor(me) : null;
+      if (!perms?.has(["ViewChannel", "SendMessages"])) {
+        return interaction.reply({
+          content:
+            "⚠️ I don’t have permission to post in that channel.\n" +
+            "Give me **View Channel** + **Send Messages**, then try again.",
+          ephemeral: true,
+        });
+
+      }
+
+      await dbSetDeployChannel(interaction.guildId, ch.id);
+      return interaction.reply({
+        content: `✅ Deployment updates channel set to <#${ch.id}>`,
+        ephemeral: true,
+      });
+    }
 
     if (interaction.commandName === "show_deploy_channel") {
       if (!interaction.inGuild()) {
-        return interaction.reply({
-          content: "This command can only be used in a server.",
-          ephemeral: true,
-        });
+        return interaction.reply({ content: "This command can only be used in a server.", ephemeral: true });
       }
       if (!isOwner(interaction)) {
         return interaction.reply({ content: "You can’t use this command.", ephemeral: true });
@@ -363,157 +476,232 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
       const saved = await dbGetDeployChannel(interaction.guildId);
       return interaction.reply({
-        content: saved
-          ? `📌 Deployment updates channel: <#${saved}>`
-          : "📌 No deployment updates channel set.",
+        content: saved ? `📌 Deployment updates channel: <#${saved}>` : "📌 No deployment updates channel set.",
         ephemeral: true,
       });
     }
 
     if (interaction.commandName === "reset_deploy_channel") {
       if (!interaction.inGuild()) {
-        return interaction.reply({
-          content: "This command can only be used in a server.",
-          ephemeral: true,
-        });
+        return interaction.reply({ content: "This command can only be used in a server.", ephemeral: true });
       }
       if (!isOwner(interaction)) {
         return interaction.reply({ content: "You can’t use this command.", ephemeral: true });
       }
 
       await dbResetDeployChannel(interaction.guildId);
-      return interaction.reply({
-        content: "✅ Deployment updates channel reset.",
-        ephemeral: true,
-      });
+      return interaction.reply({ content: "✅ Deployment updates channel reset.", ephemeral: true });
     }
 
-
-// TODO COMMANDS (server-only)
-if (interaction.commandName === "todo_add") {
-  if (!interaction.inGuild()) {
-    return interaction.reply({ content: "This command can only be used in a server.", ephemeral: true });
-  }
-  if (!canManageTodos(interaction)) {
-    return interaction.reply({ content: "❌ You need **Manage Server** (or be the owner) to do that.", ephemeral: true });
-  }
-  const text = interaction.options.getString("text", true).trim();
-  if (!text) return interaction.reply({ content: "❌ TODO text is required.", ephemeral: true });
-
-  const id = await dbAddTodo(interaction.guildId, text, interaction.user.id);
-  if (!id) return interaction.reply({ content: "⚠️ Database not available (DATABASE_URL missing).", ephemeral: true });
-
-  return interaction.reply({ content: `✅ Added TODO **#${id}** — ${text}`, ephemeral: false });
-}
-
-if (interaction.commandName === "todo_list") {
-  if (!interaction.inGuild()) {
-    return interaction.reply({ content: "This command can only be used in a server.", ephemeral: true });
-  }
-  if (!canManageTodos(interaction)) {
-    return interaction.reply({ content: "❌ You need **Manage Server** (or be the owner) to do that.", ephemeral: true });
-  }
-
-  const includeDone = interaction.options.getBoolean("all") ?? false;
-  const items = await dbListTodos(interaction.guildId, includeDone, 20);
-
-  if (!items.length) return interaction.reply({ content: "📭 No TODOs yet.", ephemeral: false });
-
-  const lines = items.map(i => `${i.is_done ? "✅" : "🟨"} **#${i.id}** — ${i.text}`);
-  return interaction.reply({ content: `📝 **TODOs**\n${lines.join("\n")}`, ephemeral: false });
-}
-
-if (interaction.commandName === "todo_done") {
-  if (!interaction.inGuild()) {
-    return interaction.reply({ content: "This command can only be used in a server.", ephemeral: true });
-  }
-  if (!canManageTodos(interaction)) {
-    return interaction.reply({ content: "❌ You need **Manage Server** (or be the owner) to do that.", ephemeral: true });
-  }
-
-  const id = interaction.options.getInteger("id", true);
-  const ok = await dbDoneTodo(interaction.guildId, id);
-
-  return interaction.reply({ content: ok ? `✅ Marked TODO **#${id}** as done.` : `❌ TODO **#${id}** not found.`, ephemeral: false });
-}
-
-
-
-    if (interaction.commandName === "help") {
-  const isGuild = interaction.inGuild();
-  const owner = isOwner(interaction);
-
-  const embed = new EmbedBuilder()
-    .setTitle("Bot Commands")
-    .setDescription("Here’s everything you can use:")
-    .addFields(
-      {
-        name: "Fun / Social",
-        value: [
-          "• `/compliment [user]` — send a random compliment",
-          "• `/roast [user]` — roast someone",
-          "• `/mimic <text>` — SpOnGeBoB cAsE",
-          "• `/cat` — random chaotic cat",
-          "• `/crazy [times]` — the crazy copypasta (1–3)",
-        ].join("\n"),
-        inline: false,
-      },
-      {
-        name: "Status",
-        value: [
-          "• `/status` — uptime + who made the bot",
-          "• `/ping` — bot latency",
-        ].join("\n"),
-        inline: false,
+    // TODO COMMANDS (global across all servers)
+    if (interaction.commandName === "todo_add") {
+      if (!interaction.inGuild() && !isOwner(interaction)) {
+        return interaction.reply({ content: "❌ Only the owner can use TODOs in DMs.", ephemeral: true });
       }
-    )
-    .setFooter({ text: `Made by ${ownerDisplay}` })
-  if (isGuild && owner) {
-    embed.addFields({
-      name: "Deploy Updates (Owner Only)",
-      value: [
-        "• `/set_deploy_channel #channel` — set deploy updates channel",
-        "• `/show_deploy_channel` — show current deploy channel",
-        "• `/reset_deploy_channel` — reset deploy channel",
-      ].join("\n"),
-      inline: false,
-    },
-    {
-      name: "TODO commands (Owner/User with manage server perm Only)",
-      value: [
-        "• `/todo_add #text` — adds a TODO text",
-        "• `/todo_list [id]` — shows TODO list",
-        "• `/todo_done <id>` — sets a TODO as done",
-      ].join("\n"),
-      inline: false,
-    });
-  } else if (isGuild && !owner) {
-    embed.addFields({
-      name: "Deploy Updates",
-      value: "Owner-only commands are available in this server.",
-      inline: false,
-    });
-  }
+      if (interaction.inGuild() && !canManageTodos(interaction)) {
+        return interaction.reply({ content: "❌ You need **Manage Server** (or be the owner) to manage TODOs.", ephemeral: true });
+      }
 
-  return interaction.reply({ embeds: [embed], ephemeral: false });
+      const text = interaction.options.getString("text", true).trim();
+      if (!text) return interaction.reply({ content: "❌ TODO text is required.", ephemeral: true });
+
+      const id = await dbAddTodo(text, interaction.user.id);
+      if (!id) return interaction.reply({ content: "⚠️ Database not available (DATABASE_URL missing).", ephemeral: true });
+
+      return interaction.reply({ content: `✅ Added TODO **#${id}** — ${text}`, ephemeral: false });
     }
-    
+
+    if (interaction.commandName === "todo_list") {
+      if (!interaction.inGuild() && !isOwner(interaction)) {
+        return interaction.reply({ content: "❌ Only the owner can use TODOs in DMs.", ephemeral: true });
+      }
+      if (interaction.inGuild() && !canManageTodos(interaction)) {
+        return interaction.reply({ content: "❌ You need **Manage Server** (or be the owner) to manage TODOs.", ephemeral: true });
+      }
+
+      const includeDone = interaction.options.getBoolean("all") ?? false;
+      const items = await dbListTodos(includeDone, 25);
+
+      if (!items.length) return interaction.reply({ content: "📭 No TODOs yet.", ephemeral: false });
+
+      const lines = items.map((i) => `${i.is_done ? "✅" : "🟨"} **#${i.id}** — ${i.text}`);
+      return interaction.reply({ content: `📝 **Global TODOs**\n${lines.join("\n")}`, ephemeral: false });
+    }
+
+    if (interaction.commandName === "todo_done") {
+      if (!interaction.inGuild() && !isOwner(interaction)) {
+        return interaction.reply({ content: "❌ Only the owner can use TODOs in DMs.", ephemeral: true });
+      }
+      if (interaction.inGuild() && !canManageTodos(interaction)) {
+        return interaction.reply({ content: "❌ You need **Manage Server** (or be the owner) to manage TODOs.", ephemeral: true });
+      }
+
+      const id = interaction.options.getInteger("id", true);
+      const ok = await dbDoneTodo(id);
+
+      return interaction.reply({ content: ok ? `✅ Marked TODO **#${id}** as done.` : `❌ TODO **#${id}** not found.`, ephemeral: false });
+    }
+
+    // CONTENT MANAGEMENT (Manage Server / Owner) - server-only
+    if (interaction.commandName === "add_compliment") {
+      if (!interaction.inGuild()) {
+        return interaction.reply({ content: "This command can only be used in a server.", ephemeral: true });
+      }
+      if (!canManageContent(interaction)) {
+        return interaction.reply({ content: "❌ You need **Manage Server** (or be the owner) to do that.", ephemeral: true });
+      }
+
+      const text = interaction.options.getString("text", true).trim();
+      if (!text) return interaction.reply({ content: "❌ Text is required.", ephemeral: true });
+
+      const id = await dbAddContent(interaction.guildId, "compliment", text, interaction.user.id);
+      if (!id) return interaction.reply({ content: "⚠️ Database not available (DATABASE_URL missing).", ephemeral: true });
+
+      return interaction.reply({ content: `✅ Added compliment **#${id}**.`, ephemeral: true });
+    }
+
+    if (interaction.commandName === "add_roast") {
+      if (!interaction.inGuild()) {
+        return interaction.reply({ content: "This command can only be used in a server.", ephemeral: true });
+      }
+      if (!canManageContent(interaction)) {
+        return interaction.reply({ content: "❌ You need **Manage Server** (or be the owner) to do that.", ephemeral: true });
+      }
+
+      const text = interaction.options.getString("text", true).trim();
+      if (!text) return interaction.reply({ content: "❌ Text is required.", ephemeral: true });
+
+      const id = await dbAddContent(interaction.guildId, "roast", text, interaction.user.id);
+      if (!id) return interaction.reply({ content: "⚠️ Database not available (DATABASE_URL missing).", ephemeral: true });
+
+      return interaction.reply({ content: `✅ Added roast **#${id}**.`, ephemeral: true });
+    }
+
+    if (interaction.commandName === "list_compliments") {
+      if (!interaction.inGuild()) {
+        return interaction.reply({ content: "This command can only be used in a server.", ephemeral: true });
+      }
+      if (!canManageContent(interaction)) {
+        return interaction.reply({ content: "❌ You need **Manage Server** (or be the owner) to do that.", ephemeral: true });
+      }
+
+      const page = Math.max(1, interaction.options.getInteger("page") ?? 1);
+      const limit = 15;
+      const offset = (page - 1) * limit;
+
+      const items = await dbListContent(interaction.guildId, "compliment", limit, offset);
+      if (!items.length) {
+        return interaction.reply({ content: page === 1 ? "✨ No compliments saved yet." : "✨ No more compliments.", ephemeral: true });
+      }
+
+      const lines = items.map((i) => `• **#${i.id}** — ${i.text}`);
+      const msg = `✨ **Saved Compliments (page ${page})**\n` + lines.join("\n");
+      return interaction.reply({ content: msg.slice(0, 1900), ephemeral: true });
+    }
+
+    if (interaction.commandName === "list_roasts") {
+      if (!interaction.inGuild()) {
+        return interaction.reply({ content: "This command can only be used in a server.", ephemeral: true });
+      }
+      if (!canManageContent(interaction)) {
+        return interaction.reply({ content: "❌ You need **Manage Server** (or be the owner) to do that.", ephemeral: true });
+      }
+
+      const page = Math.max(1, interaction.options.getInteger("page") ?? 1);
+      const limit = 15;
+      const offset = (page - 1) * limit;
+
+      const items = await dbListContent(interaction.guildId, "roast", limit, offset);
+      if (!items.length) {
+        return interaction.reply({ content: page === 1 ? "🔥 No roasts saved yet." : "🔥 No more roasts.", ephemeral: true });
+      }
+
+      const lines = items.map((i) => `• **#${i.id}** — ${i.text}`);
+      const msg = `🔥 **Saved Roasts (page ${page})**\n` + lines.join("\n");
+      return interaction.reply({ content: msg.slice(0, 1900), ephemeral: true });
+    }
+
+    // /help
+    if (interaction.commandName === "help") {
+      const isGuild = interaction.inGuild();
+      const ownerOnly = isOwner(interaction);
+      const ownerDisplay = OWNER_ID ? `Rafa (<@${OWNER_ID}>)` : "Rafa @(atuaprima_)";
+
+      const embed = new EmbedBuilder()
+        .setTitle("🤖 Bot Commands")
+        .setDescription("Here’s everything you can use:")
+        .addFields(
+          {
+            name: "✨ Fun / Social",
+            value: [
+              "• `/compliment [user]` — send a random compliment",
+              "• `/roast [user]` — roast someone 🔥",
+              "• `/mimic <text>` — SpOnGeBoB cAsE",
+              "• `/cat` — random chaotic cat 🐱",
+              "• `/crazy [times]` — the crazy copypasta (1–3)",
+            ].join("\n"),
+            inline: false,
+          },
+          {
+            name: "📊 Status",
+            value: [
+              "• `/status` — uptime + who made the bot",
+              "• `/ping` — bot latency",
+            ].join("\n"),
+            inline: false,
+          },
+          {
+            name: "🗒️ TODOs (Global)",
+            value: [
+              "• `/todo_add <text>` — add a TODO (Manage Server / Owner)",
+              "• `/todo_list [all]` — list global TODOs (Manage Server / Owner)",
+              "• `/todo_done <id>` — mark a TODO done (Manage Server / Owner)",
+            ].join("\n"),
+            inline: false,
+          }
+        );
+
+      if (isGuild) {
+        embed.addFields({
+          name: "🛠️ Content (Admin)",
+          value: [
+            "• `/add_compliment <text>` — add a compliment (Manage Server / Owner)",
+            "• `/add_roast <text>` — add a roast (Manage Server / Owner)",
+            "• `/list_compliments [page]` — list saved compliments (Admin)",
+            "• `/list_roasts [page]` — list saved roasts (Admin)",
+          ].join("\n"),
+          inline: false,
+        });
+
+        if (ownerOnly) {
+          embed.addFields({
+            name: "🚀 Deploy Updates (Owner Only)",
+            value: [
+              "• `/set_deploy_channel #channel` — set deploy updates channel",
+              "• `/show_deploy_channel` — show current deploy channel",
+              "• `/reset_deploy_channel` — reset deploy channel",
+            ].join("\n"),
+            inline: false,
+          });
+        }
+      }
+
+      embed.setFooter({ text: `Made by ${ownerDisplay}` });
+      return interaction.reply({ embeds: [embed], ephemeral: false });
+    }
+
     // /status
     if (interaction.commandName === "status") {
       const startedAt = Math.floor((Date.now() - process.uptime() * 1000) / 1000);
       const msg = [
-        `**Uptime:** <t:${startedAt}:R>`,
-        `**Made by:** ${ownerDisplay}`,
+        `⏱️ **Uptime:** <t:${startedAt}:R>`,
+        `👨‍💻 **Made by:** Rafa @(atuaprima_)`,
       ].join("\n");
-      return interaction.reply({ content: msg, ephemeral: false });
     }
 
     // /ping
     if (interaction.commandName === "ping") {
-      return interaction.reply({
-        content: `**Ping:** ${client.ws.ping}ms`,
-        ephemeral: false,
-      });
+      return interaction.reply({ content: `📡 **Ping:** ${client.ws.ping}ms`, ephemeral: false });
     }
 
     // /cat
@@ -542,16 +730,20 @@ if (interaction.commandName === "todo_done") {
       return interaction.reply({ content: toSpongeCase(text), ephemeral: false });
     }
 
-    // /roast
+    // /roast (DB no-repeat first, fallback to defaults)
     if (interaction.commandName === "roast") {
       const target = interaction.options.getUser("user") || interaction.user;
-      return interaction.reply({
-        content: `<@${target.id}>, ${pickRandom(roasts)}`,
-        ephemeral: false,
-      });
+
+      let roast = null;
+      if (interaction.inGuild()) {
+        roast = await dbGetRandomContentNoRepeat(interaction.guildId, "roast").catch(() => null);
+      }
+      if (!roast) roast = pickRandom(roasts);
+
+      return interaction.reply({ content: `<@${target.id}>, ${roast}`, ephemeral: false });
     }
 
-    // /compliment
+    // /compliment (DB no-repeat first, fallback to file/defaults)
     if (interaction.commandName === "compliment") {
       const now = Date.now();
       const prev = complimentCooldown.get(interaction.user.id) ?? 0;
@@ -559,6 +751,11 @@ if (interaction.commandName === "todo_done") {
         return interaction.reply({ content: "⏳ Cooldown — wait a bit.", ephemeral: true });
       }
       complimentCooldown.set(interaction.user.id, now);
+
+      let picked = null;
+      if (interaction.inGuild()) {
+        picked = await dbGetRandomContentNoRepeat(interaction.guildId, "compliment").catch(() => null);
+      }
 
       const fromFile = loadCompliments();
       const fallback = [
@@ -572,12 +769,15 @@ if (interaction.commandName === "todo_done") {
 
       // In DMs: compliment invoker only
       if (!interaction.inGuild()) {
-        return interaction.reply({ content: `✨ ${pickRandom(pool)}`, ephemeral: false });
+        if (!picked) picked = pickRandom(pool);
+        return interaction.reply({ content: `✨ ${picked}`, ephemeral: false });
       }
 
       const who = target ?? interaction.user;
+      if (!picked) picked = pickRandom(pool);
+
       return interaction.reply({
-        content: `Hey <@${who.id}> — ${pickRandom(pool)} ✨`,
+        content: `Hey <@${who.id}> — ${picked} ✨`,
         ephemeral: false,
       });
     }
@@ -645,6 +845,7 @@ if (interaction.commandName === "todo_done") {
     }
   }
 });
+
 
 // =======================
 // READY
