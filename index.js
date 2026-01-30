@@ -683,7 +683,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     if (interaction.commandName === "help") {
       const isGuild = interaction.inGuild();
       const ownerOnly = isOwner(interaction);
-      const ownerDisplay = OWNER_ID ? `Rafa (<@${OWNER_ID}>)` : "Rafa @(atuaprima_)";
+      const ownerDisplay = OWNER_ID ? `Rafa (<@${OWNER_ID}>)` : "Rafa (atuaprima_)";
 
       const embed = new EmbedBuilder()
         .setTitle("🤖 Bot Commands")
