@@ -9,7 +9,7 @@ const { handleInteraction } = require("./handlers/interaction");
 
 // Fail fast if token missing (common deploy issue)
 if (!config.BOT_TOKEN) {
-  console.error("❌ Missing BOT_TOKEN. Add it to your env vars (.env or Railway Variables)." );
+  console.error("Missing BOT_TOKEN. Add it to your env vars (.env or Railway Variables)." );
   process.exit(1);
 }
 
