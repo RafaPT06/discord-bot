@@ -28,6 +28,7 @@ module.exports = {
         page: data.page,
         totalPages: data.totalPages,
         items: data.items,
+        startIndex: data.startIndex,
         userId: interaction.user.id,
       });
       return interaction.editReply(payload);

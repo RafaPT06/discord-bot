@@ -179,6 +179,20 @@ function buildCommandsJson() {
       .addIntegerOption((opt) => opt.setName("page").setDescription("Page number").setRequired(false))
       .setContexts(InteractionContextType.Guild)
       .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
+
+    new SlashCommandBuilder()
+      .setName("remove_roast")
+      .setDescription("Remove a roast by its DB id (Admin).")
+      .addIntegerOption((opt) => opt.setName("id").setDescription("Roast DB id shown in /list_roasts").setRequired(true))
+      .setContexts(InteractionContextType.Guild)
+      .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
+
+    new SlashCommandBuilder()
+      .setName("remove_compliment")
+      .setDescription("Remove a compliment by its DB id (Admin).")
+      .addIntegerOption((opt) => opt.setName("id").setDescription("Compliment DB id shown in /list_compliments").setRequired(true))
+      .setContexts(InteractionContextType.Guild)
+      .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
   ];
 
   const json = cmds.map((c) => c.toJSON());

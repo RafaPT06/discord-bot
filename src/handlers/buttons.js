@@ -45,6 +45,7 @@ async function handleButton(interaction, ctx) {
       page: data.page,
       totalPages: data.totalPages,
       items: data.items,
+      startIndex: data.startIndex,
       userId: ownerId,
     });
 

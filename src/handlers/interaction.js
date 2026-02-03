@@ -22,6 +22,8 @@ const addCompliment = require("../commands/add_compliment");
 const addRoast = require("../commands/add_roast");
 const listCompliments = require("../commands/list_compliments");
 const listRoasts = require("../commands/list_roasts");
+const removeRoast = require("../commands/remove_roast");
+const removeCompliment = require("../commands/remove_compliment");
 
 const COMMANDS = new Map(
   [
@@ -46,6 +48,8 @@ const COMMANDS = new Map(
     addRoast,
     listCompliments,
     listRoasts,
+    removeRoast,
+    removeCompliment,
   ].map((c) => [c.name, c])
 );
 

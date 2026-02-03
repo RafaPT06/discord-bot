@@ -90,37 +90,6 @@ async function initDb(pool) {
     );
   `);
 
-  // ---- Migration: make ON CONFLICT work on existing DBs ----
-  await pool.query(`
-    -- Remove duplicates so the unique index can be created
-      DELETE FROM content_items a
-        USING content_items b
-          WHERE a.id > b.id
-              AND a.guild_id = b.guild_id
-                  AND a.type = b.type
-                      AND a.text = b.text;
-                      `);
-
-                      await pool.query(`
-                        DELETE FROM global_content_items a
-                          USING global_content_items b
-                            WHERE a.id > b.id
-                                AND a.type = b.type
-                                    AND a.text = b.text;
-                                    `);
-
-                                    await pool.query(`
-                                      -- Unique indexes (works with ON CONFLICT (cols...))
-                                        CREATE UNIQUE INDEX IF NOT EXISTS content_items_guild_type_text_uidx
-                                          ON content_items (guild_id, type, text);
-                                          `);
-
-                                          await pool.query(`
-                                            CREATE UNIQUE INDEX IF NOT EXISTS global_content_items_type_text_uidx
-                                              ON global_content_items (type, text);
-                                              `);
-                                              // ---------------------------------------------------------
-
   // Seed global content once (idempotent)
   const seedRows = [
     ...DEFAULT_COMPLIMENTS.map((t) => ({ type: "compliment", text: t })),
@@ -235,6 +204,14 @@ function makeDb(pool) {
       );
       return res.rows[0]?.id ?? null;
     },
+    async removeContentById(guildId, type, id) {
+      if (!pool) return false;
+      const res = await pool.query(
+        `DELETE FROM content_items WHERE guild_id=$1 AND type=$2 AND id=$3 RETURNING id`,
+        [guildId, type, id]
+      );
+      return (res.rowCount ?? 0) > 0;
+    },
     async listContent(guildId, type, limit = 10, offset = 0) {
       if (!pool) return [];
       await ensureGuildSeed(guildId, type);
@@ -242,7 +219,7 @@ function makeDb(pool) {
         `
         SELECT id, text FROM content_items
         WHERE guild_id=$1 AND type=$2
-        ORDER BY id DESC
+        ORDER BY id ASC
         LIMIT $3 OFFSET $4
         `,
         [guildId, type, limit, offset]
