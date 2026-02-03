@@ -16,10 +16,12 @@ Required:
 - `APP_ID`
 - `OWNER_ID`
 
+Required (this bot stores everything in Postgres):
+
+- `DATABASE_URL`
+
 Optional:
 
-- `DATABASE_URL` (enables Postgres features)
-- `CHANNEL_ID` (fallback deploy updates channel if DB is off)
 - `TEST_GUILD_ID` (for fast command deploy while testing)
 
 3) Deploy slash commands

@@ -5,6 +5,21 @@
  * touching command handlers.
  */
 
+// Global defaults that will be copied into a guild the first time it needs content.
+const DEFAULT_COMPLIMENTS = [
+  "You’ve got really good vibes.",
+  "You’re doing better than you think.",
+  "You make things feel easier for people.",
+];
+
+const DEFAULT_ROASTS = [
+  "I’d agree with you but then we’d both be wrong.",
+  "I’m not saying I hate you, but I’d unplug your life support to charge my phone.",
+  "You're like a cloud. When you disappear, it's a beautiful day.",
+  "I treasure the time I spend with you, but I treasure my sanity more.",
+  "You have the perfect face for radio.",
+];
+
 async function initDb(pool) {
   if (!pool) return;
 
@@ -26,6 +41,17 @@ async function initDb(pool) {
     );
   `);
 
+  // Global content templates (seed once, copied into each guild on-demand)
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS global_content_items (
+      id BIGSERIAL PRIMARY KEY,
+      type TEXT NOT NULL CHECK (type IN ('compliment','roast')),
+      text TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE (type, text)
+    );
+  `);
+
   // Per-server content storage (roasts/compliments)
   await pool.query(`
     CREATE TABLE IF NOT EXISTS content_items (
@@ -35,9 +61,14 @@ async function initDb(pool) {
       text TEXT NOT NULL,
       created_by TEXT,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      last_used_at TIMESTAMPTZ
+      last_used_at TIMESTAMPTZ,
+      UNIQUE (guild_id, type, text)
     );
   `);
+
+  // Helpful indexes
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_content_items_guild_type ON content_items (guild_id, type);`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_content_items_last_used ON content_items (guild_id, type, last_used_at);`);
 
   // Backward compatibility: legacy table (no longer used)
   await pool.query(`
@@ -58,13 +89,50 @@ async function initDb(pool) {
       value TEXT
     );
   `);
+
+  // Seed global content once (idempotent)
+  const seedRows = [
+    ...DEFAULT_COMPLIMENTS.map((t) => ({ type: "compliment", text: t })),
+    ...DEFAULT_ROASTS.map((t) => ({ type: "roast", text: t })),
+  ];
+
+  for (const row of seedRows) {
+    await pool.query(
+      `INSERT INTO global_content_items (type, text) VALUES ($1,$2) ON CONFLICT (type, text) DO NOTHING`,
+      [row.type, row.text]
+    );
+  }
 }
 
 function makeDb(pool) {
   const enabled = Boolean(pool);
 
+  async function ensureGuildSeed(guildId, type) {
+    if (!pool) return;
+
+    const existing = await pool.query(
+      `SELECT 1 FROM content_items WHERE guild_id=$1 AND type=$2 LIMIT 1`,
+      [guildId, type]
+    );
+    if (existing.rowCount && existing.rowCount > 0) return;
+
+    // Copy global defaults into this guild
+    await pool.query(
+      `
+      INSERT INTO content_items (guild_id, type, text)
+      SELECT $1, type, text
+      FROM global_content_items
+      WHERE type = $2
+      ON CONFLICT (guild_id, type, text) DO NOTHING
+      `,
+      [guildId, type]
+    );
+  }
+
   return {
     enabled,
+
+    // ---- Deploy channel settings ----
     async setDeployChannel(guildId, channelId) {
       if (!pool) return;
       await pool.query(
@@ -87,10 +155,7 @@ function makeDb(pool) {
     },
     async resetDeployChannel(guildId) {
       if (!pool) return;
-      await pool.query(
-        `UPDATE guild_settings SET deploy_channel_id = NULL WHERE guild_id = $1`,
-        [guildId]
-      );
+      await pool.query(`UPDATE guild_settings SET deploy_channel_id = NULL WHERE guild_id = $1`, [guildId]);
     },
     async getAllDeployChannels() {
       if (!pool) return [];
@@ -100,7 +165,7 @@ function makeDb(pool) {
       return res.rows;
     },
 
-    // Global TODOs
+    // ---- Global TODOs ----
     async addTodo(text, userId) {
       if (!pool) return null;
       const res = await pool.query(
@@ -128,17 +193,20 @@ function makeDb(pool) {
       return (res.rowCount ?? 0) > 0;
     },
 
-    // Content
+    // ---- Content ----
     async addContent(guildId, type, text, userId) {
       if (!pool) return null;
       const res = await pool.query(
-        `INSERT INTO content_items (guild_id, type, text, created_by) VALUES ($1,$2,$3,$4) RETURNING id`,
+        `INSERT INTO content_items (guild_id, type, text, created_by) VALUES ($1,$2,$3,$4)
+         ON CONFLICT (guild_id, type, text) DO NOTHING
+         RETURNING id`,
         [guildId, type, text, userId]
       );
       return res.rows[0]?.id ?? null;
     },
     async listContent(guildId, type, limit = 10, offset = 0) {
       if (!pool) return [];
+      await ensureGuildSeed(guildId, type);
       const res = await pool.query(
         `
         SELECT id, text FROM content_items
@@ -152,6 +220,7 @@ function makeDb(pool) {
     },
     async countContent(guildId, type) {
       if (!pool) return 0;
+      await ensureGuildSeed(guildId, type);
       const res = await pool.query(
         `SELECT COUNT(*)::int AS count FROM content_items WHERE guild_id=$1 AND type=$2`,
         [guildId, type]
@@ -160,6 +229,8 @@ function makeDb(pool) {
     },
     async getRandomContentNoRepeat(guildId, type) {
       if (!pool) return null;
+
+      await ensureGuildSeed(guildId, type);
 
       const unused = await pool.query(
         `
@@ -197,7 +268,7 @@ function makeDb(pool) {
       return chosen.text ?? null;
     },
 
-    // Key/value
+    // ---- Key/value ----
     async kvGet(key) {
       if (!pool) return null;
       const res = await pool.query(`SELECT value FROM kv_store WHERE key=$1`, [key]);

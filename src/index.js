@@ -9,7 +9,13 @@ const { handleInteraction } = require("./handlers/interaction");
 
 // Fail fast if token missing (common deploy issue)
 if (!config.BOT_TOKEN) {
-  console.error("Missing BOT_TOKEN. Add it to your env vars (.env or Railway Variables)." );
+  console.error("❌ Missing BOT_TOKEN. Add it to your env vars (.env or Railway Variables)." );
+  process.exit(1);
+}
+
+// Postgres is required (everything is stored in the database)
+if (!config.DATABASE_URL) {
+  console.error("❌ Missing DATABASE_URL. Create a Postgres database in Railway and add DATABASE_URL to Variables.");
   process.exit(1);
 }
 
