@@ -26,7 +26,7 @@ module.exports = {
         },
         {
           name: "📊 Status",
-          value: ["• `/status` — uptime + who made the bot", "• `/ping` — bot latency"].join("\n"),
+          value: ["• `/status` — uptime + who made the bot", "• `/ping` — bot latency", ownerOnly ? "• `/roblox_status` — Roblox online/in-game status (Owner)" : null].filter(Boolean).join("\n"),
           inline: false,
         },
         {

@@ -21,6 +21,9 @@ module.exports = {
   // PostgreSQL
   DATABASE_URL: env("DATABASE_URL"),
 
+    // Roblox
+  ROBLOX_USERNAME: env("ROBLOX_USERNAME", "qxR4F4"),
+
   // GitHub deploy info (optional)
   GITHUB_TOKEN: env("GITHUB_TOKEN"),
   GITHUB_REPO: env("GITHUB_REPO"),

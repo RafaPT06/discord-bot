@@ -4,6 +4,7 @@ const { handleButton } = require("./buttons");
 const help = require("../commands/help");
 const status = require("../commands/status");
 const ping = require("../commands/ping");
+const robloxStatus = require("../commands/roblox_status");
 const crazy = require("../commands/crazy");
 const compliment = require("../commands/compliment");
 const cat = require("../commands/cat");
@@ -30,6 +31,7 @@ const COMMANDS = new Map(
     help,
     status,
     ping,
+    robloxStatus,
     crazy,
     compliment,
     cat,

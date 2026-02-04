@@ -37,6 +37,16 @@ function buildCommandsJson() {
         InteractionContextType.PrivateChannel
       ),
 
+
+new SlashCommandBuilder()
+  .setName("roblox_status")
+  .setDescription("Show Roblox online/in-game status (Owner only).")
+  .setContexts(
+    InteractionContextType.Guild,
+    InteractionContextType.BotDM,
+    InteractionContextType.PrivateChannel
+  ),
+
     new SlashCommandBuilder()
       .setName("crazy")
       .setDescription("Send the crazy copypasta with buttons (rate-limited).")
