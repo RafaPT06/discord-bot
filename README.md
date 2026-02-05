@@ -5,7 +5,7 @@
 1) Install deps
 
 ```bash
-npm i
+npm install
 ```
 
 2) Create a `.env` (or set Railway Variables)
