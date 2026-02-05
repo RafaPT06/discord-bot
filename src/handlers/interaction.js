@@ -15,6 +15,10 @@ const setDeployChannel = require("../commands/set_deploy_channel");
 const showDeployChannel = require("../commands/show_deploy_channel");
 const resetDeployChannel = require("../commands/reset_deploy_channel");
 
+const setRobloxAlertChannel = require("../commands/set_roblox_alert_channel");
+const showRobloxAlertChannel = require("../commands/show_roblox_alert_channel");
+const resetRobloxAlertChannel = require("../commands/reset_roblox_alert_channel");
+
 const todoAdd = require("../commands/todo_add");
 const todoList = require("../commands/todo_list");
 const todoDone = require("../commands/todo_done");

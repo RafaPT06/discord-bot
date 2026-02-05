@@ -203,8 +203,37 @@ new SlashCommandBuilder()
       .addIntegerOption((opt) => opt.setName("id").setDescription("Compliment DB id shown in /list_compliments").setRequired(true))
       .setContexts(InteractionContextType.Guild)
       .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
-  ];
+  
 
+
+    // =========================
+    // ROBLOX ALERT CHANNEL (owner-only)
+    // =========================
+    new SlashCommandBuilder()
+      .setName("set_roblox_alert_channel")
+      .setDescription("Set the channel for Roblox presence change alerts.")
+      .addChannelOption((opt) =>
+        opt
+          .setName("channel")
+          .setDescription("Channel to send Roblox presence alerts")
+          .setRequired(true)
+          .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement)
+      )
+      .setContexts(InteractionContextType.Guild)
+      .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+
+    new SlashCommandBuilder()
+      .setName("show_roblox_alert_channel")
+      .setDescription("Show the current Roblox presence alert channel.")
+      .setContexts(InteractionContextType.Guild)
+      .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+
+    new SlashCommandBuilder()
+      .setName("reset_roblox_alert_channel")
+      .setDescription("Clear the Roblox presence alert channel.")
+      .setContexts(InteractionContextType.Guild)
+      .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+    ];
   const json = cmds.map((c) => c.toJSON());
 
   // Hard-fail if anything is missing (prevents the "<1 empty item>" Discord error)

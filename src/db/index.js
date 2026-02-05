@@ -29,6 +29,9 @@ async function initDb(pool) {
       deploy_channel_id TEXT
     );
   `);
+  // Migration: add Roblox alert channel column for older DBs
+  await pool.query(`ALTER TABLE guild_settings ADD COLUMN IF NOT EXISTS roblox_alert_channel_id TEXT;`);
+
 
   // Global TODOs (shared across all servers)
   await pool.query(`
@@ -65,6 +68,26 @@ async function initDb(pool) {
       UNIQUE (guild_id, type, text)
     );
   `);
+
+  // Ensure uniqueness exists even if tables were created earlier without constraints.
+  // Required for ON CONFLICT (cols...) to work on older databases.
+  await pool.query(`
+    DELETE FROM content_items a
+    USING content_items b
+    WHERE a.id > b.id
+      AND a.guild_id = b.guild_id
+      AND a.type = b.type
+      AND a.text = b.text;
+  `);
+  await pool.query(`
+    DELETE FROM global_content_items a
+    USING global_content_items b
+    WHERE a.id > b.id
+      AND a.type = b.type
+      AND a.text = b.text;
+  `);
+  await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS content_items_guild_type_text_uidx ON content_items (guild_id, type, text);`);
+  await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS global_content_items_type_text_uidx ON global_content_items (type, text);`);
 
   // Helpful indexes
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_content_items_guild_type ON content_items (guild_id, type);`);
@@ -156,6 +179,43 @@ function makeDb(pool) {
     async resetDeployChannel(guildId) {
       if (!pool) return;
       await pool.query(`UPDATE guild_settings SET deploy_channel_id = NULL WHERE guild_id = $1`, [guildId]);
+    },
+
+    // ---- Roblox presence alert channel ----
+    async setRobloxAlertChannel(guildId, channelId) {
+      if (!pool) return;
+      await pool.query(
+        `
+        INSERT INTO guild_settings (guild_id, roblox_alert_channel_id)
+        VALUES ($1, $2)
+        ON CONFLICT (guild_id)
+        DO UPDATE SET roblox_alert_channel_id = EXCLUDED.roblox_alert_channel_id;
+        `,
+        [guildId, channelId]
+      );
+    },
+    async getRobloxAlertChannel(guildId) {
+      if (!pool) return null;
+      const res = await pool.query(
+        `SELECT roblox_alert_channel_id FROM guild_settings WHERE guild_id = $1`,
+        [guildId]
+      );
+      return res.rows[0]?.roblox_alert_channel_id ?? null;
+    },
+    async resetRobloxAlertChannel(guildId) {
+      if (!pool) return;
+      await pool.query(
+        `UPDATE guild_settings SET roblox_alert_channel_id = NULL WHERE guild_id = $1`,
+        [guildId]
+      );
+    },
+    async listRobloxAlertGuilds() {
+      if (!pool) return [];
+      const res = await pool.query(
+        `SELECT guild_id, roblox_alert_channel_id FROM guild_settings WHERE roblox_alert_channel_id IS NOT NULL`,
+        []
+      );
+      return res.rows;
     },
     async getAllDeployChannels() {
       if (!pool) return [];

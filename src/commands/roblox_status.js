@@ -1,6 +1,34 @@
-const { EmbedBuilder } = require("discord.js");
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
 const { isOwner } = require("../utils/permissions");
-const { resolveUsername, getPresence, getPlaceDetails, presenceLabel } = require("../services/robloxService");
+const { getPresenceSummary, presenceLabel } = require("../services/robloxService");
+
+function buildRefreshRow(ownerId) {
+  return new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId(`rbx_refresh_${ownerId}`)
+      .setLabel("Refresh")
+      .setStyle(ButtonStyle.Secondary)
+      .setEmoji("🔄")
+  );
+}
+
+function buildEmbed(summary) {
+  const embed = new EmbedBuilder()
+    .setTitle("🎮 Roblox Presence")
+    .addFields(
+      { name: "Account", value: `${summary.username} (id: ${summary.userId})`, inline: false },
+      { name: "Status", value: presenceLabel(summary.presenceType), inline: true }
+    )
+    .setTimestamp(new Date());
+
+  if (summary.lastLocation) embed.addFields({ name: "Location", value: summary.lastLocation, inline: true });
+  if (summary.placeId) embed.addFields({ name: "Place ID", value: String(summary.placeId), inline: true });
+  if (summary.experienceName) embed.addFields({ name: "Experience", value: summary.experienceName, inline: false });
+
+  if (summary.iconUrl) embed.setThumbnail(summary.iconUrl);
+
+  return embed;
+}
 
 module.exports = {
   name: "roblox_status",
@@ -17,36 +45,15 @@ module.exports = {
     await interaction.deferReply({ ephemeral: false }).catch(() => null);
 
     try {
-      const { userId } = await resolveUsername(username);
-      const presence = await getPresence(userId);
-
-      let experience = undefined;
-      if (presence.placeId) {
-        const details = await getPlaceDetails(presence.placeId).catch(() => ({}));
-        experience = details?.name;
-      }
-
-      const embed = new EmbedBuilder()
-        .setTitle("🎮 Roblox Presence")
-        .addFields(
-          { name: "Account", value: `${username} (id: ${userId})`, inline: false },
-          { name: "Status", value: presenceLabel(presence.presenceType), inline: true }
-        );
-
-      if (presence.lastLocation) {
-        embed.addFields({ name: "Location", value: presence.lastLocation, inline: true });
-      }
-      if (presence.placeId) {
-        embed.addFields({ name: "Place ID", value: String(presence.placeId), inline: true });
-      }
-      if (experience) {
-        embed.addFields({ name: "Experience", value: experience, inline: false });
-      }
-
-      return interaction.editReply({ embeds: [embed] });
+      const summary = await getPresenceSummary(username);
+      const embed = buildEmbed(summary);
+      return interaction.editReply({ embeds: [embed], components: [buildRefreshRow(interaction.user.id)] });
     } catch (e) {
       console.error("roblox_status error:", e);
       return interaction.editReply({ content: "❌ Couldn't fetch Roblox presence right now." });
     }
   },
 };
+
+// Export helpers for button handler reuse
+module.exports._roblox = { buildEmbed, buildRefreshRow };

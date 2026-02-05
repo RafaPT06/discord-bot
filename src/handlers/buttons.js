@@ -1,4 +1,6 @@
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
 const { buildContentListPayload, fetchContentPage } = require("../utils/contentList");
+const { getPresenceSummary, presenceLabel } = require("../services/robloxService");
 
 const CRAZY_MAX_TOTAL_LINES = 25;
 const CRAZY_MAX_TIMES = 3;
@@ -15,9 +17,56 @@ function getCrazyPack() {
   ];
 }
 
+function buildRobloxRefreshRow(ownerId) {
+  return new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId(`rbx_refresh_${ownerId}`)
+      .setLabel("Refresh")
+      .setStyle(ButtonStyle.Secondary)
+      .setEmoji("🔄")
+  );
+}
+
+function buildRobloxEmbed(summary) {
+  const embed = new EmbedBuilder()
+    .setTitle("🎮 Roblox Presence")
+    .addFields(
+      { name: "Account", value: `${summary.username} (id: ${summary.userId})`, inline: false },
+      { name: "Status", value: presenceLabel(summary.presenceType), inline: true }
+    )
+    .setTimestamp(new Date());
+
+  if (summary.lastLocation) embed.addFields({ name: "Location", value: summary.lastLocation, inline: true });
+  if (summary.placeId) embed.addFields({ name: "Place ID", value: String(summary.placeId), inline: true });
+  if (summary.experienceName) embed.addFields({ name: "Experience", value: summary.experienceName, inline: false });
+  if (summary.iconUrl) embed.setThumbnail(summary.iconUrl);
+
+  return embed;
+}
+
 async function handleButton(interaction, ctx) {
-  const { db } = ctx;
+  const { db, config } = ctx;
   const parts = interaction.customId.split("_");
+
+  // Roblox refresh button
+  if (parts[0] === "rbx" && parts[1] === "refresh") {
+    const ownerId = parts[2];
+    if (interaction.user.id !== ownerId) {
+      return interaction.reply({ content: "Not your buttons 🙂", ephemeral: true });
+    }
+
+    const username = config.ROBLOX_USERNAME || "qxR4F4";
+    await interaction.deferUpdate().catch(() => null);
+
+    try {
+      const summary = await getPresenceSummary(username);
+      const embed = buildRobloxEmbed(summary);
+      return interaction.editReply({ embeds: [embed], components: [buildRobloxRefreshRow(ownerId)] });
+    } catch (e) {
+      console.error("roblox refresh error:", e);
+      return interaction.editReply({ content: "❌ Couldn't refresh Roblox presence right now.", embeds: [], components: [] });
+    }
+  }
 
   // Pagination buttons for /list_compliments and /list_roasts
   if (parts[0] === "contentlist") {
