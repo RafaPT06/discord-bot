@@ -29,7 +29,7 @@ async function startRobloxAlerts(client) {
           const ch = await client.channels.fetch(t.channel_id).catch(() => null);
           if (!ch || !ch.isTextBased()) continue;
           const mention = process.env.OWNER_ID ? `<@${process.env.OWNER_ID}> ` : "";
-          await ch.send({ content: mention + "Roblox presence changed:", embeds: [data.embed], components: data.components }).catch(() => {});
+          await ch.send({ content: "Roblox presence changed:", embeds: [data.embed], components: data.components }).catch(() => {});
         }
       } catch (e) {
         console.error("Roblox alert loop error:", e?.message || e);
