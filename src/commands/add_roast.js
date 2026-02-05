@@ -1,21 +1,25 @@
-const { canManage } = require("../utils/permissions");
+const { SlashCommandBuilder } = require("discord.js");
+const { pool } = require("../db/pool");
 
 module.exports = {
-  name: "add_roast",
-  async execute(interaction, ctx) {
-    const { db, config } = ctx;
-    if (!interaction.inGuild()) {
-      return interaction.reply({ content: "This command can only be used in a server.", ephemeral: true });
-    }
-    if (!canManage(interaction, config.OWNER_ID)) {
-      return interaction.reply({ content: "❌ You need **Manage Server** (or be the owner) to do that.", ephemeral: true });
-    }
+  data: new SlashCommandBuilder()
+    .setName("add_roast")
+    .setDescription("Add a roast")
+    .addStringOption(o => o.setName("text").setDescription("Roast text").setRequired(true)),
+  async execute(interaction) {
+    if (!interaction.guildId) return interaction.reply({ content: "❌ Server only.", ephemeral: true });
+    const ownerId = process.env.OWNER_ID;
+    if (interaction.user.id !== ownerId) return interaction.reply({ content: "❌ Owner only.", ephemeral: true });
 
     const text = interaction.options.getString("text", true).trim();
-    if (!text) return interaction.reply({ content: "❌ Text is required.", ephemeral: true });
-    if (!db.enabled) return interaction.reply({ content: "⚠️ Database not available (DATABASE_URL missing).", ephemeral: true });
-
-    const id = await db.addContent(interaction.guildId, "roast", text, interaction.user.id);
-    return interaction.reply({ content: `✅ Added roast **#${id}**.`, ephemeral: true });
+    const { rows } = await pool.query(
+      `INSERT INTO content_items (guild_id, type, text)
+       VALUES ($1,'roast',$2)
+       ON CONFLICT (guild_id, type, text) DO NOTHING
+       RETURNING id`,
+      [interaction.guildId, text]
+    );
+    if (!rows.length) return interaction.reply({ content: "⚠️ That roast already exists.", ephemeral: true });
+    return interaction.reply({ content: `✅ Added roast (id: ${rows[0].id}).`, ephemeral: true });
   },
 };

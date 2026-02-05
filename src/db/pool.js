@@ -1,12 +1,8 @@
 const { Pool } = require("pg");
 
-function createPool(databaseUrl) {
-  if (!databaseUrl) return null;
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.DATABASE_URL?.includes("railway") ? { rejectUnauthorized: false } : undefined,
+});
 
-  return new Pool({
-    connectionString: databaseUrl,
-    ssl: databaseUrl.includes("localhost") ? false : { rejectUnauthorized: false },
-  });
-}
-
-module.exports = { createPool };
+module.exports = { pool };

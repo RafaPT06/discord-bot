@@ -1,19 +1,14 @@
-const { isOwner } = require("../utils/permissions");
+const { SlashCommandBuilder } = require("discord.js");
+const { pool } = require("../db/pool");
 
 module.exports = {
-  name: "reset_roblox_alert_channel",
-  async execute(interaction, ctx) {
-    const { db, config } = ctx;
+  data: new SlashCommandBuilder().setName("reset_roblox_alert_channel").setDescription("Disable Roblox alerts (owner only)."),
+  async execute(interaction) {
+    if (!interaction.guildId) return interaction.reply({ content: "❌ Server only.", ephemeral: true });
+    const ownerId = process.env.OWNER_ID;
+    if (interaction.user.id !== ownerId) return interaction.reply({ content: "❌ Owner only.", ephemeral: true });
 
-    if (!interaction.inGuild()) {
-      return interaction.reply({ content: "This command can only be used in a server.", ephemeral: true });
-    }
-    if (!isOwner(interaction, config.OWNER_ID)) {
-      return interaction.reply({ content: "Only the bot owner can use this command.", ephemeral: true });
-    }
-
-    await db.resetRobloxAlertChannel(interaction.guildId);
-
-    return interaction.reply({ content: "✅ Roblox alert channel cleared for this server.", ephemeral: true });
+    await pool.query("DELETE FROM roblox_alert_settings WHERE guild_id=$1", [interaction.guildId]);
+    return interaction.reply({ content: "✅ Roblox alerts disabled.", ephemeral: true });
   },
 };

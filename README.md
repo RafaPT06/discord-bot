@@ -1,52 +1,16 @@
-# discord-bot
+# Discord Bot (Postgres) - Personal Hub
 
-## Quick start
+## Required env vars
+- BOT_TOKEN
+- APP_ID
+- OWNER_ID
+- DATABASE_URL
 
-1) Install deps
+## Optional
+- TEST_GUILD_ID (for instant slash command deploy in a single server)
+- ROBLOX_USERNAME (defaults to qxR4F4)
 
-```bash
-npm install
-```
-
-2) Create a `.env` (or set Railway Variables)
-
-Required:
-
-- `BOT_TOKEN`
-- `APP_ID`
-- `OWNER_ID`
-
-Required (this bot stores everything in Postgres):
-
-- `DATABASE_URL`
-
-Optional:
-
-- `TEST_GUILD_ID` (for fast command deploy while testing)
-
-3) Deploy slash commands
-
-```bash
-npm run deploy
-```
-
-4) Run the bot
-
-```bash
-npm start
-```
-
-## Project structure
-
-All logic lives in `src/`.
-
-- `index.js` (root) -> loads `src/index.js` (kept compatible with Railway `npm start`)
-- `deploy-commands.js` (root) -> loads `src/deploy-commands.js`
-
-Key folders:
-
-- `src/commands` – slash command handlers
-- `src/handlers` – interaction/button routing
-- `src/db` – Postgres schema + queries (optional)
-- `src/services` – deploy notifier, etc.
-- `src/utils` – small helpers
+## Run
+- npm install
+- npm run deploy
+- npm start

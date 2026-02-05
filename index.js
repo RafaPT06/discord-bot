@@ -1,4 +1,2 @@
-// Root entrypoint kept for compatibility with Railway's "npm start".
-// All logic lives in /src.
-
+require("dotenv").config();
 require("./src/index");

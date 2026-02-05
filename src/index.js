@@ -1,145 +1,85 @@
-const { Client, GatewayIntentBits, Events, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
+const { Client, GatewayIntentBits, Partials, Events, Collection } = require("discord.js");
+const { initDb } = require("./db");
+const { attachErrorAlerts } = require("./services/errorAlerts");
+const { startRobloxAlerts } = require("./services/robloxAlerts");
 
-const config = require("./config");
-const { startWebServer } = require("./web/server");
-const { createPool } = require("./db/pool");
-const { initDb, makeDb } = require("./db");
-const { notifyOnDeploy } = require("./services/deployNotifier");
-const { handleInteraction } = require("./handlers/interaction");
-const { getPresenceSummary, presenceLabel } = require("./services/robloxService");
+const fs = require("fs");
+const path = require("path");
 
+const token = process.env.BOT_TOKEN;
+const ownerId = process.env.OWNER_ID;
+const databaseUrl = process.env.DATABASE_URL;
 
-function buildRobloxAlertEmbed(summary) {
-  const embed = new EmbedBuilder()
-    .setTitle("🎮 Roblox Presence Update")
-    .addFields(
-      { name: "Account", value: `${summary.username} (id: ${summary.userId})`, inline: false },
-      { name: "Status", value: presenceLabel(summary.presenceType), inline: true }
-    )
-    .setTimestamp(new Date());
+if (!token) throw new Error("Missing BOT_TOKEN");
+if (!ownerId) throw new Error("Missing OWNER_ID");
+if (!databaseUrl) throw new Error("Missing DATABASE_URL");
 
-  if (summary.experienceName) embed.addFields({ name: "Experience", value: summary.experienceName, inline: false });
-  if (summary.lastLocation) embed.addFields({ name: "Location", value: summary.lastLocation, inline: true });
-  if (summary.placeId) embed.addFields({ name: "Place ID", value: String(summary.placeId), inline: true });
+const client = new Client({
+  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages],
+  partials: [Partials.Channel],
+});
 
-  if (summary.iconUrl) embed.setThumbnail(summary.iconUrl);
+client.commands = new Collection();
 
-  return embed;
+// Load commands
+const cmdDir = path.join(__dirname, "commands");
+for (const file of fs.readdirSync(cmdDir).filter(f => f.endsWith(".js") && f !== "definitions.js")) {
+  const mod = require(path.join(cmdDir, file));
+  if (mod?.data?.name && typeof mod.execute === "function") {
+    client.commands.set(mod.data.name, mod);
+  }
 }
 
-function buildRobloxRefreshRow(ownerId) {
-  return new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId(`rbx_refresh_${ownerId}`)
-      .setLabel("Refresh")
-      .setStyle(ButtonStyle.Secondary)
-      .setEmoji("🔄")
-  );
-}
-
-/**
- * Poll Roblox presence and announce changes to configured guild channels.
- */
-function startRobloxAlertLoop({ client, db, config }) {
-  const username = config.ROBLOX_USERNAME || "qxR4F4";
-  const ownerId = config.OWNER_ID;
-
-  // cache last status per guild to avoid spam
-  const lastByGuild = new Map();
-
-  const intervalMs = 2 * 60 * 1000; // 2 minutes
-
-  setInterval(async () => {
-    try {
-      const guilds = await db.listRobloxAlertGuilds();
-      if (!guilds || guilds.length === 0) return;
-
-      // Fetch once per tick (same username for all guilds)
-      const summary = await getPresenceSummary(username);
-
-      for (const g of guilds) {
-        const guildId = g.guild_id;
-        const channelId = g.roblox_alert_channel_id;
-        if (!channelId) continue;
-
-        const prev = lastByGuild.get(guildId);
-        const signature = `${summary.presenceType}|${summary.placeId || ""}|${summary.experienceName || ""}`;
-
-        if (prev === signature) continue;
-        lastByGuild.set(guildId, signature);
-
-        // On first run per guild, do not announce (prevents spam after deploy)
-        if (!prev) continue;
-
-        const channel = await client.channels.fetch(channelId).catch(() => null);
-        if (!channel || !channel.isTextBased()) continue;
-
-        await channel.send({
-          embeds: [buildRobloxAlertEmbed(summary)],
-          components: ownerId ? [buildRobloxRefreshRow(ownerId)] : [],
-        });
-      }
-    } catch (e) {
-      console.error("Roblox alert loop tick failed:", e);
-    }
-  }, intervalMs);
-}
-
-// Fail fast if token missing (common deploy issue)
-if (!config.BOT_TOKEN) {
-  console.error("❌ Missing BOT_TOKEN. Add it to your env vars (.env or Railway Variables)." );
-  process.exit(1);
-}
-
-// Postgres is required (everything is stored in the database)
-if (!config.DATABASE_URL) {
-  console.error("❌ Missing DATABASE_URL. Create a Postgres database in Railway and add DATABASE_URL to Variables.");
-  process.exit(1);
-}
-
-process.on("unhandledRejection", (reason) => console.error("UnhandledRejection:", reason));
-process.on("uncaughtException", (err) => console.error("UncaughtException:", err));
-
-// Web server for uptime monitors
-startWebServer({ port: config.PORT });
-
-// Discord client
-const client = new Client({ intents: [GatewayIntentBits.Guilds] });
-
-// DB
-const pool = createPool(config.DATABASE_URL);
-const db = makeDb(pool);
-
-// In-memory state (cooldowns, etc.)
-const state = {
-  complimentCooldown: new Map(),
-  crazyCooldown: new Map(),
-};
-
-const ctx = { client, config, db, state };
-
-client.on(Events.InteractionCreate, (interaction) => handleInteraction(interaction, ctx));
-
+// Ready
 client.once(Events.ClientReady, async () => {
   console.log(`✅ Logged in as ${client.user.tag}`);
 
-  try {
-    await initDb(pool);
-  } catch (e) {
-    console.error("DB init failed:", e);
-  }
+  await initDb();
+  attachErrorAlerts(client);
+  startRobloxAlerts(client);
 
-  try {
-    await notifyOnDeploy({ client, db, config });
-  } catch (e) {
-    console.error("Deploy notify failed:", e);
-  }
+  console.log("✅ DB init + services started");
+});
 
+// Interactions
+client.on(Events.InteractionCreate, async (interaction) => {
   try {
-    startRobloxAlertLoop({ client, db, config });
-  } catch (e) {
-    console.error("Roblox alert loop start failed:", e);
+    if (interaction.isChatInputCommand()) {
+      const cmd = client.commands.get(interaction.commandName);
+      if (!cmd) return;
+      await cmd.execute(interaction, client);
+      return;
+    }
+
+    if (interaction.isButton()) {
+      const [kind, ...rest] = interaction.customId.split(":");
+
+      if (kind === "list") {
+        const type = rest[0];
+        const offset = parseInt(rest[1] || "0", 10) || 0;
+        const { handleListButton } = require("./handlers/listButtons");
+        return handleListButton(interaction, type, offset);
+      }
+
+      if (kind === "roblox" && rest[0] === "refresh") {
+        const { handleRobloxRefresh } = require("./handlers/robloxButtons");
+        return handleRobloxRefresh(interaction, client);
+      }
+    }
+  } catch (err) {
+    console.error("Interaction error:", err);
+    // Let errorAlerts pick it up too
+    try {
+      const msg = err?.message || "Unknown error";
+      if (interaction.isRepliable()) {
+        if (interaction.deferred || interaction.replied) {
+          await interaction.followUp({ content: `❌ ${msg}`, ephemeral: true }).catch(() => {});
+        } else {
+          await interaction.reply({ content: `❌ ${msg}`, ephemeral: true }).catch(() => {});
+        }
+      }
+    } catch {}
   }
 });
 
-client.login(config.BOT_TOKEN);
+client.login(token);

@@ -1,32 +1,22 @@
-const { canManage } = require("../utils/permissions");
+const { SlashCommandBuilder } = require("discord.js");
+const { pool } = require("../db/pool");
 
 module.exports = {
-  name: "remove_roast",
-  async execute(interaction, ctx) {
-    const { db, config } = ctx;
-
-    if (!interaction.inGuild()) {
-      return interaction.reply({ content: "This command can only be used in a server.", ephemeral: true });
-    }
-
-    if (!canManage(interaction, config.OWNER_ID)) {
-      return interaction.reply({
-        content: "❌ You need **Manage Server** (or be the owner) to do that.",
-        ephemeral: true,
-      });
-    }
-
-    if (!db.enabled) {
-      return interaction.reply({ content: "⚠️ Database not available (DATABASE_URL missing).", ephemeral: true });
-    }
+  data: new SlashCommandBuilder()
+    .setName("remove_roast")
+    .setDescription("Remove a roast by DB id (see list).")
+    .addIntegerOption(o => o.setName("id").setDescription("DB id").setRequired(true)),
+  async execute(interaction) {
+    if (!interaction.guildId) return interaction.reply({ content: "❌ Server only.", ephemeral: true });
+    const ownerId = process.env.OWNER_ID;
+    if (interaction.user.id !== ownerId) return interaction.reply({ content: "❌ Owner only.", ephemeral: true });
 
     const id = interaction.options.getInteger("id", true);
-
-    const ok = await db.removeContentById(interaction.guildId, "roast", id);
-    if (!ok) {
-      return interaction.reply({ content: `❌ Roast with id **${id}** not found.`, ephemeral: true });
-    }
-
-    return interaction.reply({ content: `🗑️ Removed roast with id **${id}**.`, ephemeral: true });
+    const { rows } = await pool.query(
+      "DELETE FROM content_items WHERE guild_id=$1 AND type='roast' AND id=$2 RETURNING id",
+      [interaction.guildId, id]
+    );
+    if (!rows.length) return interaction.reply({ content: "⚠️ Not found.", ephemeral: true });
+    return interaction.reply({ content: `✅ Removed roast id ${id}.`, ephemeral: true });
   },
 };
