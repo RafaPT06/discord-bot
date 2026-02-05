@@ -1,20 +1,19 @@
 const { SlashCommandBuilder } = require("discord.js");
 
 module.exports = {
-  data: new SlashCommandBuilder().setName("status").setDescription("Shows bot status."),
+  data: new SlashCommandBuilder().setName("status").setDescription("Uptime + ping + runtime info."),
   async execute(interaction, client) {
-    const started = Math.floor((Date.now() - client.uptime) / 1000);
-    const startedAt = Math.floor((Date.now() - client.uptime) / 1000);
     const now = Math.floor(Date.now() / 1000);
-    const since = now - startedAt;
+    const startedTs = now - Math.floor(client.uptime / 1000);
 
     const msg = [
       "**Bot Status & Details:**",
+      `👑 **Owner:** <@${process.env.OWNER_ID}>`,
       `🤖 **Tag:** ${client.user.tag}`,
+      `⏱️ **Uptime:** <t:${startedTs}:R>`,
       `📡 **Ping:** ${client.ws.ping}ms`,
-      `⏱️ **Uptime:** <t:${now - Math.floor(client.uptime/1000)}:R>`,
-      `📦 **Platform:** Node.js ${process.version}`,
-      "🛠️ **Built with:** discord.js v14",
+      `📦 **Node:** ${process.version}`,
+      `🧩 **Build:** v${require("../../package.json").version}`,
     ].join("\n");
 
     return interaction.reply({ content: msg, ephemeral: false });

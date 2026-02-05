@@ -11,7 +11,7 @@ if (!token || !appId) {
   process.exit(1);
 }
 
-async function main() {
+(async () => {
   const rest = new REST({ version: "10" }).setToken(token);
   try {
     if (guildId) {
@@ -20,12 +20,10 @@ async function main() {
     } else {
       await rest.put(Routes.applicationCommands(appId), { body: commands });
       console.log(`✅ Deployed ${commands.length} global commands`);
-      console.log("Note: global commands can take time to appear. Use TEST_GUILD_ID for instant deploy.");
+      console.log("Tip: set TEST_GUILD_ID for instant deploy to one server.");
     }
-  } catch (err) {
-    console.error("❌ Deploy failed:", err);
+  } catch (e) {
+    console.error("❌ Deploy failed:", e);
     process.exit(1);
   }
-}
-
-main();
+})();

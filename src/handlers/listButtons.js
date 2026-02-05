@@ -1,61 +1,45 @@
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
 const { pool } = require("../db/pool");
 
-async function listContent(guildId, type, offset, limit=10) {
-  const { rows } = await pool.query(
-    `
-    SELECT id, text,
-      (row_number() OVER (ORDER BY id) + $3) AS display_id
-    FROM content_items
-    WHERE guild_id = $1 AND type = $2
-    ORDER BY id ASC
-    LIMIT $4 OFFSET $3
-    `,
-    [guildId, type, offset, limit]
-  );
-  const { rows: cntRows } = await pool.query(
-    "SELECT COUNT(*)::int AS c FROM content_items WHERE guild_id=$1 AND type=$2",
-    [guildId, type]
-  );
-  const total = cntRows[0]?.c || 0;
-  return { rows, total };
+const LIMIT = 10;
+
+function tableFor(type) {
+  return type === "roast" ? "roasts" : "compliments";
 }
 
-function buildRow(type, offset, total, limit=10) {
-  const prevOffset = Math.max(0, offset - limit);
-  const nextOffset = offset + limit;
+function labelFor(type) {
+  return type === "roast" ? "Roasts" : "Compliments";
+}
 
-  const row = new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId(`list:${type}:${prevOffset}`)
-      .setLabel("Prev")
-      .setStyle(ButtonStyle.Secondary)
-      .setDisabled(offset === 0),
-    new ButtonBuilder()
-      .setCustomId(`list:${type}:${nextOffset}`)
-      .setLabel("Next")
-      .setStyle(ButtonStyle.Secondary)
-      .setDisabled(nextOffset >= total)
+async function fetchPage(guildId, type, offset) {
+  const table = tableFor(type);
+  const { rows } = await pool.query(
+    `SELECT id, text FROM ${table} WHERE guild_id=$1 ORDER BY id ASC LIMIT $2 OFFSET $3`,
+    [guildId, LIMIT, offset]
   );
-  return row;
+  const { rows: cnt } = await pool.query(`SELECT COUNT(*)::int AS c FROM ${table} WHERE guild_id=$1`, [guildId]);
+  return { rows, total: cnt[0]?.c || 0 };
+}
+
+function pager(type, offset, total) {
+  const prevOffset = Math.max(0, offset - LIMIT);
+  const nextOffset = offset + LIMIT;
+
+  return new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId(`list:${type}:${prevOffset}`).setLabel("Prev").setStyle(ButtonStyle.Secondary).setDisabled(offset === 0),
+    new ButtonBuilder().setCustomId(`list:${type}:${nextOffset}`).setLabel("Next").setStyle(ButtonStyle.Secondary).setDisabled(nextOffset >= total),
+  );
 }
 
 async function handleListButton(interaction, type, offset) {
-  const guildId = interaction.guildId;
-  if (!guildId) return interaction.reply({ content: "❌ This only works in servers.", ephemeral: true });
+  if (!interaction.guildId) return interaction.reply({ content: "❌ Server only.", ephemeral: true });
+  await interaction.deferReply({ ephemeral: true }).catch(() => {});
+  const { rows, total } = await fetchPage(interaction.guildId, type, offset);
 
-  await interaction.deferUpdate().catch(() => {});
-  const { rows, total } = await listContent(guildId, type, offset);
-  const label = type === "roast" ? "Roasts" : "Compliments";
+  const header = `**${labelFor(type)}** — showing ${Math.min(offset + 1, total)}–${Math.min(offset + rows.length, total)} of ${total}`;
+  const body = rows.length ? rows.map((r, i) => `\`${offset + i + 1}.\` **#${r.id}** — ${r.text}`).join("\n") : "_No entries yet._";
 
-  const lines = rows.length
-    ? rows.map(r => `#${r.display_id} (id: ${r.id}) — ${r.text}`).join("\n")
-    : "_No entries._";
-
-  await interaction.editReply({
-    content: `**${label}** (showing ${Math.min(offset+1, total)}–${Math.min(offset+rows.length, total)} of ${total})\n\n${lines}`,
-    components: [buildRow(type, offset, total)],
-  }).catch(() => {});
+  await interaction.editReply({ content: `${header}\n\n${body}`, components: [pager(type, offset, total)] }).catch(() => {});
 }
 
 module.exports = { handleListButton };

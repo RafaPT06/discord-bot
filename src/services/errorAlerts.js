@@ -1,15 +1,12 @@
 const { EmbedBuilder } = require("discord.js");
 const { pool } = require("../db/pool");
 
-const recent = new Map(); // key -> lastSentMs
+const recent = new Map();
 let globalLastSent = 0;
 
 function redact(s) {
   if (!s) return s;
-  const secrets = [
-    process.env.BOT_TOKEN,
-    process.env.DATABASE_URL,
-  ].filter(Boolean);
+  const secrets = [process.env.BOT_TOKEN, process.env.DATABASE_URL].filter(Boolean);
   let out = String(s);
   for (const sec of secrets) {
     if (sec && sec.length >= 8) out = out.split(sec).join("[REDACTED]");
@@ -19,19 +16,17 @@ function redact(s) {
 
 async function getTargets() {
   const { rows } = await pool.query(
-    "SELECT guild_id, channel_id, enabled, mention_owner, min_interval_seconds FROM error_alert_settings WHERE enabled = TRUE"
+    "SELECT guild_id, channel_id, mention_owner, min_interval_seconds FROM error_alert_settings WHERE enabled=TRUE"
   );
   return rows;
 }
 
 async function sendAlert(client, title, description, stack) {
   const now = Date.now();
-  const key = `${title}|${description}|${stack?.slice(0,200) || ""}`.slice(0, 512);
-
-  // simple global cooldown to avoid storms
-  if (now - globalLastSent < 3000) return;
+  if (now - globalLastSent < 2500) return;
   globalLastSent = now;
 
+  const key = `${title}|${description}`.slice(0, 256);
   const targets = await getTargets();
   if (!targets.length) return;
 
@@ -71,11 +66,6 @@ function attachErrorAlerts(client) {
 
   client.on("error", (err) => {
     sendAlert(client, "Discord Client Error", err?.message || "Unknown", err?.stack || null).catch(() => {});
-  });
-
-  client.on("warn", (info) => {
-    // optional: comment out if too noisy
-    // sendAlert(client, "Discord Warning", String(info), null).catch(() => {});
   });
 }
 

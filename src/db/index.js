@@ -1,18 +1,41 @@
 const { pool } = require("./pool");
 
 async function initDb() {
-  // Core content table
   await pool.query(`
-    CREATE TABLE IF NOT EXISTS content_items (
+    CREATE TABLE IF NOT EXISTS roasts (
       id BIGSERIAL PRIMARY KEY,
       guild_id TEXT NOT NULL,
-      type TEXT NOT NULL CHECK (type IN ('roast','compliment')),
+      text TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS compliments (
+      id BIGSERIAL PRIMARY KEY,
+      guild_id TEXT NOT NULL,
       text TEXT NOT NULL,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
   `);
 
-  // Settings for Roblox alerts
+  await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS roasts_guild_text_uidx ON roasts (guild_id, text);`);
+  await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS compliments_guild_text_uidx ON compliments (guild_id, text);`);
+
+  await pool.query(`CREATE INDEX IF NOT EXISTS roasts_guild_id_idx ON roasts (guild_id, id);`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS compliments_guild_id_idx ON compliments (guild_id, id);`);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS todos (
+      id BIGSERIAL PRIMARY KEY,
+      guild_id TEXT NOT NULL,
+      text TEXT NOT NULL,
+      done BOOLEAN NOT NULL DEFAULT FALSE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      done_at TIMESTAMPTZ
+    );
+  `);
+  await pool.query(`CREATE INDEX IF NOT EXISTS todos_guild_done_idx ON todos (guild_id, done, id);`);
+
   await pool.query(`
     CREATE TABLE IF NOT EXISTS roblox_alert_settings (
       guild_id TEXT PRIMARY KEY,
@@ -22,7 +45,6 @@ async function initDb() {
     );
   `);
 
-  // Settings for Error alerts
   await pool.query(`
     CREATE TABLE IF NOT EXISTS error_alert_settings (
       guild_id TEXT PRIMARY KEY,
@@ -34,24 +56,13 @@ async function initDb() {
     );
   `);
 
-  // Ensure uniqueness for ON CONFLICT targets (handles existing DBs too)
   await pool.query(`
-    DELETE FROM content_items a
-    USING content_items b
-    WHERE a.id > b.id
-      AND a.guild_id = b.guild_id
-      AND a.type = b.type
-      AND a.text = b.text;
-  `);
-
-  await pool.query(`
-    CREATE UNIQUE INDEX IF NOT EXISTS content_items_guild_type_text_uidx
-    ON content_items (guild_id, type, text);
-  `);
-
-  await pool.query(`
-    CREATE INDEX IF NOT EXISTS content_items_guild_type_id_idx
-    ON content_items (guild_id, type, id);
+    CREATE TABLE IF NOT EXISTS deploy_channel_settings (
+      guild_id TEXT PRIMARY KEY,
+      channel_id TEXT NOT NULL,
+      enabled BOOLEAN NOT NULL DEFAULT TRUE,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
   `);
 }
 

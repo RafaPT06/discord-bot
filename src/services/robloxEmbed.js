@@ -28,32 +28,21 @@ async function getRobloxEmbed(username) {
 
   const embed = new EmbedBuilder()
     .setTitle("🎮 Roblox Presence")
-    .setDescription(`**${user.name}** (id: ${user.userId})`)
     .addFields(
+      { name: "Account", value: `${user.name} (id: ${user.userId})`, inline: false },
       { name: "Status", value: presenceLabel(p.presenceType), inline: true },
-      { name: "Last Location", value: p.lastLocation || "—", inline: true }
+      { name: "Location", value: p.lastLocation || "—", inline: true },
     )
     .setTimestamp(new Date());
 
-  if (p.placeId) embed.addFields({ name: "Place ID", value: String(p.placeId), inline: true });
   if (placeName) embed.addFields({ name: "Experience", value: placeName, inline: false });
   if (iconUrl) embed.setThumbnail(iconUrl);
 
   const row = new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId("roblox:refresh")
-      .setLabel("Refresh")
-      .setStyle(ButtonStyle.Secondary)
-      .setEmoji("🔄")
+    new ButtonBuilder().setCustomId("roblox:refresh").setLabel("Refresh").setStyle(ButtonStyle.Secondary).setEmoji("🔄")
   );
 
-  return {
-    embed,
-    components: [row],
-    presenceType: p.presenceType,
-    placeId: p.placeId,
-    lastLocation: p.lastLocation,
-  };
+  return { embed, components: [row], presenceType: p.presenceType, placeId: p.placeId, lastLocation: p.lastLocation };
 }
 
 module.exports = { getRobloxEmbed };

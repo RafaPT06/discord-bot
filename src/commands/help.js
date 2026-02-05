@@ -1,64 +1,54 @@
-const { EmbedBuilder } = require("discord.js");
+const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
 
 module.exports = {
-  name: "help",
-  description: "Show all available commands",
-
+  data: new SlashCommandBuilder().setName("help").setDescription("Show all commands grouped (like the screenshot)."),
   async execute(interaction) {
     const embed = new EmbedBuilder()
-      .setTitle("🤖 Bot Help")
-      .setDescription("Overview of commands, grouped by feature.\n\n🔒 = Owner only")
-      .setColor(0x2f3136)
+      .setTitle("Commands")
+      .setDescription([
+        "✨ **Fun / Social**",
+        "• `/compliment [user]` — send a random compliment",
+        "• `/roast [user]` — roast someone 🔥",
+        "• `/mimic <text>` — SpOnGeBoB cAsE",
+        "• `/cat` — random chaotic cat 🐱",
+        "• `/crazy [times]` — the crazy copypasta (1–3)",
+        "",
+        "📊 **Status**",
+        "• `/status` — uptime + ping + runtime info",
+        "• `/ping` — bot latency",
+        "• `/roblox_status` — Roblox online/in-game status (**Owner**)",
+        "",
+        "🗒️ **TODOs (Global)**",
+        "• `/todo_add <text>` — add a TODO (**Manage Server / Owner**)",
+        "• `/todo_list [all]` — list global TODOs (**Manage Server / Owner**)",
+        "• `/todo_done <id>` — mark a TODO done (**Manage Server / Owner**)",
+        "",
+        "🛠️ **Content (Admin)**",
+        "• `/add_compliment <text>` — add a compliment (**Manage Server / Owner**)",
+        "• `/add_roast <text>` — add a roast (**Manage Server / Owner**)",
+        "• `/list_compliments` — list saved compliments (**Admin**)",
+        "• `/list_roasts` — list saved roasts (**Admin**)",
+        "• `/remove_compliment <id>` — remove a compliment (**Manage Server / Owner**)",
+        "• `/remove_roast <id>` — remove a roast (**Manage Server / Owner**)",
+        "",
+        "🚀 **Deploy Updates**",
+        "• `/set_deploy_channel #channel` — set deploy updates channel (**Manage Server / Owner**)",
+        "• `/show_deploy_channel` — show current deploy channel",
+        "• `/reset_deploy_channel` — reset deploy channel",
+        "",
+        "🔔 **Roblox Alerts (Owner)**",
+        "• `/set_roblox_alert_channel #channel`",
+        "• `/show_roblox_alert_channel`",
+        "• `/reset_roblox_alert_channel`",
+        "",
+        "🚨 **Error Alerts (Owner)**",
+        "• `/set_error_alert_channel #channel`",
+        "• `/show_error_alert_channel`",
+        "• `/reset_error_alert_channel`",
+        "• `/test_error_alert`",
+      ].join("\n"))
+      .setFooter({ text: "After updating code, run npm run deploy (set TEST_GUILD_ID for instant)." });
 
-      .addFields(
-        {
-          name: "🧭 General",
-          value:
-            "`/help` – show this message\n" +
-            "`/status` – bot status & uptime",
-        },
-        {
-          name: "📦 Roasts & Compliments",
-          value:
-            "🔒 `/add_roast text`\n" +
-            "🔒 `/add_compliment text`\n" +
-            "`/list_roasts`\n" +
-            "`/list_compliments`\n" +
-            "🔒 `/remove_roast id`\n" +
-            "🔒 `/remove_compliment id`",
-        },
-        {
-          name: "🎮 Roblox",
-          value:
-            "🔒 `/roblox_status`\n" +
-            "_Check Roblox presence (with refresh button)_",
-        },
-        {
-          name: "🔔 Roblox Alerts",
-          value:
-            "🔒 `/set_roblox_alert_channel`\n" +
-            "🔒 `/show_roblox_alert_channel`\n" +
-            "🔒 `/reset_roblox_alert_channel`\n" +
-            "_Alerts when presence changes_",
-        },
-        {
-          name: "🚨 Error Alerts",
-          value:
-            "🔒 `/set_error_alert_channel`\n" +
-            "🔒 `/show_error_alert_channel`\n" +
-            "🔒 `/reset_error_alert_channel`\n" +
-            "🔒 `/test_error_alert`\n" +
-            "_Notifies on crashes & errors_",
-        }
-      )
-
-      .setFooter({
-        text: "Owner-only commands require OWNER_ID",
-      });
-
-    await interaction.reply({
-      embeds: [embed],
-      ephemeral: false,
-    });
-  },
+    return interaction.reply({ embeds: [embed], ephemeral: true });
+  }
 };

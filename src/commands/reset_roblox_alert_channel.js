@@ -1,14 +1,14 @@
 const { SlashCommandBuilder } = require("discord.js");
+const { isOwner } = require("../utils/perms");
 const { pool } = require("../db/pool");
 
 module.exports = {
-  data: new SlashCommandBuilder().setName("reset_roblox_alert_channel").setDescription("Disable Roblox alerts (owner only)."),
+  data: new SlashCommandBuilder().setName("reset_roblox_alert_channel").setDescription("Reset Roblox alert channel (Owner)."),
   async execute(interaction) {
     if (!interaction.guildId) return interaction.reply({ content: "❌ Server only.", ephemeral: true });
-    const ownerId = process.env.OWNER_ID;
-    if (interaction.user.id !== ownerId) return interaction.reply({ content: "❌ Owner only.", ephemeral: true });
+    if (!isOwner(interaction)) return interaction.reply({ content: "❌ Owner only.", ephemeral: true });
 
     await pool.query("DELETE FROM roblox_alert_settings WHERE guild_id=$1", [interaction.guildId]);
-    return interaction.reply({ content: "✅ Roblox alerts disabled.", ephemeral: true });
-  },
+    return interaction.reply({ content: "♻️ Roblox alert channel reset.", ephemeral: true });
+  }
 };
