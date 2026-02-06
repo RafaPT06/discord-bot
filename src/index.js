@@ -6,6 +6,8 @@ const { initDb } = require("./db");
 const { attachErrorAlerts } = require("./services/errorAlerts");
 const { startRobloxAlerts } = require("./services/robloxAlerts");
 const { sendDeployNotices } = require("./services/deployNotifier");
+const { canRunCommand } = require("./services/commandPerms");
+const { logCommandUsage } = require("./services/usageLogger");
 
 const token = process.env.BOT_TOKEN;
 const ownerId = process.env.OWNER_ID;
@@ -43,6 +45,11 @@ client.on(Events.InteractionCreate, async (interaction) => {
     if (interaction.isChatInputCommand()) {
       const cmd = client.commands.get(interaction.commandName);
       if (!cmd) return;
+
+      const allowed = await canRunCommand(interaction, interaction.commandName);
+      if (!allowed) {
+        return interaction.reply({ content: "❌ You don’t have permission to use this command here.", ephemeral: true });
+      }
       const { logCommandUsage } = require("./services/usageLogger");
 
       try {

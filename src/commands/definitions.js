@@ -44,7 +44,35 @@ module.exports = [
   cmd(new SlashCommandBuilder().setName("test_error_alert").setDescription("Send a test error alert (Owner).")),
 
   cmd(new SlashCommandBuilder().setName("bot_stats").setDescription("Show bot usage stats (Owner).")),
+// Permissions (Manage Server / Owner)
+cmd(new SlashCommandBuilder()
+  .setName("perm_set")
+  .setDescription("Set command permissions (Manage Server / Owner).")
+  .addStringOption(o=>o.setName("command").setDescription("Command name (no slash)").setRequired(true))
+  .addRoleOption(o=>o.setName("role").setDescription("Role allowed").setRequired(true))
+  .addBooleanOption(o=>o.setName("allow_manage_server").setDescription("Allow Manage Server bypass").setRequired(false))
+),
+cmd(new SlashCommandBuilder()
+  .setName("perm_add_role")
+  .setDescription("Add an allowed role to a command (Manage Server / Owner).")
+  .addStringOption(o=>o.setName("command").setDescription("Command name (no slash)").setRequired(true))
+  .addRoleOption(o=>o.setName("role").setDescription("Role allowed").setRequired(true))
+),
+cmd(new SlashCommandBuilder()
+  .setName("perm_show")
+  .setDescription("Show permissions for a command (Manage Server / Owner).")
+  .addStringOption(o=>o.setName("command").setDescription("Command name (no slash)").setRequired(true))
+),
+cmd(new SlashCommandBuilder()
+  .setName("perm_list")
+  .setDescription("List all commands with custom permission rules (Manage Server / Owner).")
+),
+cmd(new SlashCommandBuilder()
+  .setName("perm_clear")
+  .setDescription("Clear custom permissions for a command (Manage Server / Owner).")
+  .addStringOption(o=>o.setName("command").setDescription("Command name (no slash)").setRequired(true))
+),
 
-  // Help
+// Help
   cmd(new SlashCommandBuilder().setName("help").setDescription("Show all commands grouped (like the screenshot).")),
 ];

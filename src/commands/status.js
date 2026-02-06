@@ -11,7 +11,6 @@ module.exports = {
       `👑 **Owner:** <@${process.env.OWNER_ID}>`,
       `🤖 **Tag:** ${client.user.tag}`,
       `⏱️ **Uptime:** <t:${startedTs}:R>`,
-      `📡 **Ping:** ${client.ws.ping}ms`,
       `📦 **Node:** ${process.version}`,
       `🧩 **Build:** v${require("../../package.json").version}`,
     ].join("\n");

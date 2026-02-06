@@ -18,6 +18,7 @@ module.exports = {
         "• /bot_stats — bot stats (**Owner**)",
         "• `/ping` — bot latency",
         "• `/roblox_status` — Roblox online/in-game status (**Owner**)",
+        "• `/bot_stats` — bot stats (**Owner**)",
         "",
         "🗒️ **TODOs (Global)**",
         "• `/todo_add <text>` — add a TODO (**Manage Server / Owner**)",
@@ -47,9 +48,16 @@ module.exports = {
         "• `/show_error_alert_channel`",
         "• `/reset_error_alert_channel`",
         "• `/test_error_alert`",
+"",
+"🔐 **Permissions**",
+"• `/perm_set command role [allow_manage_server]` — set allowed roles (**Manage Server / Owner**)",
+"• `/perm_add_role command role` — add another role (**Manage Server / Owner**)",
+"• `/perm_show command` — show rule (**Manage Server / Owner**)",
+"• `/perm_list` — list all custom rules (**Manage Server / Owner**)",
+"• `/perm_clear command` — clear rule (**Manage Server / Owner**)",
       ].join("\n"))
-      .setFooter({ text: "After updating code, run npm run deploy (set TEST_GUILD_ID for instant)." });
+      .setFooter({ text: "List of commands available." });
 
-    return interaction.reply({ embeds: [embed], ephemeral: true });
+    return interaction.reply({ embeds: [embed], ephemeral: false });
   }
 };

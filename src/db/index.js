@@ -78,6 +78,18 @@ async function initDb() {
 
                                     await pool.query(`CREATE INDEX IF NOT EXISTS command_usage_guild_idx ON command_usage (guild_id, created_at DESC);`);
                                     await pool.query(`CREATE INDEX IF NOT EXISTS command_usage_cmd_idx ON command_usage (command_name, created_at DESC);`);
+
+await pool.query(`
+  CREATE TABLE IF NOT EXISTS command_permissions (
+    guild_id TEXT NOT NULL,
+    command_name TEXT NOT NULL,
+    allowed_role_ids TEXT[] NOT NULL DEFAULT '{}',
+    allow_manage_guild BOOLEAN NOT NULL DEFAULT TRUE,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (guild_id, command_name)
+  );
+`);
+
 }
 
 module.exports = { initDb };
