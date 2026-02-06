@@ -56,7 +56,7 @@ module.exports = {
 "• `/perm_list` — list all custom rules (**Manage Server / Owner**)",
 "• `/perm_clear command` — clear rule (**Manage Server / Owner**)",
       ].join("\n"))
-      .setFooter({ text: "List of commands available." });
+      .setFooter({ text: "After updating code, run npm run deploy (set TEST_GUILD_ID for instant)." });
 
     return interaction.reply({ embeds: [embed], ephemeral: false });
   }

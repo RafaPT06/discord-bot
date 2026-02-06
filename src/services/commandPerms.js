@@ -1,5 +1,6 @@
 const { pool } = require("../db/pool");
 
+// Always allowed to everyone
 const PUBLIC_COMMANDS = new Set([
   "help",
   "status",
@@ -9,6 +10,19 @@ const PUBLIC_COMMANDS = new Set([
   "mimic",
   "cat",
   "crazy",
+]);
+
+// Owner-only by default, but can be overridden per-server via /perm_set
+const PROTECTED_COMMANDS = new Set([
+  "bot_stats",
+  "roblox_status",
+  "set_roblox_alert_channel",
+  "show_roblox_alert_channel",
+  "reset_roblox_alert_channel",
+  "set_error_alert_channel",
+  "show_error_alert_channel",
+  "reset_error_alert_channel",
+  "test_error_alert",
 ]);
 
 function isOwner(interaction) {
@@ -26,12 +40,16 @@ function memberRoleIds(interaction) {
 }
 
 async function canRunCommand(interaction, commandName) {
+  // Public commands bypass everything
   if (PUBLIC_COMMANDS.has(commandName)) return true;
 
+  // DMs: keep non-public commands locked to owner
   if (!interaction.guildId) return isOwner(interaction);
 
+  // Owner always allowed
   if (isOwner(interaction)) return true;
 
+  // If a custom rule exists for this guild+command, enforce it
   const { rows } = await pool.query(
     `SELECT allowed_role_ids, allow_manage_guild
      FROM command_permissions
@@ -39,17 +57,23 @@ async function canRunCommand(interaction, commandName) {
     [interaction.guildId, commandName]
   );
 
-  if (!rows.length) return true;
+  if (rows.length) {
+    const allowedRoles = rows[0].allowed_role_ids || [];
+    const allowManageGuild = rows[0].allow_manage_guild !== false;
 
-  const allowedRoles = rows[0].allowed_role_ids || [];
-  const allowManageGuild = rows[0].allow_manage_guild !== false;
+    if (allowManageGuild && hasManageGuild(interaction)) return true;
+    if (!allowedRoles.length) return false;
 
-  if (allowManageGuild && hasManageGuild(interaction)) return true;
+    const myRoles = new Set(memberRoleIds(interaction));
+    return allowedRoles.some((rid) => myRoles.has(rid));
+  }
 
-  if (!allowedRoles.length) return false;
+  // No custom rule:
+  // - Protected commands are owner-only by default (until you /perm_set them)
+  if (PROTECTED_COMMANDS.has(commandName)) return false;
 
-  const myRoles = new Set(memberRoleIds(interaction));
-  return allowedRoles.some((rid) => myRoles.has(rid));
+  // - Everything else stays open by default (keeps your current behavior)
+  return true;
 }
 
-module.exports = { canRunCommand, PUBLIC_COMMANDS };
+module.exports = { canRunCommand, PUBLIC_COMMANDS, PROTECTED_COMMANDS };

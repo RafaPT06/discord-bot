@@ -1,13 +1,9 @@
 const { SlashCommandBuilder } = require("discord.js");
-const { isOwner } = require("../utils/perms");
 const { pool } = require("../db/pool");
 
 module.exports = {
   data: new SlashCommandBuilder().setName("bot_stats").setDescription("Show bot usage stats (Owner)."),
-    async execute(interaction, client) {
-        if (!isOwner(interaction)) return interaction.reply({ content: "❌ Owner only.", ephemeral: true });
-
-            const guilds = client.guilds.cache.size;
+    async execute(interaction, client) {            const guilds = client.guilds.cache.size;
                 const now = Math.floor(Date.now() / 1000);
                     const startedTs = now - Math.floor(client.uptime / 1000);
 
@@ -51,6 +47,6 @@ module.exports = {
                                                                                                                                                                                                                                             `🏆 **Top commands:**\n${topList}`,
                                                                                                                                                                                                                                                 ].join("\n");
 
-                                                                                                                                                                                                                                                    return interaction.reply({ content: msg, ephemeral: false });
+                                                                                                                                                                                                                                                    return interaction.reply({ content: msg, ephemeral: true });
                                                                                                                                                                                                                                                       },
                                                                                                                                                                                                                                                       };
