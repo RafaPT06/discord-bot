@@ -64,6 +64,20 @@ async function initDb() {
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
   `);
+  await pool.query(`
+      CREATE TABLE IF NOT EXISTS command_usage (
+          id BIGSERIAL PRIMARY KEY,
+              guild_id TEXT,
+                  user_id TEXT,
+                      command_name TEXT NOT NULL,
+                          ok BOOLEAN NOT NULL DEFAULT TRUE,
+                              error TEXT,
+                                  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                                    );
+                                    `);
+
+                                    await pool.query(`CREATE INDEX IF NOT EXISTS command_usage_guild_idx ON command_usage (guild_id, created_at DESC);`);
+                                    await pool.query(`CREATE INDEX IF NOT EXISTS command_usage_cmd_idx ON command_usage (command_name, created_at DESC);`);
 }
 
 module.exports = { initDb };

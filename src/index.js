@@ -43,7 +43,27 @@ client.on(Events.InteractionCreate, async (interaction) => {
     if (interaction.isChatInputCommand()) {
       const cmd = client.commands.get(interaction.commandName);
       if (!cmd) return;
-      return await cmd.execute(interaction, client);
+      const { logCommandUsage } = require("./services/usageLogger");
+
+      try {
+        await cmd.execute(interaction, client);
+          logCommandUsage({
+              guildId: interaction.guildId,
+                  userId: interaction.user?.id,
+                      commandName: interaction.commandName,
+                          ok: true,
+                            });
+                            } catch (err) {
+                              logCommandUsage({
+                                  guildId: interaction.guildId,
+                                      userId: interaction.user?.id,
+                                          commandName: interaction.commandName,
+                                              ok: false,
+                                                  error: err?.message || String(err),
+                                                    });
+                                                      throw err; // keep your existing error reply behavior
+                                                      }
+                                                      return;
     }
 
     if (interaction.isButton()) {

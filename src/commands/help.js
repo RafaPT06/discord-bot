@@ -15,6 +15,7 @@ module.exports = {
         "",
         "📊 **Status**",
         "• `/status` — uptime + ping + runtime info",
+        "• /bot_stats — bot stats (**Owner**)",
         "• `/ping` — bot latency",
         "• `/roblox_status` — Roblox online/in-game status (**Owner**)",
         "",

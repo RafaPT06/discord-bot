@@ -43,6 +43,8 @@ module.exports = [
   cmd(new SlashCommandBuilder().setName("reset_error_alert_channel").setDescription("Reset error alert channel (Owner).")),
   cmd(new SlashCommandBuilder().setName("test_error_alert").setDescription("Send a test error alert (Owner).")),
 
+  cmd(new SlashCommandBuilder().setName("bot_stats").setDescription("Show bot usage stats (Owner).")),
+
   // Help
   cmd(new SlashCommandBuilder().setName("help").setDescription("Show all commands grouped (like the screenshot).")),
 ];
