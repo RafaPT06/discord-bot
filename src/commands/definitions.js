@@ -7,7 +7,6 @@ module.exports = [
   cmd(new SlashCommandBuilder().setName("roast").setDescription("Roast someone 🔥").addUserOption(o=>o.setName("user").setDescription("Who to roast").setRequired(true))),
   cmd(new SlashCommandBuilder().setName("mimic").setDescription("SpOnGeBoB cAsE").addStringOption(o=>o.setName("text").setDescription("Text to mimic").setRequired(true))),
   cmd(new SlashCommandBuilder().setName("cat").setDescription("Random chaotic cat 🐱")),
-  cmd(new SlashCommandBuilder().setName("crazy").setDescription("The crazy copypasta (1–3)").addIntegerOption(o=>o.setName("times").setDescription("Repeat 1–3").setRequired(false))),
 
   // Status
   cmd(new SlashCommandBuilder().setName("status").setDescription("Uptime + ping + runtime info.")),

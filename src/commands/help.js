@@ -11,7 +11,6 @@ module.exports = {
         "• `/roast [user]` — roast someone 🔥",
         "• `/mimic <text>` — SpOnGeBoB cAsE",
         "• `/cat` — random chaotic cat 🐱",
-        "• `/crazy [times]` — the crazy copypasta (1–3)",
         "",
         "📊 **Status**",
         "• `/status` — uptime + ping + runtime info",
@@ -55,8 +54,7 @@ module.exports = {
 "• `/perm_show command` — show rule (**Manage Server / Owner**)",
 "• `/perm_list` — list all custom rules (**Manage Server / Owner**)",
 "• `/perm_clear command` — clear rule (**Manage Server / Owner**)",
-      ].join("\n"))
-      .setFooter({ text: "After updating code, run npm run deploy (set TEST_GUILD_ID for instant)." });
+      ].join("\n"));
 
     return interaction.reply({ embeds: [embed], ephemeral: false });
   }
