@@ -11,6 +11,7 @@ module.exports = {
         "• `/roast [user]` — roast someone 🔥",
         "• `/mimic <text>` — SpOnGeBoB cAsE",
         "• `/cat` — random chaotic cat 🐱",
+        "• `/crazy`",
         "",
         "📊 **Status**",
         "• `/status` — uptime + ping + runtime info",
