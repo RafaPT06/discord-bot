@@ -8,8 +8,8 @@ module.exports = {
     .setDescription("Show permissions for a command (Manage Server / Owner).")
     .addStringOption(o => o.setName("command").setDescription("Command name (no slash)").setRequired(true)),
   async execute(interaction) {
-    if (!interaction.guildId) return interaction.reply({ content: "❌ Server only.", ephemeral: true });
-    if (!canManageSettings(interaction)) return interaction.reply({ content: "❌ Requires **Manage Server** (or Owner).", ephemeral: true });
+    if (!interaction.guildId) return interaction.reply({ content: " Server only.", ephemeral: true });
+    if (!canManageSettings(interaction)) return interaction.reply({ content: " Requires **Manage Server** (or Owner).", ephemeral: true });
 
     const command = interaction.options.getString("command", true).trim().toLowerCase();
     const { rows } = await pool.query(
@@ -26,7 +26,7 @@ module.exports = {
     const allowManage = rows[0].allow_manage_guild ? "ON" : "OFF";
 
     return interaction.reply({
-      content: `🔐 **Permissions for** \`/${command}\`\n• **Allowed roles:** ${roles}\n• **Manage Server bypass:** **${allowManage}**`,
+      content: ` **Permissions for** \`/${command}\`\n• **Allowed roles:** ${roles}\n• **Manage Server bypass:** **${allowManage}**`,
       ephemeral: true,
       allowedMentions: { roles: roleIds },
     });

@@ -42,7 +42,7 @@ async function sendAlert(client, title, description, stack) {
     if (!ch || !ch.isTextBased()) continue;
 
     const embed = new EmbedBuilder()
-      .setTitle(`🚨 ${title}`)
+      .setTitle(` ${title}`)
       .setDescription(redact(description).slice(0, 2000))
       .setTimestamp(new Date());
 

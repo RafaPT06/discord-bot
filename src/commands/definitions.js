@@ -16,7 +16,7 @@ module.exports = [
   cmd(
     new SlashCommandBuilder()
       .setName("roast")
-      .setDescription("Roast someone 🔥")
+      .setDescription("Roast someone ")
       .addUserOption((o) =>
         o.setName("user").setDescription("Who to roast").setRequired(true),
       ),
@@ -32,7 +32,7 @@ module.exports = [
   cmd(
     new SlashCommandBuilder()
       .setName("cat")
-      .setDescription("Random chaotic cat 🐱"),
+      .setDescription("Random chaotic cat "),
   ),
   cmd(
     new SlashCommandBuilder()

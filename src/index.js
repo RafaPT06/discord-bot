@@ -32,12 +32,12 @@ for (const file of fs.readdirSync(cmdDir).filter(f => f.endsWith(".js") && f !==
 }
 
 client.once(Events.ClientReady, async () => {
-  console.log(`✅ Logged in as ${client.user.tag}`);
+  console.log(` Logged in as ${client.user.tag}`);
   await initDb();
   attachErrorAlerts(client);
   startRobloxAlerts(client);
   await sendDeployNotices(client);
-  console.log("✅ DB init + services started");
+  console.log(" DB init + services started");
 });
 
 client.on(Events.InteractionCreate, async (interaction) => {
@@ -48,7 +48,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
       const allowed = await canRunCommand(interaction, interaction.commandName);
       if (!allowed) {
-        return interaction.reply({ content: "❌ You don’t have permission to use this command here.", ephemeral: true });
+        return interaction.reply({ content: "Error: You don’t have permission to use this command here.", ephemeral: true });
       }
       const { logCommandUsage } = require("./services/usageLogger");
 
@@ -92,9 +92,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
     try {
       if (interaction.isRepliable()) {
         if (interaction.deferred || interaction.replied) {
-          await interaction.followUp({ content: `❌ ${msg}`, ephemeral: true }).catch(() => {});
+          await interaction.followUp({ content: `Error: ${msg}`, ephemeral: true }).catch(() => {});
         } else {
-          await interaction.reply({ content: `❌ ${msg}`, ephemeral: true }).catch(() => {});
+          await interaction.reply({ content: `Error: ${msg}`, ephemeral: true }).catch(() => {});
         }
       }
     } catch {}

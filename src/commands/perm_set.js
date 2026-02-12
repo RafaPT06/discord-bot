@@ -10,8 +10,8 @@ module.exports = {
     .addRoleOption(o => o.setName("role").setDescription("Role allowed").setRequired(true))
     .addBooleanOption(o => o.setName("allow_manage_server").setDescription("Allow Manage Server bypass").setRequired(false)),
   async execute(interaction) {
-    if (!interaction.guildId) return interaction.reply({ content: "❌ Server only.", ephemeral: true });
-    if (!canManageSettings(interaction)) return interaction.reply({ content: "❌ Requires **Manage Server** (or Owner).", ephemeral: true });
+    if (!interaction.guildId) return interaction.reply({ content: " Server only.", ephemeral: true });
+    if (!canManageSettings(interaction)) return interaction.reply({ content: " Requires **Manage Server** (or Owner).", ephemeral: true });
 
     const command = interaction.options.getString("command", true).trim().toLowerCase();
     const role = interaction.options.getRole("role", true);
@@ -27,7 +27,7 @@ module.exports = {
     );
 
     return interaction.reply({
-      content: `✅ \`/${command}\` allowed roles set to: <@&${role.id}>\n• Manage Server bypass: **${allow_manage_guild ? "ON" : "OFF"}**`,
+      content: ` \`/${command}\` allowed roles set to: <@&${role.id}>\n• Manage Server bypass: **${allow_manage_guild ? "ON" : "OFF"}**`,
       ephemeral: true,
       allowedMentions: { roles: [role.id] },
     });

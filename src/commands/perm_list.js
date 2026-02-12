@@ -7,8 +7,8 @@ module.exports = {
     .setName("perm_list")
     .setDescription("List all commands with custom permission rules (Manage Server / Owner)."),
   async execute(interaction) {
-    if (!interaction.guildId) return interaction.reply({ content: "❌ Server only.", ephemeral: true });
-    if (!canManageSettings(interaction)) return interaction.reply({ content: "❌ Requires **Manage Server** (or Owner).", ephemeral: true });
+    if (!interaction.guildId) return interaction.reply({ content: " Server only.", ephemeral: true });
+    if (!canManageSettings(interaction)) return interaction.reply({ content: " Requires **Manage Server** (or Owner).", ephemeral: true });
 
     const { rows } = await pool.query(
       `SELECT command_name, allowed_role_ids, allow_manage_guild
@@ -30,7 +30,7 @@ module.exports = {
     });
 
     const allRoleIds = rows.flatMap(r => r.allowed_role_ids || []);
-    const text = ("🔐 **Custom command permissions**\n" + lines.join("\n")).slice(0, 1900);
+    const text = (" **Custom command permissions**\n" + lines.join("\n")).slice(0, 1900);
 
     return interaction.reply({ content: text, ephemeral: true, allowedMentions: { roles: allRoleIds } });
   }

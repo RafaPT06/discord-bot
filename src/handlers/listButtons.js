@@ -5,7 +5,7 @@ const LIMIT = 10;
 
 // Make list output clean + safe for Discord
 function cleanText(s, maxLen = 140) {
-  if (!s) return "—";
+  if (!s) return "-";
   // collapse newlines/tabs/multi spaces
   let out = String(s).replace(/\s+/g, " ").trim();
   if (out.length > maxLen) out = out.slice(0, maxLen - 1) + "…";
@@ -61,7 +61,7 @@ function pager(type, offset, total) {
 
 async function handleListButton(interaction, type, offset) {
   if (!interaction.guildId) {
-    return interaction.reply({ content: "❌ Server only.", ephemeral: true });
+    return interaction.reply({ content: "Error: Server only.", ephemeral: true });
   }
 
   // Works for both initial slash command + button presses
@@ -71,7 +71,7 @@ async function handleListButton(interaction, type, offset) {
   const { rows, total } = await fetchPage(interaction.guildId, type, offset);
 
   if (total === 0) {
-    const header = `**${labelFor(type)}** — 0 total`;
+    const header = `**${labelFor(type)}** - 0 total`;
     const body = "_No entries yet._";
     const payload = { content: `${header}\n\n${body}`, components: [] };
 
@@ -83,9 +83,9 @@ async function handleListButton(interaction, type, offset) {
   const start = offset + 1;
   const end = Math.min(offset + rows.length, total);
 
-  const header = `**${labelFor(type)}** — showing ${start}–${end} of ${total}`;
+  const header = `**${labelFor(type)}** - showing ${start}–${end} of ${total}`;
   const body = rows
-    .map((r, i) => `\`${offset + i + 1}.\` **#${r.id}** — ${cleanText(r.text)}`)
+    .map((r, i) => `\`${offset + i + 1}.\` **#${r.id}** - ${cleanText(r.text)}`)
     .join("\n");
 
   // Small hint so you always know which id to remove

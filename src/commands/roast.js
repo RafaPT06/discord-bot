@@ -10,14 +10,14 @@ const FALLBACK = [
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("roast")
-    .setDescription("Roast someone 🔥")
+    .setDescription("Roast someone ")
     .addUserOption(o => o.setName("user").setDescription("Who to roast").setRequired(true)),
   async execute(interaction) {
-    if (!interaction.guildId) return interaction.reply({ content: "❌ Server only.", ephemeral: true });
+    if (!interaction.guildId) return interaction.reply({ content: " Server only.", ephemeral: true });
 
     const user = interaction.options.getUser("user", true);
     const row = await randomRow("roasts", interaction.guildId).catch(() => null);
     const text = row?.text || FALLBACK[Math.floor(Math.random() * FALLBACK.length)];
-    return interaction.reply({ content: `🔥 <@${user.id}>, ${text}`, allowedMentions: { users: [user.id] } });
+    return interaction.reply({ content: ` <@${user.id}>, ${text}`, allowedMentions: { users: [user.id] } });
   },
 };

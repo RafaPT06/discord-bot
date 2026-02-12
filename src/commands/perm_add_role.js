@@ -9,8 +9,8 @@ module.exports = {
     .addStringOption(o => o.setName("command").setDescription("Command name (no slash)").setRequired(true))
     .addRoleOption(o => o.setName("role").setDescription("Role allowed").setRequired(true)),
   async execute(interaction) {
-    if (!interaction.guildId) return interaction.reply({ content: "❌ Server only.", ephemeral: true });
-    if (!canManageSettings(interaction)) return interaction.reply({ content: "❌ Requires **Manage Server** (or Owner).", ephemeral: true });
+    if (!interaction.guildId) return interaction.reply({ content: " Server only.", ephemeral: true });
+    if (!canManageSettings(interaction)) return interaction.reply({ content: " Requires **Manage Server** (or Owner).", ephemeral: true });
 
     const command = interaction.options.getString("command", true).trim().toLowerCase();
     const role = interaction.options.getRole("role", true);
@@ -26,7 +26,7 @@ module.exports = {
     );
 
     return interaction.reply({
-      content: `✅ Added <@&${role.id}> to \`/${command}\`.`,
+      content: ` Added <@&${role.id}> to \`/${command}\`.`,
       ephemeral: true,
       allowedMentions: { roles: [role.id] },
     });
