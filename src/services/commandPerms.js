@@ -2,6 +2,7 @@ const { pool } = require("../db/pool");
 
 // Always allowed to everyone
 const PUBLIC_COMMANDS = new Set([
+  "maintenance",
   "help",
   "status",
   "ping",

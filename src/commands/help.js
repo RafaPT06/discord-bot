@@ -19,6 +19,7 @@ module.exports = {
           "**Status**",
           "• `/status` — uptime + ping + runtime info",
           "• `/ping` — bot latency",
+          "• `/maintenance <on|off|status>` — maintenance mode (Owner for on/off)",
           "• `/roblox_status` — Roblox online/in-game status (restricted)",
           "• `/bot_stats` — bot stats (restricted)",
           "",
@@ -60,6 +61,6 @@ module.exports = {
         ].join("\n")
       );
 
-    return interaction.reply({ embeds: [embed], ephemeral: true });
+    return interaction.reply({ embeds: [embed], ephemeral: false });
   },
 };
