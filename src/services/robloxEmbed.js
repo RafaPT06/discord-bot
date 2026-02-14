@@ -1,5 +1,5 @@
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } = require("discord.js");
-const { resolveUsername, getPresence, getPlaceDetails, getGameIcon } = require("./robloxApi");
+const { resolveUsername, getPresence } = require("./robloxApi");
 
 function presenceLabel(presenceType) {
   // 0: Offline, 1: Online, 2: In Game, 3: In Studio
@@ -13,28 +13,21 @@ async function getRobloxEmbed(username) {
   const who = await resolveUsername(username);
   const p = await getPresence(who.userId);
 
-  let place = null;
-  if (p.placeId) place = await getPlaceDetails(p.placeId);
-
   const status = presenceLabel(p.presenceType);
-  const location =
-    p.lastLocation ||
-    (p.presenceType === 0 ? null : "Website");
+
+  // Only show location if Roblox provides something real
+  const lastLoc = (p.lastLocation && String(p.lastLocation).trim()) ? String(p.lastLocation).trim() : null;
 
   const embed = new EmbedBuilder()
     .setTitle("Roblox Status")
     .addFields(
       { name: "Account", value: `${who.name} (id: ${who.userId})`, inline: false },
-      { name: "Status", value: status, inline: true },
-      { name: "Location", value: location || "n/a", inline: true }
+      { name: "Status", value: status, inline: true }
     );
 
-  if (place?.name) {
-    embed.addFields({ name: "Game", value: place.name, inline: false });
+  if (lastLoc) {
+    embed.addFields({ name: "Location", value: lastLoc, inline: true });
   }
-
-  const icon = await getGameIcon(p.universeId || place?.universeId || null).catch(() => null);
-  if (icon) embed.setThumbnail(icon);
 
   const row = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
@@ -46,7 +39,7 @@ async function getRobloxEmbed(username) {
   return { embed, components: [row] };
 }
 
-// Back-compat (older code used .text)
+// Back-compat
 async function getRobloxBlock(username) {
   const data = await getRobloxEmbed(username);
   return { text: "", components: data.components, embed: data.embed };
