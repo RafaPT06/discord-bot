@@ -4,6 +4,8 @@ A modular Discord bot built with **discord.js v14**, designed for server utiliti
 
 Built to run on **Railway** with **PostgreSQL**.
 
+---
+
 ## ✨ Features
 
 ### 🎉 Fun / Social

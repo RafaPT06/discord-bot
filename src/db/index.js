@@ -66,7 +66,7 @@ async function initDb() {
   `);
   await pool.query(`
       CREATE TABLE IF NOT EXISTS command_usage (
-          id BIGSERIAL PRIMARY KEY,
+        id BIGSERIAL PRIMARY KEY,
               guild_id TEXT,
                   user_id TEXT,
                       command_name TEXT NOT NULL,
@@ -76,10 +76,14 @@ async function initDb() {
                                     );
                                     `);
 
-                                    await pool.query(`CREATE INDEX IF NOT EXISTS command_usage_guild_idx ON command_usage (guild_id, created_at DESC);`);
-                                    await pool.query(`CREATE INDEX IF NOT EXISTS command_usage_cmd_idx ON command_usage (command_name, created_at DESC);`);
+  await pool.query(
+    `CREATE INDEX IF NOT EXISTS command_usage_guild_idx ON command_usage (guild_id, created_at DESC);`,
+  );
+  await pool.query(
+    `CREATE INDEX IF NOT EXISTS command_usage_cmd_idx ON command_usage (command_name, created_at DESC);`,
+  );
 
-await pool.query(`
+  await pool.query(`
   CREATE TABLE IF NOT EXISTS command_permissions (
     guild_id TEXT NOT NULL,
     command_name TEXT NOT NULL,
@@ -95,10 +99,15 @@ await pool.query(`
 await pool.query(`
   CREATE TABLE IF NOT EXISTS app_state (
     key TEXT PRIMARY KEY,
-    value TEXT NOT NULL,
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    value TEXT NOT NULL
   );
 `);
+
+  // Backward-compatible schema upgrade (older DBs may not have this column)
+  await pool.query(`
+    ALTER TABLE app_state
+    ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+  `);
 
 }
 
