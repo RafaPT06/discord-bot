@@ -3,10 +3,10 @@ const { resolveUsername, getPresence, getPlaceDetails, getGameIcon } = require("
 
 function presenceLabel(presenceType) {
   // 0: Offline, 1: Online, 2: In Game, 3: In Studio
-  if (presenceType === 2) return "In Game";
-  if (presenceType === 3) return "In Studio";
-  if (presenceType === 1) return "Online";
-  return "Offline";
+  if (presenceType === 2) return "🟢 In Game";
+  if (presenceType === 3) return "🟡 In Studio";
+  if (presenceType === 1) return "🔵 Online";
+  return "⚫ Offline";
 }
 
 async function getRobloxEmbed(username) {
