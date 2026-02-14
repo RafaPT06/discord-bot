@@ -1,6 +1,15 @@
-const { SlashCommandBuilder } = require("discord.js");
+const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
 const { canManageSettings } = require("../utils/perms");
 const { pool } = require("../db/pool");
+
+function dedupe(arr) {
+  return Array.from(new Set((arr || []).filter(Boolean)));
+}
+
+function roleLabel(interaction, roleId) {
+  const r = interaction.guild?.roles?.cache?.get(roleId);
+  return r ? `@${r.name}` : roleId;
+}
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -18,17 +27,26 @@ module.exports = {
     );
 
     if (!rows.length) {
-      return interaction.reply({ content: `ℹ️ \`/${command}\` has **no custom rules** (default behavior).`, ephemeral: true });
+      const embed = new EmbedBuilder()
+        .setTitle("Permission")
+        .setDescription([`Command: /${command}`, "Rules: none (default behavior)"].join("\n"));
+      return interaction.reply({ embeds: [embed], ephemeral: true });
     }
 
-    const roleIds = rows[0].allowed_role_ids || [];
-    const roles = roleIds.length ? roleIds.map(id => `<@&${id}>`).join(", ") : "_(none)_";
+    const roleIds = dedupe(rows[0].allowed_role_ids);
+    const roles = roleIds.length ? roleIds.map((id) => roleLabel(interaction, id)).join(", ") : "none";
     const allowManage = rows[0].allow_manage_guild ? "ON" : "OFF";
 
-    return interaction.reply({
-      content: ` **Permissions for** \`/${command}\`\n• **Allowed roles:** ${roles}\n• **Manage Server bypass:** **${allowManage}**`,
-      ephemeral: true,
-      allowedMentions: { roles: roleIds },
-    });
+    const embed = new EmbedBuilder()
+      .setTitle("Permission")
+      .setDescription(
+        [
+          `Command: /${command}`,
+          `Allowed roles: ${roles}`,
+          `Manage Server bypass: ${allowManage}`,
+        ].join("\n")
+      );
+
+    return interaction.reply({ embeds: [embed], ephemeral: true });
   }
 };
