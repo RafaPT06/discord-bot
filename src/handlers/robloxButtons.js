@@ -1,14 +1,19 @@
-const { isOwner } = require("../utils/perms");
 const { getRobloxBlock } = require("../services/robloxEmbed");
 
 async function handleRobloxRefresh(interaction) {
-  // Keep refresh owner-only to avoid spam (command itself can be public)
-  if (!isOwner(interaction)) return interaction.reply({ content: "Error: Owner only.", ephemeral: true });
+  const username = process.env.ROBLOX_USERNAME || null;
+  if (!username) {
+    await interaction.reply({ content: "Error: ROBLOX_USERNAME is not set.", ephemeral: true }).catch(() => null);
+    return;
+  }
 
-  await interaction.deferUpdate().catch(() => {});
-  const username = process.env.ROBLOX_USERNAME || "qxR4F4";
-  const data = await getRobloxBlock(username);
-  return interaction.editReply({ content: data.text, components: data.components }).catch(() => {});
+  try {
+    await interaction.deferUpdate();
+    const data = await getRobloxBlock(username);
+    await interaction.editReply({ content: data.text, components: data.components }).catch(() => {});
+  } catch (e) {
+    await interaction.followUp({ content: `Error: ${String(e?.message || e)}`, ephemeral: true }).catch(() => null);
+  }
 }
 
 module.exports = { handleRobloxRefresh };

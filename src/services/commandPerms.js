@@ -6,7 +6,6 @@ const PUBLIC_COMMANDS = new Set([
   "help",
   "status",
   "ping",
-  "roblox_status",
   "compliment",
   "roast",
   "mimic",
@@ -17,7 +16,8 @@ const PUBLIC_COMMANDS = new Set([
 // Owner-only by default, but can be overridden per-server via /perm_set
 const PROTECTED_COMMANDS = new Set([
   "bot_stats",
-    "set_roblox_alert_channel",
+  "roblox_status",
+  "set_roblox_alert_channel",
   "show_roblox_alert_channel",
   "reset_roblox_alert_channel",
   "set_error_alert_channel",

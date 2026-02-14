@@ -1,7 +1,7 @@
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
 const { resolveUsername, getPresence, getPlaceDetails } = require("./robloxApi");
 
-function presenceText(t) {
+function presenceLabel(t) {
   if (t === 0) return "Offline";
   if (t === 1) return "Online";
   if (t === 2) return "In Game";
@@ -9,79 +9,51 @@ function presenceText(t) {
   return "Unknown";
 }
 
-function padRight(str, len) {
-  return str + " ".repeat(Math.max(0, len - str.length));
-}
-
-function block(title, rows) {
+function padAligned(rows) {
   const longest = Math.max(...rows.map(r => r.label.length));
-  const lines = rows.map(r => `${padRight(r.label, longest + 2)}**${r.value}**`);
-  return [title, "", ...lines].join("\n");
-}
-
-function joinUrl(placeId) {
-  if (!placeId) return null;
-  return `https://www.roblox.com/games/${placeId}`;
+  return rows.map(r => `${r.label.padEnd(longest + 2)}**${r.value}**`);
 }
 
 async function getRobloxBlock(username) {
   const user = await resolveUsername(username);
-  const p = await getPresence(user.userId);
+  const p = await getPresence(user.userId); // { presenceType, lastLocation, placeId, universeId }
 
   let placeName = null;
-  let placeId = p.placeId || null;
+  let universeId = p.universeId || null;
 
-  if (placeId) {
-    const place = await getPlaceDetails(placeId).catch(() => null);
-    if (place?.name) placeName = place.name;
+  if (p.placeId) {
+    try {
+      const details = await getPlaceDetails(p.placeId);
+      placeName = details?.name || null;
+      universeId = details?.universeId || universeId;
+    } catch (_) {}
   }
 
-  const status = presenceText(p.presenceType);
-  const location = p.lastLocation || "—";
-  const game = placeName || (placeId ? `Place ${placeId}` : "—");
+  const status = presenceLabel(p.presenceType);
+  const location = placeName || (p.lastLocation ? String(p.lastLocation) : "Website");
 
-  // Helpful hint when always offline due to privacy
-  const note = (p.presenceType === 0)
-    ? "If you're online but this shows Offline, your Roblox privacy settings may hide presence."
-    : null;
-
-  const text = block("Roblox Status", [
+  const lines = padAligned([
     { label: "Account", value: `${user.name} (id: ${user.userId})` },
     { label: "Status", value: status },
     { label: "Location", value: location },
-    { label: "Game", value: game },
-  ]) + (note ? `\n\n${note}` : "");
+  ]);
 
-  const rows = [];
-  const buttons = [];
-
-  // Refresh
-  buttons.push(
+  const row = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
-      .setCustomId("roblox:refresh")
+      .setCustomId(`roblox:refresh:${user.userId}:${user.name}`)
       .setLabel("Refresh")
       .setStyle(ButtonStyle.Secondary)
   );
 
-  // Join URL (only if in game and placeId known)
-  const url = (p.presenceType === 2 && placeId) ? joinUrl(placeId) : null;
-  if (url) {
-    buttons.push(
-      new ButtonBuilder()
-        .setLabel("Open Game")
-        .setStyle(ButtonStyle.Link)
-        .setURL(url)
-    );
-  }
-
-  rows.push(new ActionRowBuilder().addComponents(buttons));
-
   return {
+    text: ["Roblox Status", "", ...lines].join("\n"),
+    components: [row],
     presenceType: p.presenceType,
     lastLocation: p.lastLocation || null,
-    placeId: placeId,
-    text,
-    components: rows,
+    placeId: p.placeId || null,
+    universeId,
+    userId: user.userId,
+    username: user.name,
   };
 }
 

@@ -39,6 +39,7 @@ async function ensureTables() {
     )
   `);
 
+  // app_state is created in initDb; but keep safe here too
   await pool.query(`
     CREATE TABLE IF NOT EXISTS app_state (
       key TEXT PRIMARY KEY,
@@ -53,13 +54,13 @@ async function getDeployChannels() {
   return res.rows || [];
 }
 
-async function getLastSentSha() {
+async function getLastSha() {
   await ensureTables();
-  const { rows } = await pool.query("SELECT value FROM app_state WHERE key='last_deploy_sha' LIMIT 1");
-  return rows?.[0]?.value || null;
+  const res = await pool.query("SELECT value FROM app_state WHERE key='last_deploy_sha' LIMIT 1");
+  return res.rows?.[0]?.value || null;
 }
 
-async function setLastSentSha(sha) {
+async function setLastSha(sha) {
   await ensureTables();
   await pool.query(
     `INSERT INTO app_state (key, value)
@@ -78,6 +79,7 @@ function buildDeployMessage() {
   const node = nodeVersion();
   const ts = nowTs();
 
+  // Help-style (no emojis). Keep backticks ONLY for code-ish fields.
   return [
     "New Deploy Detected",
     "",
@@ -96,9 +98,9 @@ async function sendDeployNotices(client) {
   if (!rows.length) return;
 
   const sha = process.env.RAILWAY_GIT_COMMIT_SHA || "";
-  const last = await getLastSentSha();
+  const last = await getLastSha();
 
-  // If we've already sent for this commit hash in this DB, skip
+  // Only send once per commit SHA
   if (sha && last === sha) return;
 
   const text = buildDeployMessage();
@@ -107,11 +109,13 @@ async function sendDeployNotices(client) {
   for (const r of rows) {
     const ch = await client.channels.fetch(r.channel_id).catch(() => null);
     if (!ch || !ch.isTextBased()) continue;
-    await ch.send({ content: text, allowedMentions: { parse: [] } }).catch(() => null);
+    await ch.send({ content: text }).catch(() => null);
     sentAny = true;
   }
 
-  if (sentAny) await setLastSentSha(sha);
+  if (sentAny && sha) {
+    await setLastSha(sha);
+  }
 }
 
 module.exports = { sendDeployNotices };

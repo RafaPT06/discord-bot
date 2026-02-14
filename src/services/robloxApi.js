@@ -3,7 +3,7 @@ const { request } = require("undici");
 async function postJson(url, body) {
   const res = await request(url, {
     method: "POST",
-    headers: { "content-type": "application/json", "accept": "application/json", "user-agent": "discord-bot/1.0 (+roblox presence)" },
+    headers: { "content-type": "application/json" },
     body: JSON.stringify(body),
   });
   const text = await res.body.text();
@@ -14,7 +14,7 @@ async function postJson(url, body) {
 }
 
 async function getJson(url) {
-  const res = await request(url, { headers: { "accept": "application/json", "user-agent": "discord-bot/1.0 (+roblox presence)" } });
+  const res = await request(url);
   const text = await res.body.text();
   let json;
   try { json = JSON.parse(text); } catch { json = null; }

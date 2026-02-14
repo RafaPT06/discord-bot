@@ -1,4 +1,4 @@
-#  Discord Utility Bot (Postgres + Railway)
+# 🤖 Discord Utility Bot (Postgres + Railway)
 
 A modular Discord bot built with **discord.js v14**, designed for server utilities, fun commands, deploy tracking, and external status monitoring (Roblox).
 
@@ -8,23 +8,23 @@ Built to run on **Railway** with **PostgreSQL**.
 
 ## ✨ Features
 
-###  Fun / Social
+### 🎉 Fun / Social
 - `/compliment @user` — send a random compliment
-- `/roast @user` — roast someone 
+- `/roast @user` — roast someone 🔥
 - `/mimic <text>` — SpOnGeBoB cAsE
 - `/cat` — random chaotic cat
 - `/crazy [1–3]` — the crazy copypasta
 
 ---
 
-###  Status
+### 📊 Status
 - `/status` — uptime, ping, runtime info
 - `/ping` — bot latency
 - `/roblox_status` — Roblox presence (Owner only)
 
 ---
 
-### ️ Global TODOs
+### 🗒️ Global TODOs
 - `/todo_add <text>` — add a TODO
 - `/todo_list [all]` — list TODOs
 - `/todo_done <id>` — mark TODO as done
@@ -33,7 +33,7 @@ Built to run on **Railway** with **PostgreSQL**.
 
 ---
 
-### ️ Content Management
+### 🛠️ Content Management
 - `/add_roast`, `/add_compliment`
 - `/list_roasts`, `/list_compliments` (paginated)
 - `/remove_roast <id>`, `/remove_compliment <id>`
@@ -42,7 +42,7 @@ Built to run on **Railway** with **PostgreSQL**.
 
 ---
 
-###  Deploy Notifications
+### 🚀 Deploy Notifications
 - `/set_deploy_channel`
 - `/show_deploy_channel`
 - `/reset_deploy_channel`
@@ -58,7 +58,7 @@ Automatically posts detailed deploy info on Railway:
 
 ---
 
-###  Roblox Alerts (Owner)
+### 🔔 Roblox Alerts (Owner)
 - Detects Roblox presence changes (offline / online / in-game)
 - Posts updates automatically
 - Refresh button included
@@ -70,7 +70,7 @@ Commands:
 
 ---
 
-###  Error Alerts (Owner)
+### 🚨 Error Alerts (Owner)
 - Captures:
   - unhandled rejections
     - uncaught exceptions
@@ -86,7 +86,7 @@ Commands:
 
       ---
 
-      ##  Tech Stack
+      ## 🧱 Tech Stack
       - **Node.js** ≥ 18
       - **discord.js v14**
       - **PostgreSQL**
@@ -95,7 +95,7 @@ Commands:
 
       ---
 
-      ##  Environment Variables
+      ## 🔐 Environment Variables
 
       ### Required
       ```env
