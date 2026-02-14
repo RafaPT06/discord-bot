@@ -1,34 +1,24 @@
 const { request } = require("undici");
 
-const DEFAULT_HEADERS = {
-  "content-type": "application/json",
-  "accept": "application/json",
-  "user-agent": "discord-bot (railway)",
-};
-
 async function postJson(url, body) {
   const res = await request(url, {
     method: "POST",
-    headers: DEFAULT_HEADERS,
+    headers: { "content-type": "application/json" },
     body: JSON.stringify(body),
   });
   const text = await res.body.text();
   let json;
   try { json = JSON.parse(text); } catch { json = null; }
-  if (res.statusCode < 200 || res.statusCode >= 300) {
-    throw new Error(`Roblox API ${res.statusCode}: ${text.slice(0, 200)}`);
-  }
+  if (res.statusCode < 200 || res.statusCode >= 300) throw new Error(`Roblox API ${res.statusCode}: ${text.slice(0, 200)}`);
   return json;
 }
 
 async function getJson(url) {
-  const res = await request(url, { headers: { "accept": "application/json", "user-agent": DEFAULT_HEADERS["user-agent"] } });
+  const res = await request(url);
   const text = await res.body.text();
   let json;
   try { json = JSON.parse(text); } catch { json = null; }
-  if (res.statusCode < 200 || res.statusCode >= 300) {
-    throw new Error(`Roblox API ${res.statusCode}: ${text.slice(0, 200)}`);
-  }
+  if (res.statusCode < 200 || res.statusCode >= 300) throw new Error(`Roblox API ${res.statusCode}: ${text.slice(0, 200)}`);
   return json;
 }
 
@@ -43,9 +33,7 @@ async function resolveUsername(username) {
 }
 
 async function getPresence(userId) {
-  const data = await postJson("https://presence.roblox.com/v1/presence/users", {
-    userIds: [Number(userId)],
-  });
+  const data = await postJson("https://presence.roblox.com/v1/presence/users", { userIds: [Number(userId)] });
   const p = data?.userPresences?.[0];
   if (!p) throw new Error("Presence not available");
   return {
@@ -61,11 +49,7 @@ async function getPlaceDetails(placeId) {
   const data = await getJson(url);
   const hit = data?.[0];
   if (!hit) return null;
-  return {
-    name: hit.name || null,
-    universeId: hit.universeId || null,
-    placeId: hit.placeId || placeId,
-  };
+  return { name: hit.name || null, universeId: hit.universeId || null, placeId: hit.placeId || placeId };
 }
 
 async function getGameIcon(universeId) {

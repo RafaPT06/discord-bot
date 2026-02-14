@@ -13,21 +13,12 @@ async function getRobloxEmbed(username) {
   const who = await resolveUsername(username);
   const p = await getPresence(who.userId);
 
-  const status = presenceLabel(p.presenceType);
-
-  // Only show location if Roblox provides something real
-  const lastLoc = (p.lastLocation && String(p.lastLocation).trim()) ? String(p.lastLocation).trim() : null;
-
   const embed = new EmbedBuilder()
     .setTitle("Roblox Status")
     .addFields(
       { name: "Account", value: `${who.name} (id: ${who.userId})`, inline: false },
-      { name: "Status", value: status, inline: true }
+      { name: "Status", value: presenceLabel(p.presenceType), inline: true }
     );
-
-  if (lastLoc) {
-    embed.addFields({ name: "Location", value: lastLoc, inline: true });
-  }
 
   const row = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
@@ -36,13 +27,13 @@ async function getRobloxEmbed(username) {
       .setStyle(ButtonStyle.Secondary)
   );
 
-  return { embed, components: [row] };
+  return { embed, components: [row], presenceType: p.presenceType };
 }
 
 // Back-compat
 async function getRobloxBlock(username) {
   const data = await getRobloxEmbed(username);
-  return { text: "", components: data.components, embed: data.embed };
+  return { text: "", components: data.components, embed: data.embed, presenceType: data.presenceType };
 }
 
 module.exports = { getRobloxEmbed, getRobloxBlock };

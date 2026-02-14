@@ -152,7 +152,14 @@ module.exports = [
       .setDescription("Reset deploy updates channel (Manage Server / Owner)."),
   ),
 
-  // Roblox Alerts (Owner)
+  
+cmd(
+  new SlashCommandBuilder()
+    .setName("deploy_test")
+    .setDescription("Send a test deploy notification (restricted)."),
+),
+
+// Roblox Alerts (Owner)
   cmd(
     new SlashCommandBuilder()
       .setName("set_roblox_alert_channel")

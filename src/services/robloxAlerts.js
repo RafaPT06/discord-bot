@@ -4,7 +4,7 @@ const { getRobloxEmbed } = require("./robloxEmbed");
 let started = false;
 let lastPresenceType = null;
 
-async function getAlertTargets() {
+async function getTargets() {
   const { rows } = await pool.query(
     "SELECT guild_id, channel_id FROM roblox_alert_settings WHERE enabled=TRUE"
   );
@@ -13,11 +13,12 @@ async function getAlertTargets() {
 
 async function tick(client) {
   const username = process.env.ROBLOX_USERNAME || "qxR4F4";
-  const data = await getRobloxEmbed(username); // now includes presenceType
+  const data = await getRobloxEmbed(username);
 
   const type = data.presenceType;
+  if (typeof type !== "number") return;
 
-  // baseline (no spam on startup)
+  // baseline: don't send on first tick
   if (lastPresenceType === null) {
     lastPresenceType = type;
     return;
@@ -26,17 +27,13 @@ async function tick(client) {
   if (type === lastPresenceType) return;
   lastPresenceType = type;
 
-  const targets = await getAlertTargets();
+  const targets = await getTargets();
   if (!targets.length) return;
 
   for (const t of targets) {
     const ch = await client.channels.fetch(t.channel_id).catch(() => null);
     if (!ch || !ch.isTextBased()) continue;
-
-    await ch.send({
-      embeds: [data.embed],
-      components: data.components,
-    }).catch(() => {});
+    await ch.send({ embeds: [data.embed], components: data.components }).catch(() => {});
   }
 }
 
@@ -44,11 +41,14 @@ async function startRobloxAlerts(client) {
   if (started) return;
   started = true;
 
+  // small delay so everything is ready
   setTimeout(() => {
+    // do one baseline tick quickly
+    tick(client).catch(() => {});
     setInterval(() => {
-      tick(client).catch((e) => console.error("Roblox alert loop:", e?.message || e));
-    }, 60_000);
-  }, 10_000);
+      tick(client).catch(() => {});
+    }, 120000); // 2 minutes
+  }, 10000);
 }
 
 module.exports = { startRobloxAlerts };

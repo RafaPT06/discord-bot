@@ -1,19 +1,15 @@
-const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
+const { SlashCommandBuilder } = require("discord.js");
 const { pool } = require("../db/pool");
-
-function pad(lines) {
-  // Align labels (monospace-ish inside description; Discord uses proportional but still readable)
-  const longest = Math.max(...lines.map(x => x.label.length));
-  return lines.map(x => `${x.label.padEnd(longest + 2)}**${x.value}**`);
-}
+const { createSection } = require("../utils/layout");
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("bot_stats")
     .setDescription("Show bot usage stats (restricted by permissions)."),
   async execute(interaction, client) {
-    // visible to everyone; permission system decides access
-    const startedTs = Math.floor((Date.now() - client.uptime) / 1000);
+    const guilds = client.guilds.cache.size;
+    const now = Math.floor(Date.now() / 1000);
+    const startedTs = now - Math.floor(client.uptime / 1000);
 
     const [roasts, compliments, todosOpen, usageTotal, topCmds] = await Promise.all([
       pool.query("SELECT COUNT(*)::int c FROM roasts"),
@@ -30,30 +26,19 @@ module.exports = {
     ]);
 
     const topList = topCmds.rows.length
-      ? topCmds.rows.map((r, i) => `${i + 1}. \`/${r.command_name}\` — **${r.c}**`).join("\n")
-      : "No data yet.";
+      ? topCmds.rows.map((r, i) => `${i + 1}. /${r.command_name} (${r.c})`).join("; ")
+      : "n/a";
 
-    const lines = pad([
-      { label: "Servers", value: String(client.guilds.cache.size) },
+    const msg = createSection("Bot Stats", [
+      { label: "Servers", value: guilds },
       { label: "Uptime", value: `<t:${startedTs}:R>` },
-      { label: "Ping", value: `${client.ws.ping}ms` },
-      { label: "Node", value: process.version || "unknown" },
-      { label: "Environment", value: process.env.NODE_ENV || process.env.RAILWAY_ENVIRONMENT_NAME || "unknown" },
-      { label: "Roasts", value: String(roasts.rows[0].c) },
-      { label: "Compliments", value: String(compliments.rows[0].c) },
-      { label: "Open TODOs", value: String(todosOpen.rows[0].c) },
-      { label: "Commands Logged", value: String(usageTotal.rows[0].c) },
+      { label: "Roasts", value: roasts.rows[0].c },
+      { label: "Compliments", value: compliments.rows[0].c },
+      { label: "Open TODOs", value: todosOpen.rows[0].c },
+      { label: "Commands Logged", value: usageTotal.rows[0].c },
+      { label: "Top Commands", value: topList },
     ]);
 
-    const embed = new EmbedBuilder()
-      .setTitle("Bot Stats")
-      .setDescription([
-        ...lines,
-        "",
-        "**Top Commands**",
-        topList,
-      ].join("\n"));
-
-    return interaction.reply({ embeds: [embed], ephemeral: false });
+    return interaction.reply({ content: msg, ephemeral: true });
   },
 };
