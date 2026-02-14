@@ -26,4 +26,10 @@ async function removeById(table, guildId, id) {
   return rowCount;
 }
 
-module.exports = { randomRow, insertUnique, removeById };
+async function measureDbLatency() {
+  const start = Date.now();
+  await pool.query("SELECT 1");
+  return Date.now() - start;
+}
+
+module.exports = { randomRow, insertUnique, removeById, measureDbLatency };

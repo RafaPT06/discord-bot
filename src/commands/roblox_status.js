@@ -1,5 +1,5 @@
 const { SlashCommandBuilder } = require("discord.js");
-const { getRobloxBlock } = require("../services/robloxEmbed");
+const { getRobloxEmbed } = require("../services/robloxEmbed");
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -8,7 +8,7 @@ module.exports = {
   async execute(interaction) {
     await interaction.deferReply({ ephemeral: false }).catch(() => {});
     const username = process.env.ROBLOX_USERNAME || "qxR4F4";
-    const data = await getRobloxBlock(username);
-    return interaction.editReply({ content: data.text, components: data.components }).catch(() => {});
+    const data = await getRobloxEmbed(username);
+    return interaction.editReply({ embeds: [data.embed], components: data.components }).catch(() => {});
   },
 };

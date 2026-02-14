@@ -1,6 +1,5 @@
-const { SlashCommandBuilder } = require("discord.js");
+const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
 const os = require("os");
-const { createSection } = require("../utils/layout");
 const { measureDbLatency } = require("../utils/dbHelpers");
 
 function formatUptime(seconds) {
@@ -18,30 +17,31 @@ function formatBytes(bytes) {
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("status")
-    .setDescription("Show bot status and runtime info."),
+    .setDescription("Uptime + ping + runtime info."),
   async execute(interaction, client) {
-    const uptime = Math.floor(process.uptime());
-    const mem = process.memoryUsage();
-    const node = process.version;
-    const env = process.env.NODE_ENV || "unknown";
+    const uptime = formatUptime(process.uptime());
+    const ping = `${client.ws.ping}ms`;
+    const mem = formatBytes(process.memoryUsage().rss);
 
     let dbLatency = "n/a";
     try {
       const ms = await measureDbLatency();
       dbLatency = `${ms}ms`;
-    } catch (_) {}
+    } catch {}
 
-    const output = createSection("Bot Status", [
-      { label: "Servers", value: client.guilds.cache.size },
-      { label: "Uptime", value: formatUptime(uptime) },
-      { label: "Ping", value: `${client.ws.ping}ms` },
-      { label: "Memory RSS", value: formatBytes(mem.rss) },
-      { label: "DB Latency", value: dbLatency },
-      { label: "Node", value: node },
-      { label: "Environment", value: env },
-      { label: "Platform", value: `${os.platform()} ${os.arch()}` },
-    ]);
+    const embed = new EmbedBuilder()
+      .setTitle("Bot Status")
+      .addFields(
+        { name: "Servers", value: String(client.guilds.cache.size), inline: true },
+        { name: "Uptime", value: uptime, inline: true },
+        { name: "Ping", value: ping, inline: true },
+        { name: "Memory RSS", value: mem, inline: true },
+        { name: "DB Latency", value: dbLatency, inline: true },
+        { name: "Node", value: process.version, inline: true },
+        { name: "Environment", value: process.env.NODE_ENV || "unknown", inline: true },
+        { name: "Platform", value: `${os.platform()} ${os.arch()}`, inline: true }
+      );
 
-    return interaction.reply({ content: output, ephemeral: false });
+    return interaction.reply({ embeds: [embed], ephemeral: false });
   },
 };

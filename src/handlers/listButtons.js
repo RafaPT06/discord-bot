@@ -1,102 +1,75 @@
-const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
-const { pool } = require("../db/pool");
+const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } = require("discord.js");
+const { fetchContentPage } = require("../utils/contentList");
 
-const LIMIT = 10;
-
-// Make list output clean + safe for Discord
-function cleanText(s, maxLen = 140) {
-  if (!s) return "-";
-  // collapse newlines/tabs/multi spaces
-  let out = String(s).replace(/\s+/g, " ").trim();
-  if (out.length > maxLen) out = out.slice(0, maxLen - 1) + "…";
-  return out;
-}
-
-function tableFor(type) {
-  return type === "roast" ? "roasts" : "compliments";
-}
-
-function labelFor(type) {
-  return type === "roast" ? "Roasts" : "Compliments";
-}
-
-async function fetchPage(guildId, type, offset) {
-  const table = tableFor(type);
-
-  const { rows } = await pool.query(
-    `SELECT id, text
-     FROM ${table}
-     WHERE guild_id=$1
-     ORDER BY id ASC
-     LIMIT $2 OFFSET $3`,
-    [guildId, LIMIT, offset]
-  );
-
-  const { rows: cnt } = await pool.query(
-    `SELECT COUNT(*)::int AS c FROM ${table} WHERE guild_id=$1`,
-    [guildId]
-  );
-
-  return { rows, total: cnt[0]?.c || 0 };
-}
-
-function pager(type, offset, total) {
-  const prevOffset = Math.max(0, offset - LIMIT);
-  const nextOffset = offset + LIMIT;
+function buildRow(type, offset, pageSize, total) {
+  const prevOffset = Math.max(0, offset - pageSize);
+  const nextOffset = offset + pageSize;
+  const canPrev = offset > 0;
+  const canNext = nextOffset < total;
 
   return new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId(`list:${type}:${prevOffset}`)
       .setLabel("Prev")
       .setStyle(ButtonStyle.Secondary)
-      .setDisabled(offset === 0),
-
+      .setDisabled(!canPrev),
     new ButtonBuilder()
       .setCustomId(`list:${type}:${nextOffset}`)
       .setLabel("Next")
       .setStyle(ButtonStyle.Secondary)
-      .setDisabled(nextOffset >= total)
+      .setDisabled(!canNext)
   );
 }
 
+function titleFor(type) {
+  return type === "compliment" ? "Compliments" : "Roasts";
+}
+
 async function handleListButton(interaction, type, offset) {
-  if (!interaction.guildId) {
-    return interaction.reply({ content: "Error: Server only.", ephemeral: true });
+  try {
+    // public by default (user asked that lists should not be "only you can see")
+    if (!interaction.deferred && !interaction.replied) {
+      await interaction.deferReply({ ephemeral: false }).catch(() => {});
+    }
+
+    const pageSize = 10;
+    const { total, rows } = await fetchContentPage({
+      guildId: interaction.guildId,
+      type,
+      offset,
+      limit: pageSize,
+    });
+
+    const start = total === 0 ? 0 : offset + 1;
+    const end = Math.min(offset + pageSize, total);
+
+    let description;
+    if (!rows.length) {
+      description = "_No entries yet._";
+    } else {
+      description = rows
+        .map((r, i) => {
+          const num = offset + i + 1;
+          const text = String(r.text || "").replace(/\s+/g, " ").trim();
+          const safe = text.length > 180 ? text.slice(0, 177) + "..." : text;
+          return `**#${num}**  ${safe}`;
+        })
+        .join("\n");
+    }
+
+    const embed = new EmbedBuilder()
+      .setTitle(`${titleFor(type)} (${total} total)`)
+      .setDescription(description);
+
+    if (total > 0) {
+      embed.setFooter({ text: `Showing ${start}-${end}` });
+    }
+
+    const row = buildRow(type, offset, pageSize, total);
+    return interaction.editReply({ embeds: [embed], components: total > pageSize ? [row] : [] }).catch(() => {});
+  } catch (err) {
+    return interaction.editReply({ content: `Error: ${err?.message || String(err)}`, components: [] }).catch(() => {});
   }
-
-  // Works for both initial slash command + button presses
-  if (interaction.isButton?.()) await interaction.deferUpdate().catch(() => {});
-  else await interaction.deferReply({ ephemeral: true }).catch(() => {});
-
-  const { rows, total } = await fetchPage(interaction.guildId, type, offset);
-
-  if (total === 0) {
-    const header = `**${labelFor(type)}** - 0 total`;
-    const body = "_No entries yet._";
-    const payload = { content: `${header}\n\n${body}`, components: [] };
-
-    return interaction.isButton?.()
-      ? interaction.editReply(payload).catch(() => {})
-      : interaction.editReply(payload).catch(() => {});
-  }
-
-  const start = offset + 1;
-  const end = Math.min(offset + rows.length, total);
-
-  const header = `**${labelFor(type)}** - showing ${start}–${end} of ${total}`;
-  const body = rows
-    .map((r, i) => `\`${offset + i + 1}.\` **#${r.id}** - ${cleanText(r.text)}`)
-    .join("\n");
-
-  // Small hint so you always know which id to remove
-  const hint = `\n\nTip: remove by **real id** → \`/remove_${type} id:#\``;
-
-  const payload = {
-    content: `${header}\n\n${body}${hint}`.slice(0, 1900),
-    components: [pager(type, offset, total)],
-  };
-
-  return interaction.editReply(payload).catch(() => {});
 }
 
 module.exports = { handleListButton };

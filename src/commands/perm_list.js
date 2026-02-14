@@ -1,37 +1,39 @@
-const { SlashCommandBuilder } = require("discord.js");
-const { canManageSettings } = require("../utils/perms");
+const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
 const { pool } = require("../db/pool");
+
+function roleLabel(guild, roleId) {
+  const r = guild?.roles?.cache?.get(roleId);
+  return r ? r.name : roleId;
+}
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("perm_list")
-    .setDescription("List all commands with custom permission rules (Manage Server / Owner)."),
+    .setDescription("List all command permission overrides."),
   async execute(interaction) {
-    if (!interaction.guildId) return interaction.reply({ content: " Server only.", ephemeral: true });
-    if (!canManageSettings(interaction)) return interaction.reply({ content: " Requires **Manage Server** (or Owner).", ephemeral: true });
-
-    const { rows } = await pool.query(
-      `SELECT command_name, allowed_role_ids, allow_manage_guild
-       FROM command_permissions
-       WHERE guild_id=$1
-       ORDER BY command_name ASC`,
+    const res = await pool.query(
+      "SELECT command_name, allowed_role_ids, allow_manage_guild FROM command_permissions WHERE guild_id=$1 ORDER BY command_name ASC",
       [interaction.guildId]
     );
+    const rows = res.rows || [];
+
+    const embed = new EmbedBuilder().setTitle("Permissions");
 
     if (!rows.length) {
-      return interaction.reply({ content: "ℹ️ No custom permission rules set in this server.", ephemeral: true });
+      embed.setDescription("_No overrides set._");
+      return interaction.reply({ embeds: [embed], ephemeral: true });
     }
 
-    const lines = rows.map(r => {
-      const roles = (r.allowed_role_ids?.length)
-        ? r.allowed_role_ids.map(id => `<@&${id}>`).join(", ")
-        : "_(none)_";
-      return `• \`/${r.command_name}\` → ${roles} (Manage Server bypass: **${r.allow_manage_guild ? "ON" : "OFF"}**)`;
+    const lines = rows.map((r) => {
+      const roles = (r.allowed_role_ids || [])
+        .map((id) => roleLabel(interaction.guild, id))
+        .join(", ");
+      const manage = r.allow_manage_guild ? "Manage Server allowed" : "Manage Server blocked";
+      const roleText = roles ? `roles: ${roles}` : "roles: (none)";
+      return `• \`${r.command_name}\` — ${roleText} | ${manage}`;
     });
 
-    const allRoleIds = rows.flatMap(r => r.allowed_role_ids || []);
-    const text = (" **Custom command permissions**\n" + lines.join("\n")).slice(0, 1900);
-
-    return interaction.reply({ content: text, ephemeral: true, allowedMentions: { roles: allRoleIds } });
-  }
+    embed.setDescription(lines.join("\n"));
+    return interaction.reply({ embeds: [embed], ephemeral: true });
+  },
 };

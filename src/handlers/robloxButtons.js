@@ -1,19 +1,15 @@
-const { getRobloxBlock } = require("../services/robloxEmbed");
+const { getRobloxEmbed } = require("../services/robloxEmbed");
 
 async function handleRobloxRefresh(interaction) {
-  const username = process.env.ROBLOX_USERNAME || null;
-  if (!username) {
-    await interaction.reply({ content: "Error: ROBLOX_USERNAME is not set.", ephemeral: true }).catch(() => null);
-    return;
-  }
+  const username = process.env.ROBLOX_USERNAME || "qxR4F4";
+  const data = await getRobloxEmbed(username);
 
-  try {
-    await interaction.deferUpdate();
-    const data = await getRobloxBlock(username);
-    await interaction.editReply({ content: data.text, components: data.components }).catch(() => {});
-  } catch (e) {
-    await interaction.followUp({ content: `Error: ${String(e?.message || e)}`, ephemeral: true }).catch(() => null);
+  // Refresh button should not create a new message
+  if (interaction.deferred || interaction.replied) {
+    return interaction.editReply({ embeds: [data.embed], components: data.components }).catch(() => {});
   }
+  await interaction.deferUpdate().catch(() => {});
+  return interaction.editReply({ embeds: [data.embed], components: data.components }).catch(() => {});
 }
 
 module.exports = { handleRobloxRefresh };
