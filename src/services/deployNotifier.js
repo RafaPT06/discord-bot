@@ -30,7 +30,7 @@ function nowTs() {
   return Math.floor(Date.now() / 1000);
 }
 
-async function ensureTable() {
+async function ensureTables() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS deploy_channels (
       guild_id TEXT PRIMARY KEY,
@@ -38,12 +38,35 @@ async function ensureTable() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS app_state (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    )
+  `);
 }
 
 async function getDeployChannels() {
-  await ensureTable();
+  await ensureTables();
   const res = await pool.query("SELECT guild_id, channel_id FROM deploy_channels");
   return res.rows || [];
+}
+
+async function getLastSentSha() {
+  await ensureTables();
+  const { rows } = await pool.query("SELECT value FROM app_state WHERE key='last_deploy_sha' LIMIT 1");
+  return rows?.[0]?.value || null;
+}
+
+async function setLastSentSha(sha) {
+  await ensureTables();
+  await pool.query(
+    `INSERT INTO app_state (key, value)
+     VALUES ('last_deploy_sha', $1)
+     ON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value`,
+    [sha || ""]
+  );
 }
 
 function buildDeployMessage() {
@@ -55,31 +78,40 @@ function buildDeployMessage() {
   const node = nodeVersion();
   const ts = nowTs();
 
-  // Help-style, no emojis, no dividers
   return [
     "New Deploy Detected",
     "",
-    `Environment     \`${envName()}\``,
-    `Commit          \`${shaShort}\``,
-    `Change          \`${msg}\``,
-    `Author          \`${author}\``,
-    `GitHub          \`${url}\``,
-    `Node            \`${node}\``,
+    `Environment     **${envName()}**`,
+    `Commit          **${shaShort}**`,
+    `Change          **${msg}**`,
+    `Author          **${author}**`,
+    `GitHub          **${url}**`,
+    `Node            **${node}**`,
     `Time            <t:${ts}:F> (<t:${ts}:R>)`,
   ].join("\n");
 }
 
-async function sendDeployMessage(client) {
+async function sendDeployNotices(client) {
   const rows = await getDeployChannels();
   if (!rows.length) return;
 
+  const sha = process.env.RAILWAY_GIT_COMMIT_SHA || "";
+  const last = await getLastSentSha();
+
+  // If we've already sent for this commit hash in this DB, skip
+  if (sha && last === sha) return;
+
   const text = buildDeployMessage();
 
+  let sentAny = false;
   for (const r of rows) {
     const ch = await client.channels.fetch(r.channel_id).catch(() => null);
     if (!ch || !ch.isTextBased()) continue;
-    await ch.send({ content: text }).catch(() => null);
+    await ch.send({ content: text, allowedMentions: { parse: [] } }).catch(() => null);
+    sentAny = true;
   }
+
+  if (sentAny) await setLastSentSha(sha);
 }
 
-module.exports = { sendDeployNotices: sendDeployMessage };
+module.exports = { sendDeployNotices };

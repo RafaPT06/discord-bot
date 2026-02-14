@@ -1,11 +1,20 @@
 const { SlashCommandBuilder } = require("discord.js");
 const { pool } = require("../db/pool");
-const { createSection } = require("../utils/layout");
+
+function padRight(str, len) {
+  return str + " ".repeat(Math.max(0, len - str.length));
+}
+
+function block(title, rows) {
+  const longest = Math.max(...rows.map(r => r.label.length));
+  const lines = rows.map(r => `${padRight(r.label, longest + 2)}**${r.value}**`);
+  return [title, "", ...lines].join("\n");
+}
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("bot_stats")
-    .setDescription("Show bot usage stats (restricted by permissions)."),
+    .setDescription("Show bot usage stats."),
   async execute(interaction, client) {
     const guilds = client.guilds.cache.size;
     const now = Math.floor(Date.now() / 1000);
@@ -26,19 +35,20 @@ module.exports = {
     ]);
 
     const topList = topCmds.rows.length
-      ? topCmds.rows.map((r, i) => `${i + 1}. /${r.command_name} (${r.c})`).join("; ")
-      : "n/a";
+      ? topCmds.rows.map((r, i) => `${i + 1}. /${r.command_name} (${r.c})`).join(" | ")
+      : "No data";
 
-    const msg = createSection("Bot Stats", [
-      { label: "Servers", value: guilds },
+    const text = block("Bot Stats", [
+      { label: "Servers", value: String(guilds) },
       { label: "Uptime", value: `<t:${startedTs}:R>` },
-      { label: "Roasts", value: roasts.rows[0].c },
-      { label: "Compliments", value: compliments.rows[0].c },
-      { label: "Open TODOs", value: todosOpen.rows[0].c },
-      { label: "Commands Logged", value: usageTotal.rows[0].c },
+      { label: "Ping", value: `${client.ws.ping}ms` },
+      { label: "Roasts", value: String(roasts.rows[0].c) },
+      { label: "Compliments", value: String(compliments.rows[0].c) },
+      { label: "Open TODOs", value: String(todosOpen.rows[0].c) },
+      { label: "Commands Logged", value: String(usageTotal.rows[0].c) },
       { label: "Top Commands", value: topList },
     ]);
 
-    return interaction.reply({ content: msg, ephemeral: true });
+    return interaction.reply({ content: text, ephemeral: false });
   },
 };
