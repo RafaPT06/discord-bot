@@ -47,9 +47,12 @@ async function tick(client) {
 async function startRobloxAlerts(client) {
   if (started) return;
   started = true;
+  // Roblox presence has no push/webhook. We poll, but ONLY send when presence changes.
+  // Default: 5 minutes (override with ROBLOX_POLL_MS).
+  const pollMs = Math.max(30_000, Number(process.env.ROBLOX_POLL_MS || 300_000));
   setInterval(() => {
     tick(client).catch(() => {});
-  }, 120000); // 2 minutes
+  }, pollMs);
 }
 
 module.exports = { startRobloxAlerts };

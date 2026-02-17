@@ -292,4 +292,33 @@ cmd(
       .setName("help")
       .setDescription("Show all commands grouped (like the screenshot)."),
   ),
+
+  // Backups (Restricted)
+  cmd(
+    new SlashCommandBuilder()
+      .setName("set_backup_channel")
+      .setDescription("Set the channel where weekly DB backups will be posted.")
+      .addChannelOption((o) =>
+        o
+          .setName("channel")
+          .setDescription("Target channel")
+          .setRequired(true)
+          .addChannelTypes(ChannelType.GuildText),
+      ),
+  ),
+  cmd(
+    new SlashCommandBuilder()
+      .setName("show_backup_channel")
+      .setDescription("Show the current backup channel (if any)."),
+  ),
+  cmd(
+    new SlashCommandBuilder()
+      .setName("reset_backup_channel")
+      .setDescription("Remove/disable weekly backups for this server."),
+  ),
+  cmd(
+    new SlashCommandBuilder()
+      .setName("test_backup")
+      .setDescription("Send a backup right now to the configured backup channel."),
+  ),
 ];

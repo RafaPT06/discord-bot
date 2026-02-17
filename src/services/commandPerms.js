@@ -24,6 +24,11 @@ const PROTECTED_COMMANDS = new Set([
   "show_error_alert_channel",
   "reset_error_alert_channel",
   "test_error_alert",
+  // Backups
+  "set_backup_channel",
+  "show_backup_channel",
+  "reset_backup_channel",
+  "test_backup",
 ]);
 
 function isOwner(interaction) {

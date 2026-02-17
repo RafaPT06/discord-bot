@@ -5,6 +5,7 @@ const path = require("path");
 const { initDb } = require("./db");
 const { attachErrorAlerts } = require("./services/errorAlerts");
 const { startRobloxAlerts } = require("./services/robloxAlerts");
+const { startBackupScheduler } = require("./services/backupScheduler");
 const { sendDeployNotices } = require("./services/deployNotifier");
 const { canRunCommand } = require("./services/commandPerms");
 const { logCommandUsage } = require("./services/usageLogger");
@@ -37,6 +38,7 @@ client.once(Events.ClientReady, async () => {
   await initDb();
   attachErrorAlerts(client);
   startRobloxAlerts(client);
+  startBackupScheduler(client);
   await sendDeployNotices(client);
   console.log(" DB init + services started");
 });
