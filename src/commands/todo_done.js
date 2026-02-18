@@ -1,4 +1,4 @@
-const { SlashCommandBuilder } = require("discord.js");
+const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
 const { canManageSettings } = require("../utils/perms");
 const { pool } = require("../db/pool");
 
@@ -16,7 +16,12 @@ module.exports = {
       "UPDATE todos SET done=TRUE, done_at=NOW() WHERE guild_id=$1 AND id=$2 AND done=FALSE",
       [interaction.guildId, id]
     );
-    if (!rowCount) return interaction.reply({ content: "️ Not found (or already done).", ephemeral: true });
-    return interaction.reply({ content: ` Marked TODO **#${id}** done.`, ephemeral: true });
+    const embed = new EmbedBuilder().setTitle("TODOs");
+    if (!rowCount) {
+      embed.setDescription("Not found (or already done).");
+      return interaction.reply({ embeds: [embed], ephemeral: true });
+    }
+    embed.setDescription(`Marked TODO **#${id}** done.`);
+    return interaction.reply({ embeds: [embed], ephemeral: true });
   }
 };

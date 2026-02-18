@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, ChannelType } = require("discord.js");
+const { SlashCommandBuilder, ChannelType, EmbedBuilder } = require("discord.js");
 const { canManageSettings } = require("../utils/perms");
 const { pool } = require("../db/pool");
 
@@ -17,6 +17,9 @@ module.exports = {
        ON CONFLICT (guild_id) DO UPDATE SET channel_id=EXCLUDED.channel_id, enabled=TRUE, updated_at=NOW()`,
       [interaction.guildId, ch.id]
     );
-    return interaction.reply({ content: ` Deploy updates will post in ${ch}.`, ephemeral: true });
+    const embed = new EmbedBuilder()
+      .setTitle("Deploy Updates")
+      .setDescription(`Deploy updates will post in ${ch}.`);
+    return interaction.reply({ embeds: [embed], ephemeral: true });
   }
 };

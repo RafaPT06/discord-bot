@@ -1,4 +1,4 @@
-const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
+const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } = require("discord.js");
 const { pool } = require("../db/pool");
 
 const LIMIT = 10;
@@ -66,37 +66,34 @@ async function handleListButton(interaction, type, offset) {
 
   // Works for both initial slash command + button presses
   if (interaction.isButton?.()) await interaction.deferUpdate().catch(() => {});
-  else await interaction.deferReply({ ephemeral: true }).catch(() => {});
+  else await interaction.deferReply({ ephemeral: false }).catch(() => {});
 
   const { rows, total } = await fetchPage(interaction.guildId, type, offset);
 
-  if (total === 0) {
-    const header = `**${labelFor(type)}** - 0 total`;
-    const body = "_No entries yet._";
-    const payload = { content: `${header}\n\n${body}`, components: [] };
+  const embed = new EmbedBuilder().setTitle(`${labelFor(type)} (${total} total)`);
 
-    return interaction.isButton?.()
-      ? interaction.editReply(payload).catch(() => {})
-      : interaction.editReply(payload).catch(() => {});
+  if (total === 0) {
+    embed.setDescription("*No entries yet.*");
+    return interaction
+      .editReply({ embeds: [embed], components: [], content: "" })
+      .catch(() => {});
   }
 
   const start = offset + 1;
   const end = Math.min(offset + rows.length, total);
 
-  const header = `**${labelFor(type)}** - showing ${start}–${end} of ${total}`;
   const body = rows
-    .map((r, i) => `\`${offset + i + 1}.\` **#${r.id}** - ${cleanText(r.text)}`)
+    .map((r, i) => `**${offset + i + 1}.**  **#${r.id}**  ${cleanText(r.text)}`)
     .join("\n");
 
-  // Small hint so you always know which id to remove
-  const hint = `\n\nTip: remove by **real id** → \`/remove_${type} id:#\``;
+  embed.setDescription(body);
+  embed.setFooter({ text: `Showing ${start}–${end} • remove by ID using /remove_${type}` });
 
-  const payload = {
-    content: `${header}\n\n${body}${hint}`.slice(0, 1900),
-    components: [pager(type, offset, total)],
-  };
+  const components = total > LIMIT ? [pager(type, offset, total)] : [];
 
-  return interaction.editReply(payload).catch(() => {});
+  return interaction
+    .editReply({ embeds: [embed], components, content: "" })
+    .catch(() => {});
 }
 
 module.exports = { handleListButton };

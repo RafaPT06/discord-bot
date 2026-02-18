@@ -1,4 +1,4 @@
-const { SlashCommandBuilder } = require("discord.js");
+const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
 const { canManageSettings } = require("../utils/perms");
 const { pool } = require("../db/pool");
 
@@ -17,11 +17,16 @@ module.exports = {
       : "SELECT id, text, done FROM todos WHERE guild_id=$1 AND done=FALSE ORDER BY id ASC LIMIT 50";
     const { rows } = await pool.query(q, [interaction.guildId]);
 
-    const header = all ? "️ **TODOs (all)**" : "️ **TODOs (open)**";
-    const body = rows.length
-      ? rows.map(r => `${r.done ? "" : ""} **#${r.id}** — ${r.text}`).join("\n")
-      : "_No TODOs._";
+    const embed = new EmbedBuilder().setTitle(all ? "TODOs (all)" : "TODOs (open)");
 
-    return interaction.reply({ content: `${header}\n${body}`, ephemeral: true });
+    if (!rows.length) {
+      embed.setDescription("*No TODOs.*");
+      return interaction.reply({ embeds: [embed], ephemeral: false });
+    }
+
+    embed.setDescription(rows.map(r => `**#${r.id}**  ${r.text}${r.done ? "  (done)" : ""}`).join("\n").slice(0, 3900));
+    embed.setFooter({ text: "Mark done with /todo_done <id>" });
+
+    return interaction.reply({ embeds: [embed], ephemeral: false });
   }
 };

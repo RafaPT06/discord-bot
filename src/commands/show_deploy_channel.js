@@ -1,4 +1,4 @@
-const { SlashCommandBuilder } = require("discord.js");
+const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
 const { canManageSettings } = require("../utils/perms");
 const { pool } = require("../db/pool");
 
@@ -10,7 +10,14 @@ module.exports = {
 
     const { rows } = await pool.query("SELECT channel_id, enabled FROM deploy_channel_settings WHERE guild_id=$1", [interaction.guildId]);
     const r = rows[0];
-    if (!r) return interaction.reply({ content: "ℹ️ No deploy channel set.", ephemeral: true });
-    return interaction.reply({ content: ` Deploy channel: <#${r.channel_id}> (${r.enabled ? "enabled" : "disabled"})`, ephemeral: true });
+    const embed = new EmbedBuilder().setTitle("Deploy Updates");
+
+    if (!r) {
+      embed.setDescription("No deploy channel set.");
+      return interaction.reply({ embeds: [embed], ephemeral: true });
+    }
+
+    embed.setDescription(`Channel: <#${r.channel_id}>\nEnabled: **${r.enabled ? "true" : "false"}**`);
+    return interaction.reply({ embeds: [embed], ephemeral: true });
   }
 };

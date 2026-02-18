@@ -1,4 +1,5 @@
 const { SlashCommandBuilder } = require("discord.js");
+const { pool } = require("../db/pool");
 const { randomRow } = require("../utils/dbHelpers");
 
 const FALLBACK = [
@@ -14,10 +15,27 @@ module.exports = {
     .addUserOption(o => o.setName("user").setDescription("Who to roast").setRequired(true)),
   async execute(interaction) {
     const user = interaction.options.getUser("user", true);
-        const row = interaction.guildId
+    const row = interaction.guildId
       ? await randomRow("roasts", interaction.guildId).catch(() => null)
       : null;
-    const text = row?.text || FALLBACK[Math.floor(Math.random() * FALLBACK.length)];
-    return interaction.reply({ content: ` <@${user.id}>, ${text}`, allowedMentions: { users: [user.id] } });
+
+    // Same idea as compliments: if we had to use fallback, persist it so lists aren't empty.
+    let text = row?.text;
+    if (!text) {
+      text = FALLBACK[Math.floor(Math.random() * FALLBACK.length)];
+      if (interaction.guildId) {
+        await pool
+          .query(
+            "INSERT INTO roasts (guild_id, text) VALUES ($1, $2) ON CONFLICT DO NOTHING",
+            [interaction.guildId, text]
+          )
+          .catch(() => {});
+      }
+    }
+
+    return interaction.reply({
+      content: ` <@${user.id}>, ${text}`,
+      allowedMentions: { users: [user.id] },
+    });
   },
 };

@@ -1,4 +1,4 @@
-const { SlashCommandBuilder } = require("discord.js");
+const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
 const { canManageSettings } = require("../utils/perms");
 const { pool } = require("../db/pool");
 
@@ -16,6 +16,9 @@ module.exports = {
       "INSERT INTO todos (guild_id, text) VALUES ($1, $2) RETURNING id",
       [interaction.guildId, text]
     );
-    return interaction.reply({ content: ` Added TODO **#${rows[0].id}**.`, ephemeral: true });
+    const embed = new EmbedBuilder()
+      .setTitle("TODOs")
+      .setDescription(`Added TODO **#${rows[0].id}**.`);
+    return interaction.reply({ embeds: [embed], ephemeral: true });
   }
 };

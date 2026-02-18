@@ -1,4 +1,4 @@
-const { SlashCommandBuilder } = require("discord.js");
+const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
 const { canManageSettings } = require("../utils/perms");
 const { pool } = require("../db/pool");
 
@@ -9,6 +9,7 @@ module.exports = {
     if (!canManageSettings(interaction)) return interaction.reply({ content: " Requires **Manage Server** (or Owner).", ephemeral: true });
 
     await pool.query("DELETE FROM deploy_channel_settings WHERE guild_id=$1", [interaction.guildId]);
-    return interaction.reply({ content: "️ Deploy channel reset.", ephemeral: true });
+    const embed = new EmbedBuilder().setTitle("Deploy Updates").setDescription("Deploy channel reset.");
+    return interaction.reply({ embeds: [embed], ephemeral: true });
   }
 };
