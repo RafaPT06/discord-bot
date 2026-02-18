@@ -46,7 +46,6 @@ module.exports = [
       .setDescription("Uptime + ping + runtime info."),
   ),
   cmd(new SlashCommandBuilder().setName("ping").setDescription("Bot latency.")),
-  cmd(new SlashCommandBuilder().setName("maintenance").setDescription("Toggle maintenance mode (Owner for on/off).").addStringOption(o=>o.setName("action").setDescription("on | off | status").setRequired(true).addChoices({ name: "on", value: "on" },{ name: "off", value: "off" },{ name: "status", value: "status" }))),
   cmd(
     new SlashCommandBuilder()
       .setName("roblox_status")
@@ -152,14 +151,7 @@ module.exports = [
       .setDescription("Reset deploy updates channel (Manage Server / Owner)."),
   ),
 
-  
-cmd(
-  new SlashCommandBuilder()
-    .setName("deploy_test")
-    .setDescription("Send a test deploy notification (restricted)."),
-),
-
-// Roblox Alerts (Owner)
+  // Roblox Alerts (Owner)
   cmd(
     new SlashCommandBuilder()
       .setName("set_roblox_alert_channel")
@@ -286,39 +278,25 @@ cmd(
       ),
   ),
 
+  // Setup
+  cmd(
+    new SlashCommandBuilder()
+      .setName("setup_channels")
+      .setDescription(
+        "Create a bot category + channels and auto-configure deploy/alert channels (Manage Server / Owner).",
+      )
+      .addStringOption((o) =>
+        o
+          .setName("category")
+          .setDescription("Category name (default: bot)")
+          .setRequired(false),
+      ),
+  ),
+
   // Help
   cmd(
     new SlashCommandBuilder()
       .setName("help")
       .setDescription("Show all commands grouped (like the screenshot)."),
-  ),
-
-  // Backups (Restricted)
-  cmd(
-    new SlashCommandBuilder()
-      .setName("set_backup_channel")
-      .setDescription("Set the channel where weekly DB backups will be posted.")
-      .addChannelOption((o) =>
-        o
-          .setName("channel")
-          .setDescription("Target channel")
-          .setRequired(true)
-          .addChannelTypes(ChannelType.GuildText),
-      ),
-  ),
-  cmd(
-    new SlashCommandBuilder()
-      .setName("show_backup_channel")
-      .setDescription("Show the current backup channel (if any)."),
-  ),
-  cmd(
-    new SlashCommandBuilder()
-      .setName("reset_backup_channel")
-      .setDescription("Remove/disable weekly backups for this server."),
-  ),
-  cmd(
-    new SlashCommandBuilder()
-      .setName("test_backup")
-      .setDescription("Send a backup right now to the configured backup channel."),
   ),
 ];

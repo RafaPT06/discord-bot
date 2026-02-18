@@ -3,19 +3,19 @@ function padRight(str, length) {
 }
 
 /**
- * Clean, help-style section (no emojis, aligned labels, bold values):
+ * Creates a clean, help-style section:
  *
  * Title
  *
- * Label        **value**
- * Label2       **value2**
+ * Label        `value`
+ * Label2       `value2`
  */
 function createSection(title, rows) {
   const longestKey = Math.max(0, ...rows.map((r) => String(r.label || "").length));
 
   const lines = rows.map((r) => {
     const label = padRight(String(r.label || ""), longestKey + 2);
-    return `${label}**${String(r.value)}**`;
+    return `${label}\`${r.value}\``;
   });
 
   return [title, "", ...lines].join("\n");

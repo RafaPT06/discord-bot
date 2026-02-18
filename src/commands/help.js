@@ -52,18 +52,15 @@ module.exports = {
           "• `/reset_error_alert_channel` — reset error alerts channel",
           "• `/test_error_alert` — send a test alert",
           "",
-          "**Backups (Restricted)**",
-          "• `/set_backup_channel #channel` — set weekly backup channel",
-          "• `/show_backup_channel` — show current backup channel",
-          "• `/reset_backup_channel` — reset backup channel",
-          "• `/test_backup` — send a backup now",
-          "",
           "**Permissions (Manage Server / Owner)**",
           "• `/perm_set` — set a command permission",
           "• `/perm_add_role` — add a role to a command permission",
           "• `/perm_show` — show a command permission",
           "• `/perm_list` — list all permissions",
           "• `/perm_clear` — remove a command permission override",
+          "",
+          "**Setup (Manage Server / Owner)**",
+          "• `/setup_channels [category]` — create bot category + channels and auto-configure deploy/alerts",
         ].join("\n")
       );
 

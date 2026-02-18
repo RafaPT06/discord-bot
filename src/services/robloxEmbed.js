@@ -1,39 +1,63 @@
-const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } = require("discord.js");
-const { resolveUsername, getPresence } = require("./robloxApi");
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
+const { resolveUsername, getPresence, getPlaceDetails, getGameIcon } = require("./robloxApi");
 
-function presenceLabel(presenceType) {
-  // 0: Offline, 1: Online, 2: In Game, 3: In Studio
-  if (presenceType === 2) return "🟢 In Game";
-  if (presenceType === 3) return "🟡 In Studio";
-  if (presenceType === 1) return "🔵 Online";
-  return "⚫ Offline";
+function presenceLabel(t) {
+  if (t === 0) return "Offline";
+  if (t === 1) return "Online";
+  if (t === 2) return "In Game";
+  if (t === 3) return "In Studio";
+  return "Unknown";
 }
 
 async function getRobloxEmbed(username) {
-  const who = await resolveUsername(username);
-  const p = await getPresence(who.userId);
+  const user = await resolveUsername(username);
+  const p = await getPresence(user.userId);
+
+  let placeName = null;
+  let universeId = p.universeId || null;
+
+  if (p.placeId) {
+    try {
+      const details = await getPlaceDetails(p.placeId);
+      placeName = details?.name || null;
+      universeId = details?.universeId || universeId;
+    } catch (_) {}
+  }
+
+  const status = presenceLabel(p.userPresenceType);
+  const location = placeName || (p.lastLocation ? String(p.lastLocation) : "Website");
 
   const embed = new EmbedBuilder()
-    .setTitle("Roblox Status")
-    .addFields(
-      { name: "Account", value: `${who.name} (id: ${who.userId})`, inline: false },
-      { name: "Status", value: presenceLabel(p.presenceType), inline: true }
+    .setTitle("Roblox Presence")
+    .setDescription(
+      [
+        "Account",
+        `${user.name} (id: ${user.userId})`,
+        "",
+        "Status",
+        status,
+        "",
+        "Location",
+        location,
+      ].join("\n")
     );
+
+  // Optional icon (only if in-game + available)
+  try {
+    if (universeId) {
+      const iconUrl = await getGameIcon(universeId);
+      if (iconUrl) embed.setThumbnail(iconUrl);
+    }
+  } catch (_) {}
 
   const row = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
-      .setCustomId("roblox:refresh")
+      .setCustomId(`roblox:refresh:${user.userId}`)
       .setLabel("Refresh")
       .setStyle(ButtonStyle.Secondary)
   );
 
-  return { embed, components: [row], presenceType: p.presenceType };
+  return { embed, row, userId: user.userId, username: user.name };
 }
 
-// Back-compat
-async function getRobloxBlock(username) {
-  const data = await getRobloxEmbed(username);
-  return { text: "", components: data.components, embed: data.embed, presenceType: data.presenceType };
-}
-
-module.exports = { getRobloxEmbed, getRobloxBlock };
+module.exports = { getRobloxEmbed };
