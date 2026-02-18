@@ -1,18 +1,28 @@
 const { getRobloxEmbed } = require("../services/robloxEmbed");
 
+function normalizeComponents(components) {
+  if (!components) return [];
+  return components.map(c => (typeof c?.toJSON === "function" ? c.toJSON() : c));
+}
+
 async function handleRobloxRefresh(interaction) {
-  const username = process.env.ROBLOX_USERNAME || null;
-  if (!username) {
-    await interaction.reply({ content: "Error: ROBLOX_USERNAME is not set.", ephemeral: true }).catch(() => null);
-    return;
-  }
+  await interaction.deferUpdate().catch(() => {});
+  const username = process.env.ROBLOX_USERNAME || "qxR4F4";
 
   try {
-    await interaction.deferUpdate();
-    const { embed, row } = await getRobloxEmbed(username);
-    await interaction.editReply({ embeds: [embed], components: [row] });
-  } catch (e) {
-    await interaction.followUp({ content: `Error: ${String(e?.message || e)}`, ephemeral: true }).catch(() => null);
+    const data = await getRobloxEmbed(username);
+    return interaction.editReply({
+      embeds: [data.embed],
+      components: normalizeComponents(data.components),
+      content: "",
+    }).catch(() => {});
+  } catch (err) {
+    const msg = err?.message ? String(err.message).slice(0, 180) : "Unknown error";
+    return interaction.editReply({
+      content: `Error: ${msg}`,
+      embeds: [],
+      components: [],
+    }).catch(() => {});
   }
 }
 

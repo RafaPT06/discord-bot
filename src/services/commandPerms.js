@@ -2,6 +2,7 @@ const { pool } = require("../db/pool");
 
 // Always allowed to everyone
 const PUBLIC_COMMANDS = new Set([
+  "maintenance",
   "help",
   "status",
   "ping",
@@ -14,8 +15,7 @@ const PUBLIC_COMMANDS = new Set([
 
 // Owner-only by default, but can be overridden per-server via /perm_set
 const PROTECTED_COMMANDS = new Set([
-  "bot_stats",
-  "roblox_status",
+    "roblox_status",
   "set_roblox_alert_channel",
   "show_roblox_alert_channel",
   "reset_roblox_alert_channel",
@@ -23,6 +23,12 @@ const PROTECTED_COMMANDS = new Set([
   "show_error_alert_channel",
   "reset_error_alert_channel",
   "test_error_alert",
+  "setup_channels",
+  // Backups
+  "set_backup_channel",
+  "show_backup_channel",
+  "reset_backup_channel",
+  "test_backup",
 ]);
 
 function isOwner(interaction) {

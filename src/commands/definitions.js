@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, ChannelType } = require("discord.js");
+const { SlashCommandBuilder, ChannelType, InteractionContextType } = require("discord.js");
 function cmd(b) {
   return b.toJSON();
 }
@@ -9,6 +9,8 @@ module.exports = [
     new SlashCommandBuilder()
       .setName("compliment")
       .setDescription("Send a random compliment.")
+      
+      .setContexts(InteractionContextType.Guild, InteractionContextType.BotDM, InteractionContextType.PrivateChannel)
       .addUserOption((o) =>
         o.setName("user").setDescription("Who to compliment").setRequired(true),
       ),
@@ -17,6 +19,8 @@ module.exports = [
     new SlashCommandBuilder()
       .setName("roast")
       .setDescription("Roast someone ")
+      
+      .setContexts(InteractionContextType.Guild, InteractionContextType.BotDM, InteractionContextType.PrivateChannel)
       .addUserOption((o) =>
         o.setName("user").setDescription("Who to roast").setRequired(true),
       ),
@@ -25,6 +29,8 @@ module.exports = [
     new SlashCommandBuilder()
       .setName("mimic")
       .setDescription("SpOnGeBoB cAsE")
+      
+      .setContexts(InteractionContextType.Guild, InteractionContextType.BotDM, InteractionContextType.PrivateChannel)
       .addStringOption((o) =>
         o.setName("text").setDescription("Text to mimic").setRequired(true),
       ),
@@ -32,12 +38,16 @@ module.exports = [
   cmd(
     new SlashCommandBuilder()
       .setName("cat")
-      .setDescription("Random chaotic cat "),
+      .setDescription("Random chaotic cat ")
+      .setContexts(InteractionContextType.Guild, InteractionContextType.BotDM, InteractionContextType.PrivateChannel)
+      ,
   ),
   cmd(
     new SlashCommandBuilder()
       .setName("crazy")
-      .setDescription("The classic 'crazy' copypasta (rats version)."),
+      .setDescription("The classic 'crazy' copypasta (rats version)")
+      .setContexts(InteractionContextType.Guild, InteractionContextType.BotDM, InteractionContextType.PrivateChannel)
+      ,
   ),
   // Status
   cmd(
@@ -46,6 +56,7 @@ module.exports = [
       .setDescription("Uptime + ping + runtime info."),
   ),
   cmd(new SlashCommandBuilder().setName("ping").setDescription("Bot latency.")),
+  cmd(new SlashCommandBuilder().setName("maintenance").setDescription("Toggle maintenance mode (Owner for on/off).").addStringOption(o=>o.setName("action").setDescription("on | off | status").setRequired(true).addChoices({ name: "on", value: "on" },{ name: "off", value: "off" },{ name: "status", value: "status" }))),
   cmd(
     new SlashCommandBuilder()
       .setName("roblox_status")
@@ -151,7 +162,14 @@ module.exports = [
       .setDescription("Reset deploy updates channel (Manage Server / Owner)."),
   ),
 
-  // Roblox Alerts (Owner)
+  
+cmd(
+  new SlashCommandBuilder()
+    .setName("deploy_test")
+    .setDescription("Send a test deploy notification (restricted)."),
+),
+
+// Roblox Alerts (Owner)
   cmd(
     new SlashCommandBuilder()
       .setName("set_roblox_alert_channel")
@@ -204,11 +222,6 @@ module.exports = [
       .setDescription("Send a test error alert (Owner)."),
   ),
 
-  cmd(
-    new SlashCommandBuilder()
-      .setName("bot_stats")
-      .setDescription("Show bot usage stats (Owner)."),
-  ),
   // Permissions (Manage Server / Owner)
   cmd(
     new SlashCommandBuilder()
@@ -278,25 +291,49 @@ module.exports = [
       ),
   ),
 
-  // Setup
-  cmd(
-    new SlashCommandBuilder()
-      .setName("setup_channels")
-      .setDescription(
-        "Create a bot category + channels and auto-configure deploy/alert channels (Manage Server / Owner).",
-      )
-      .addStringOption((o) =>
-        o
-          .setName("category")
-          .setDescription("Category name (default: bot)")
-          .setRequired(false),
-      ),
-  ),
-
   // Help
   cmd(
     new SlashCommandBuilder()
       .setName("help")
-      .setDescription("Show all commands grouped (like the screenshot)."),
+      .setDescription("Show all commands grouped (like the screenshot)")
+      .setContexts(InteractionContextType.Guild, InteractionContextType.BotDM, InteractionContextType.PrivateChannel)
+      ,
   ),
+
+  // Backups (Restricted)
+  cmd(
+    new SlashCommandBuilder()
+      .setName("set_backup_channel")
+      .setDescription("Set the channel where weekly DB backups will be posted.")
+      .addChannelOption((o) =>
+        o
+          .setName("channel")
+          .setDescription("Target channel")
+          .setRequired(true)
+          .addChannelTypes(ChannelType.GuildText),
+      ),
+  ),
+  cmd(
+    new SlashCommandBuilder()
+      .setName("show_backup_channel")
+      .setDescription("Show the current backup channel (if any)."),
+  ),
+  cmd(
+    new SlashCommandBuilder()
+      .setName("reset_backup_channel")
+      .setDescription("Remove/disable weekly backups for this server."),
+  ),
+  cmd(
+    new SlashCommandBuilder()
+      .setName("test_backup")
+      .setDescription("Send a backup right now to the configured backup channel."),
+  ),
+
+// Setup
+cmd(
+  new SlashCommandBuilder()
+    .setName("setup_channels")
+    .setDescription("Create a category + system channels and auto-configure them.")
+    .addStringOption(o => o.setName("category").setDescription("Category name (default: bot)").setRequired(false))
+),
 ];

@@ -14,10 +14,10 @@ module.exports = {
     .setDescription("Send a random compliment.")
     .addUserOption(o => o.setName("user").setDescription("Who to compliment").setRequired(true)),
   async execute(interaction) {
-    if (!interaction.guildId) return interaction.reply({ content: " Server only.", ephemeral: true });
-
     const user = interaction.options.getUser("user", true);
-    const row = await randomRow("compliments", interaction.guildId).catch(() => null);
+        const row = interaction.guildId
+      ? await randomRow("compliments", interaction.guildId).catch(() => null)
+      : null;
     const text = row?.text || FALLBACK[Math.floor(Math.random() * FALLBACK.length)];
     return interaction.reply({ content: ` <@${user.id}>, ${text}`, allowedMentions: { users: [user.id] } });
   },

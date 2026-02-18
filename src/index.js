@@ -5,9 +5,11 @@ const path = require("path");
 const { initDb } = require("./db");
 const { attachErrorAlerts } = require("./services/errorAlerts");
 const { startRobloxAlerts } = require("./services/robloxAlerts");
+const { startBackupScheduler } = require("./services/backupScheduler");
 const { sendDeployNotices } = require("./services/deployNotifier");
 const { canRunCommand } = require("./services/commandPerms");
 const { logCommandUsage } = require("./services/usageLogger");
+const { getMaintenanceEnabled } = require("./services/maintenance");
 
 const token = process.env.BOT_TOKEN;
 const ownerId = process.env.OWNER_ID;
@@ -36,6 +38,7 @@ client.once(Events.ClientReady, async () => {
   await initDb();
   attachErrorAlerts(client);
   startRobloxAlerts(client);
+  startBackupScheduler(client);
   await sendDeployNotices(client);
   console.log(" DB init + services started");
 });
@@ -46,31 +49,47 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const cmd = client.commands.get(interaction.commandName);
       if (!cmd) return;
 
+      // Hard maintenance mode: blocks everything except /maintenance (Owner can always bypass)
+      const maintenanceEnabled = await getMaintenanceEnabled();
+      const isOwner = interaction.user?.id === process.env.OWNER_ID;
+      const allowDuringMaintenance = interaction.commandName === "maintenance";
+
+      if (maintenanceEnabled && !isOwner && !allowDuringMaintenance) {
+        const { createSection } = require("./utils/layout");
+        const msg = createSection("Maintenance Mode", [
+          { label: "Status", value: "Bot temporarily disabled" },
+          { label: "Try again", value: "Later" },
+        ]);
+        return interaction.reply({ content: msg, ephemeral: true });
+      }
+
       const allowed = await canRunCommand(interaction, interaction.commandName);
       if (!allowed) {
-        return interaction.reply({ content: "Error: You don’t have permission to use this command here.", ephemeral: true });
+        return interaction.reply({
+          content: "Error: You don’t have permission to use this command here.",
+          ephemeral: true,
+        });
       }
-      const { logCommandUsage } = require("./services/usageLogger");
 
       try {
         await cmd.execute(interaction, client);
-          logCommandUsage({
-              guildId: interaction.guildId,
-                  userId: interaction.user?.id,
-                      commandName: interaction.commandName,
-                          ok: true,
-                            });
-                            } catch (err) {
-                              logCommandUsage({
-                                  guildId: interaction.guildId,
-                                      userId: interaction.user?.id,
-                                          commandName: interaction.commandName,
-                                              ok: false,
-                                                  error: err?.message || String(err),
-                                                    });
-                                                      throw err; // keep your existing error reply behavior
-                                                      }
-                                                      return;
+        logCommandUsage({
+          guildId: interaction.guildId,
+          userId: interaction.user?.id,
+          commandName: interaction.commandName,
+          ok: true,
+        });
+      } catch (err) {
+        logCommandUsage({
+          guildId: interaction.guildId,
+          userId: interaction.user?.id,
+          commandName: interaction.commandName,
+          ok: false,
+          error: err?.message || String(err),
+        });
+        throw err;
+      }
+      return;
     }
 
     if (interaction.isButton()) {
@@ -100,5 +119,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
     } catch {}
   }
 });
+
 
 client.login(token);
