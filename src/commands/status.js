@@ -1,6 +1,5 @@
-const { SlashCommandBuilder } = require("discord.js");
+const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
 const os = require("os");
-const { createSection } = require("../utils/layout");
 const { measureDbLatency } = require("../utils/dbHelpers");
 
 function formatUptime(seconds) {
@@ -31,17 +30,22 @@ module.exports = {
       dbLatency = `${ms}ms`;
     } catch (_) {}
 
-    const output = createSection("Bot Status", [
-      { label: "Servers", value: client.guilds.cache.size },
-      { label: "Uptime", value: formatUptime(uptime) },
-      { label: "Ping", value: `${client.ws.ping}ms` },
-      { label: "Memory RSS", value: formatBytes(mem.rss) },
-      { label: "DB Latency", value: dbLatency },
-      { label: "Node", value: node },
-      { label: "Environment", value: env },
-      { label: "Platform", value: `${os.platform()} ${os.arch()}` },
-    ]);
+    const embed = new EmbedBuilder()
+      .setTitle("Bot Status")
+      .addFields(
+        { name: "Servers", value: String(client.guilds.cache.size), inline: true },
+        { name: "Uptime", value: formatUptime(uptime), inline: true },
+        { name: "Ping", value: `${client.ws.ping}ms`, inline: true },
 
-    return interaction.reply({ content: output, ephemeral: false });
+        { name: "Memory RSS", value: formatBytes(mem.rss), inline: true },
+        { name: "DB Latency", value: dbLatency, inline: true },
+        { name: "Node", value: node, inline: true },
+
+        { name: "Environment", value: env, inline: true },
+        { name: "Platform", value: `${os.platform()} ${os.arch()}`, inline: true }
+      )
+      .setTimestamp(new Date());
+
+    return interaction.reply({ embeds: [embed], ephemeral: false });
   },
 };
