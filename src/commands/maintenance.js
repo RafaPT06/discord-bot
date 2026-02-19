@@ -1,9 +1,15 @@
-const { SlashCommandBuilder } = require("discord.js");
+const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
 const { getMaintenanceEnabled, setMaintenanceEnabled } = require("../services/maintenance");
-const { createSection } = require("../utils/layout");
 
 function isOwner(interaction) {
   return interaction.user?.id === process.env.OWNER_ID;
+}
+
+function buildEmbed(enabled) {
+  return new EmbedBuilder()
+    .setTitle("Maintenance")
+    .addFields({ name: "Enabled", value: enabled ? "true" : "false", inline: true })
+    .setTimestamp(new Date());
 }
 
 module.exports = {
@@ -26,25 +32,16 @@ module.exports = {
     const enabled = await getMaintenanceEnabled();
 
     if (action === "status") {
-      const msg = createSection("Maintenance", [
-        { label: "Enabled", value: enabled ? "true" : "false" },
-      ]);
-      return interaction.reply({ content: msg, ephemeral: false });
+      return interaction.reply({ embeds: [buildEmbed(enabled)], ephemeral: false });
     }
 
     if (!isOwner(interaction)) {
-      const msg = createSection("Error", [
-        { label: "Reason", value: "Owner only" },
-      ]);
-      return interaction.reply({ content: msg, ephemeral: true });
+      const e = new EmbedBuilder().setTitle("Error").setDescription("Owner only").setTimestamp(new Date());
+      return interaction.reply({ embeds: [e], ephemeral: true });
     }
 
     const next = action === "on";
     await setMaintenanceEnabled(next);
-
-    const msg = createSection("Maintenance", [
-      { label: "Enabled", value: next ? "true" : "false" },
-    ]);
-    return interaction.reply({ content: msg, ephemeral: false });
+    return interaction.reply({ embeds: [buildEmbed(next)], ephemeral: false });
   },
 };

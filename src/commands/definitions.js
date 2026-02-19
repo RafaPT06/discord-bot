@@ -336,4 +336,17 @@ cmd(
     .setDescription("Create a category + system channels and auto-configure them.")
     .addStringOption(o => o.setName("category").setDescription("Category name (default: bot)").setRequired(false))
 ),
+// Help (split)
+cmd(
+  new SlashCommandBuilder()
+    .setName("help_admin")
+    .setDescription("Show admin/setup commands (restricted).")
+    .setContexts(InteractionContextType.Guild)
+),
+cmd(
+  new SlashCommandBuilder()
+    .setName("help_owner")
+    .setDescription("Show owner-only commands.")
+    .setContexts(InteractionContextType.Guild)
+),
 ];
