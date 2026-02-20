@@ -366,4 +366,18 @@ cmd(
     .setDescription("Show owner-only commands.")
     .setContexts(InteractionContextType.Guild)
 ),
+
+// Feed
+cmd(new SlashCommandBuilder().setName("set_feed_channel").setDescription("Set bot feed channel.").addChannelOption(o=>o.setName("channel").setDescription("Target channel").setRequired(true).addChannelTypes(ChannelType.GuildText)).setContexts(InteractionContextType.Guild)),
+cmd(new SlashCommandBuilder().setName("show_feed_channel").setDescription("Show bot feed channel.").setContexts(InteractionContextType.Guild)),
+cmd(new SlashCommandBuilder().setName("reset_feed_channel").setDescription("Reset bot feed channel.").setContexts(InteractionContextType.Guild)),
+cmd(new SlashCommandBuilder().setName("feed_level").setDescription("Set feed level (1-3).").addIntegerOption(o=>o.setName("level").setDescription("1-3").setRequired(true).addChoices({name:"1 (Critical)",value:1},{name:"2 (System)",value:2},{name:"3 (Activity)",value:3})).setContexts(InteractionContextType.Guild)),
+cmd(new SlashCommandBuilder().setName("feed_test").setDescription("Send a test feed message.").addIntegerOption(o=>o.setName("level").setDescription("Test level").setRequired(false).addChoices({name:"1 (Critical)",value:1},{name:"2 (System)",value:2},{name:"3 (Activity)",value:3})).setContexts(InteractionContextType.Guild)),
+
+// Simulations (Owner)
+cmd(new SlashCommandBuilder().setName("simulate_deploy").setDescription("Owner: simulate deploy notification.").setContexts(InteractionContextType.Guild)),
+cmd(new SlashCommandBuilder().setName("simulate_error").setDescription("Owner: simulate error alert.").setContexts(InteractionContextType.Guild)),
+cmd(new SlashCommandBuilder().setName("simulate_backup").setDescription("Owner: trigger backup post.").setContexts(InteractionContextType.Guild)),
+cmd(new SlashCommandBuilder().setName("simulate_roblox").setDescription("Owner: simulate Roblox alert.").addStringOption(o=>o.setName("status").setDescription("Status").setRequired(true).addChoices({name:"offline",value:"offline"},{name:"online",value:"online"},{name:"ingame",value:"ingame"},{name:"studio",value:"studio"})).setContexts(InteractionContextType.Guild)),
+cmd(new SlashCommandBuilder().setName("simulate_feed").setDescription("Owner: simulate feed event.").addIntegerOption(o=>o.setName("level").setDescription("Level").setRequired(true).addChoices({name:"1 (Critical)",value:1},{name:"2 (System)",value:2},{name:"3 (Activity)",value:3})).addStringOption(o=>o.setName("title").setDescription("Title").setRequired(false)).setContexts(InteractionContextType.Guild)),
 ];

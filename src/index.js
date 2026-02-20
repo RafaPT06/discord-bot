@@ -10,6 +10,9 @@ const { sendDeployNotices } = require("./services/deployNotifier");
 const { canRunCommand } = require("./services/commandPerms");
 const { logCommandUsage } = require("./services/usageLogger");
 const { getMaintenanceEnabled } = require("./services/maintenance");
+const { sendFeed } = require("./services/feed");
+const { checkCooldown } = require("./services/cooldowns");
+const { fieldsEmbed, errorEmbed } = require("./utils/embeds");
 
 const token = process.env.BOT_TOKEN;
 const ownerId = process.env.OWNER_ID;
@@ -89,9 +92,30 @@ client.on(Events.InteractionCreate, async (interaction) => {
           ephemeral: true,
         });
       }
+      // Cooldowns (owner bypass)
+      if (!isOwner) {
+        const noCooldown = new Set(["help","help_admin","help_owner","status","ping","diag","maintenance"]);
+        if (!noCooldown.has(interaction.commandName)) {
+          const cd = checkCooldown({ userId: interaction.user.id, commandName: interaction.commandName });
+          if (!cd.ok) {
+            const secs = Math.ceil(cd.remainingMs / 1000);
+            return interaction.reply({ content: `Error: Command on cooldown. Try again in ${secs}s.`, ephemeral: true });
+          }
+        }
+      }
+
 
       try {
         await cmd.execute(interaction, client);
+        // Feed: activity (level 3)
+        try {
+          const embed = fieldsEmbed("Command Executed", [
+            { name: "User", value: `<@${interaction.user.id}>`, inline: true },
+            { name: "Command", value: `/${interaction.commandName}`, inline: true },
+            { name: "Result", value: "success", inline: true },
+          ]);
+          await sendFeed(client, interaction.guildId, 3, embed);
+        } catch {}
         logCommandUsage({
           guildId: interaction.guildId,
           userId: interaction.user?.id,
@@ -106,6 +130,11 @@ client.on(Events.InteractionCreate, async (interaction) => {
           ok: false,
           error: err?.message || String(err),
         });
+        // Feed: critical (level 1)
+        try {
+          const embed = errorEmbed("Command Failed", `/${interaction.commandName} failed for <@${interaction.user.id}>`);
+          await sendFeed(client, interaction.guildId, 1, embed);
+        } catch {}
         throw err;
       }
       return;

@@ -2,6 +2,7 @@
 const { SlashCommandBuilder, ChannelType, PermissionFlagsBits } = require("discord.js");
 const { pool } = require("../db/pool");
 const { canManageSettings } = require("../utils/perms");
+const { ensureFeedTables } = require("../services/feed");
 
 async function upsertSetting(table, guildId, channelId) {
   await pool.query(
@@ -33,6 +34,8 @@ module.exports = {
     }
 
     await interaction.deferReply({ ephemeral: true }).catch(() => {});
+
+    await ensureFeedTables();
 
     const categoryName = (interaction.options.getString("category") || "bot").trim().slice(0, 90);
 
@@ -77,11 +80,13 @@ module.exports = {
     const robloxCh = await ensureText("roblox-alerts");
     const errorCh = await ensureText("error-alerts");
     const backupCh = await ensureText("backups");
+    const feedCh = await ensureText("bot-feed");
 
     await upsertSetting("deploy_channel_settings", interaction.guildId, deployCh.id);
     await upsertSetting("roblox_alert_settings", interaction.guildId, robloxCh.id);
     await upsertSetting("error_alert_settings", interaction.guildId, errorCh.id);
     await upsertSetting("backup_channel_settings", interaction.guildId, backupCh.id);
+    await upsertSetting("feed_channel_settings", interaction.guildId, feedCh.id);
 
     return interaction.editReply({
       content: [
@@ -91,6 +96,7 @@ module.exports = {
         `Roblox: ${robloxCh}`,
         `Errors: ${errorCh}`,
         `Backups: ${backupCh}`,
+        `Feed: ${feedCh}`,
       ].join("\n")
     });
   }

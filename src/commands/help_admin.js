@@ -22,8 +22,11 @@ module.exports = {
           "• `/remove_compliment <id>` — remove a compliment",
           "• `/remove_roast <id>` — remove a roast",
           "",
-          "**Setup**",
-          "• `/setup_channels [category]` — create system channels + auto-configure (includes backups)",
+          "**Diagnostics**
+• `/diag` — health checks
+
+**Setup**",
+          "• `/setup_channels [category]` — create system channels + auto-configure (includes backups + feed)",
           "",
           "**Channels**",
           "• `/set_deploy_channel` / `/show_deploy_channel` / `/reset_deploy_channel`",
