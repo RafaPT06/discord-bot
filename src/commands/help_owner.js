@@ -17,6 +17,7 @@ module.exports = {
 "• `/simulate_backup` — trigger a backup post",
 "• `/simulate_roblox` — simulate a Roblox change",
 "• `/simulate_feed` — send a feed test event",
+          "",
           "Tip: You can also manage permissions with the `/perm_*` commands.",
         ].join("\n")
       );
