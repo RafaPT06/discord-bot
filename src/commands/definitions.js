@@ -63,6 +63,12 @@ module.exports = [
       .setDescription("Roblox online/in-game status (Owner)."),
   ),
 
+  cmd(
+    new SlashCommandBuilder()
+      .setName("diag")
+      .setDescription("Diagnostics: checks bot health + configuration (Manage Server / Owner)."),
+  ),
+
   // TODOs
   cmd(
     new SlashCommandBuilder()
@@ -231,7 +237,8 @@ cmd(
         o
           .setName("command")
           .setDescription("Command name (no slash)")
-          .setRequired(true),
+          .setRequired(true)
+          .setAutocomplete(true),
       )
       .addRoleOption((o) =>
         o.setName("role").setDescription("Role allowed").setRequired(true),
@@ -253,7 +260,8 @@ cmd(
         o
           .setName("command")
           .setDescription("Command name (no slash)")
-          .setRequired(true),
+          .setRequired(true)
+          .setAutocomplete(true),
       )
       .addRoleOption((o) =>
         o.setName("role").setDescription("Role allowed").setRequired(true),
@@ -267,7 +275,8 @@ cmd(
         o
           .setName("command")
           .setDescription("Command name (no slash)")
-          .setRequired(true),
+          .setRequired(true)
+          .setAutocomplete(true),
       ),
   ),
   cmd(
@@ -275,6 +284,13 @@ cmd(
       .setName("perm_list")
       .setDescription(
         "List all commands with custom permission rules (Manage Server / Owner).",
+      )
+      .addIntegerOption((o) =>
+        o
+          .setName("page")
+          .setDescription("Page number (1, 2, 3...)")
+          .setRequired(false)
+          .setMinValue(1),
       ),
   ),
   cmd(
@@ -287,7 +303,8 @@ cmd(
         o
           .setName("command")
           .setDescription("Command name (no slash)")
-          .setRequired(true),
+          .setRequired(true)
+          .setAutocomplete(true),
       ),
   ),
 

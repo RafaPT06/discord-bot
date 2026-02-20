@@ -6,7 +6,7 @@ module.exports = {
   data: new SlashCommandBuilder()
     .setName("perm_add_role")
     .setDescription("Add an allowed role to a command (Manage Server / Owner).")
-    .addStringOption(o => o.setName("command").setDescription("Command name (no slash)").setRequired(true))
+    .addStringOption(o => o.setName("command").setDescription("Command name (no slash)").setRequired(true).setAutocomplete(true))
     .addRoleOption(o => o.setName("role").setDescription("Role allowed").setRequired(true)),
   async execute(interaction) {
     if (!interaction.guildId) return interaction.reply({ content: " Server only.", ephemeral: true });

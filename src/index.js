@@ -45,6 +45,25 @@ client.once(Events.ClientReady, async () => {
 
 client.on(Events.InteractionCreate, async (interaction) => {
   try {
+
+    if (interaction.isAutocomplete && interaction.isAutocomplete()) {
+      try {
+        const focused = interaction.options.getFocused(true);
+        if (focused?.name !== "command") return;
+
+        const q = String(focused.value || "").toLowerCase();
+        const names = Array.from(client.commands.keys()).sort();
+        const choices = names
+          .filter((n) => n.toLowerCase().includes(q))
+          .slice(0, 25)
+          .map((n) => ({ name: n, value: n }));
+
+        return interaction.respond(choices).catch(() => {});
+      } catch {
+        return;
+      }
+    }
+
     if (interaction.isChatInputCommand()) {
       const cmd = client.commands.get(interaction.commandName);
       if (!cmd) return;

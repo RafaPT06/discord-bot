@@ -6,7 +6,7 @@ module.exports = {
   data: new SlashCommandBuilder()
     .setName("perm_show")
     .setDescription("Show permissions for a command (Manage Server / Owner).")
-    .addStringOption(o => o.setName("command").setDescription("Command name (no slash)").setRequired(true)),
+    .addStringOption(o => o.setName("command").setDescription("Command name (no slash)").setRequired(true).setAutocomplete(true)),
   async execute(interaction) {
     if (!interaction.guildId) return interaction.reply({ content: " Server only.", ephemeral: true });
     if (!canManageSettings(interaction)) return interaction.reply({ content: " Requires **Manage Server** (or Owner).", ephemeral: true });

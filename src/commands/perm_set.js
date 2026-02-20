@@ -6,7 +6,7 @@ module.exports = {
   data: new SlashCommandBuilder()
     .setName("perm_set")
     .setDescription("Set command permissions (Manage Server / Owner).")
-    .addStringOption(o => o.setName("command").setDescription("Command name (no slash)").setRequired(true))
+    .addStringOption(o => o.setName("command").setDescription("Command name (no slash)").setRequired(true).setAutocomplete(true))
     .addRoleOption(o => o.setName("role").setDescription("Role allowed").setRequired(true))
     .addBooleanOption(o => o.setName("allow_manage_server").setDescription("Allow Manage Server bypass").setRequired(false)),
   async execute(interaction) {
