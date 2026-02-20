@@ -22,10 +22,10 @@ module.exports = {
           "• `/remove_compliment <id>` — remove a compliment",
           "• `/remove_roast <id>` — remove a roast",
           "",
-          "**Diagnostics**
-• `/diag` — health checks
+          "**Diagnostics**",
+"• `/diag` — health checks",
 
-**Setup**",
+"**Setup**",
           "• `/setup_channels [category]` — create system channels + auto-configure (includes backups + feed)",
           "",
           "**Channels**",
