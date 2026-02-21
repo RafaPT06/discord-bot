@@ -1,29 +1,33 @@
-const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
+const {
+  SlashCommandBuilder,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+} = require("discord.js");
+const { buildHelpEmbed } = require("../utils/helpPages");
+
+function helpRow(active) {
+  const page = (active || "fun").toLowerCase();
+  const fun = new ButtonBuilder().setCustomId("help:fun").setLabel("Fun").setStyle(ButtonStyle.Secondary);
+  const admin = new ButtonBuilder().setCustomId("help:admin").setLabel("Admin").setStyle(ButtonStyle.Secondary);
+  const owner = new ButtonBuilder().setCustomId("help:owner").setLabel("Owner").setStyle(ButtonStyle.Secondary);
+
+  // Disable the active tab button
+  if (page === "fun") fun.setDisabled(true);
+  if (page === "admin") admin.setDisabled(true);
+  if (page === "owner") owner.setDisabled(true);
+
+  return new ActionRowBuilder().addComponents(fun, admin, owner);
+}
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("help")
     .setDescription("Show commands you can use."),
   async execute(interaction) {
-    const embed = new EmbedBuilder()
-      .setTitle("Commands")
-      .setDescription(
-        [
-          "**Fun / Social**",
-          "• `/compliment [user]` — send a random compliment",
-          "• `/roast [user]` — roast someone",
-          "• `/mimic <text>` — alternating case",
-          "• `/cat` — random cat",
-          "• `/crazy` — the classic copypasta",
-          "",
-          "**Status**",
-          "• `/status` — bot status and runtime info",
-          "• `/ping` — bot latency",
-          "",
-          "Need admin commands? Use `/help_admin` (Manage Server) or `/help_owner` (Owner).",
-        ].join("\n")
-      );
-
-    return interaction.reply({ embeds: [embed], ephemeral: false });
+    const embed = buildHelpEmbed("fun");
+    return interaction.reply({ embeds: [embed], components: [helpRow("fun")], ephemeral: false });
   },
+  // exported for button handler
+  helpRow,
 };

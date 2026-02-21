@@ -152,6 +152,11 @@ client.on(Events.InteractionCreate, async (interaction) => {
         const { handleRobloxRefresh } = require("./handlers/robloxButtons");
         return handleRobloxRefresh(interaction, client);
       }
+
+      if (kind === "help") {
+        const { handleHelpButton } = require("./handlers/helpButtons");
+        return handleHelpButton(interaction);
+      }
     }
   } catch (err) {
     console.error("Interaction error:", err);

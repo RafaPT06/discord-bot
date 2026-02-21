@@ -68,6 +68,11 @@ module.exports = [
       .setName("diag")
       .setDescription("Diagnostics: checks bot health + configuration (Manage Server / Owner)."),
   ),
+  cmd(
+    new SlashCommandBuilder()
+      .setName("sys")
+      .setDescription("System panel: health + configuration summary (Manage Server / Owner)."),
+  ),
 
   // TODOs
   cmd(

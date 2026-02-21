@@ -14,11 +14,16 @@ async function ensureTables() {
       guild_id TEXT PRIMARY KEY,
       channel_id TEXT NOT NULL,
       enabled BOOLEAN NOT NULL DEFAULT TRUE,
-      level INT NOT NULL DEFAULT 2,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `);
+
+  // Migrations (Railway users often can't run SQL manually)
+  await pool.query(`ALTER TABLE feed_channel_settings ADD COLUMN IF NOT EXISTS level INT NOT NULL DEFAULT 2`);
+  await pool.query(`ALTER TABLE feed_channel_settings ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`);
+
+  // Ensure existing rows have a level
+  await pool.query(`UPDATE feed_channel_settings SET level=2 WHERE level IS NULL`);
 }
 
 async function setFeedChannel(guildId, channelId) {
