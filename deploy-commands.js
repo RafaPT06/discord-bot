@@ -1,121 +1,29 @@
 require("dotenv").config();
-const { REST, Routes, SlashCommandBuilder, InteractionContextType } = require("discord.js");
+const { REST, Routes } = require("discord.js");
+const commands = require("./src/commands/definitions");
 
-// Build your commands exactly like before
-const commands = [
-  new SlashCommandBuilder()
-    .setName("help")
-    .setDescription("Shows a list of all commands and what they do.")
-    .setContexts(
-      InteractionContextType.Guild,
-      InteractionContextType.BotDM,
-      InteractionContextType.PrivateChannel
-    )
-    .toJSON(),
+const token = process.env.BOT_TOKEN;
+const appId = process.env.APP_ID;
+const guildId = process.env.TEST_GUILD_ID;
 
-  new SlashCommandBuilder()
-    .setName("status")
-    .setDescription("Shows uptime + who made the bot.")
-    .setContexts(
-      InteractionContextType.Guild,
-      InteractionContextType.BotDM,
-      InteractionContextType.PrivateChannel
-    )
-    .toJSON(),
-
-  new SlashCommandBuilder()
-    .setName("ping")
-    .setDescription("Shows bot latency.")
-    .setContexts(
-      InteractionContextType.Guild,
-      InteractionContextType.BotDM,
-      InteractionContextType.PrivateChannel
-    )
-    .toJSON(),
-
-  new SlashCommandBuilder()
-    .setName("crazy")
-    .setDescription("Send the crazy copypasta with buttons (rate-limited).")
-    .addIntegerOption((o) =>
-      o.setName("times").setDescription("How many cycles (1-3)").setRequired(false)
-    )
-    .setContexts(
-      InteractionContextType.Guild,
-      InteractionContextType.BotDM,
-      InteractionContextType.PrivateChannel
-    )
-    .toJSON(),
-
-  new SlashCommandBuilder()
-    .setName("compliment")
-    .setDescription("Send a random compliment.")
-    .addUserOption((opt) =>
-      opt.setName("user").setDescription("Who to compliment (server only)").setRequired(false)
-    )
-    .setContexts(
-      InteractionContextType.Guild,
-      InteractionContextType.BotDM,
-      InteractionContextType.PrivateChannel
-    )
-    .toJSON(),
-
-  new SlashCommandBuilder()
-    .setName("cat")
-    .setDescription("Get a random chaotic cat picture.")
-    .setContexts(
-      InteractionContextType.Guild,
-      InteractionContextType.BotDM,
-      InteractionContextType.PrivateChannel
-    )
-    .toJSON(),
-
-  new SlashCommandBuilder()
-    .setName("mimic")
-    .setDescription("The bot mimics you in SpOnGeBoB cAsE.")
-    .addStringOption((opt) =>
-      opt.setName("text").setDescription("The text to mimic").setRequired(true)
-    )
-    .setContexts(
-      InteractionContextType.Guild,
-      InteractionContextType.BotDM,
-      InteractionContextType.PrivateChannel
-    )
-    .toJSON(),
-
-  new SlashCommandBuilder()
-    .setName("roast")
-    .setDescription("The bot roasts someone.")
-    .addUserOption((opt) =>
-      opt.setName("user").setDescription("Who to roast").setRequired(false)
-    )
-    .setContexts(
-      InteractionContextType.Guild,
-      InteractionContextType.BotDM,
-      InteractionContextType.PrivateChannel
-    )
-    .toJSON(),
-];
-
-async function deployCommands() {
-  const token = process.env.BOT_TOKEN;
-  const appId = process.env.APP_ID;
-
-  if (!token || !appId) {
-    console.warn("⚠️ BOT_TOKEN or APP_ID missing — skipping command deploy.");
-    return false;
-  }
-
-  const rest = new REST({ version: "10" }).setToken(token);
-
-  try {
-    await rest.put(Routes.applicationCommands(appId), { body: commands });
-    console.log("✅ Global commands registered.");
-    return true;
-  } catch (err) {
-    console.error("❌ Failed to register commands:", err);
-    return false;
-  }
+if (!token || !appId) {
+  console.error("Missing BOT_TOKEN or APP_ID");
+  process.exit(1);
 }
 
-// Export for index.js to call
-module.exports = { deployCommands, commands };
+(async () => {
+  const rest = new REST({ version: "10" }).setToken(token);
+  try {
+    if (guildId) {
+      await rest.put(Routes.applicationGuildCommands(appId, guildId), { body: commands });
+      console.log(`✅ Deployed ${commands.length} commands to guild ${guildId}`);
+    } else {
+      await rest.put(Routes.applicationCommands(appId), { body: commands });
+      console.log(`✅ Deployed ${commands.length} global commands`);
+      console.log("Tip: set TEST_GUILD_ID for instant deploy to one server.");
+    }
+  } catch (e) {
+    console.error("❌ Deploy failed:", e);
+    process.exit(1);
+  }
+})();
