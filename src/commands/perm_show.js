@@ -28,7 +28,6 @@ module.exports = {
     return interaction.reply({
       content: ` **Permissions for** \`/${command}\`\n• **Allowed roles:** ${roles}\n• **Manage Server bypass:** **${allowManage}**`,
       ephemeral: true,
-      allowedMentions: { roles: roleIds },
     });
   }
 };

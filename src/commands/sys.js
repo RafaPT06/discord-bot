@@ -52,13 +52,13 @@ module.exports = {
 
   async execute(interaction, client) {
     if (!interaction.guildId) {
-      return interaction.reply({ content: "Server only.", ephemeral: true });
+      return interaction.reply({ content: "Server only.", ephemeral: false });
     }
     if (!canManageSettings(interaction)) {
-      return interaction.reply({ content: "Error: Manage Server / Owner only.", ephemeral: true });
+      return interaction.reply({ content: "Error: Manage Server / Owner only.", ephemeral: false });
     }
 
-    await interaction.deferReply({ ephemeral: true }).catch(() => {});
+    await interaction.deferReply({ ephemeral: false }).catch(() => {});
 
     const uptime = Math.floor(process.uptime());
     const mem = process.memoryUsage();

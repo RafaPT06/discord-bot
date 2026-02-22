@@ -10,7 +10,7 @@ function buildFunText() {
     "• `/crazy` — classic copypasta",
     "",
     "**Public Status**",
-    "• `/status` — uptime + ping + runtime info",
+    "• `/sys` — system panel (Restricted)",
     "• `/ping` — bot latency",
     "",
     "**Help Tabs**",

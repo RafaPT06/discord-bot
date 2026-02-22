@@ -4,8 +4,8 @@ const { pool } = require("../db/pool");
 const PUBLIC_COMMANDS = new Set([
   "maintenance",
   "help",
-  "status",
-  "ping",
+    "ping",
+  "sys",
   "compliment",
   "roast",
   "mimic",

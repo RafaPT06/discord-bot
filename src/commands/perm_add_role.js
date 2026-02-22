@@ -28,7 +28,6 @@ module.exports = {
     return interaction.reply({
       content: ` Added <@&${role.id}> to \`/${command}\`.`,
       ephemeral: true,
-      allowedMentions: { roles: [role.id] },
     });
   }
 };
