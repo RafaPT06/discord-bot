@@ -29,7 +29,6 @@ module.exports = {
     return interaction.reply({
       content: ` \`/${command}\` allowed roles set to: <@&${role.id}>\n• Manage Server bypass: **${allow_manage_guild ? "ON" : "OFF"}**`,
       ephemeral: true,
-      allowedMentions: { roles: [role.id] },
     });
   }
 };

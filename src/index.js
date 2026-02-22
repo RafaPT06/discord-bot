@@ -94,7 +94,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       }
       // Cooldowns (owner bypass)
       if (!isOwner) {
-        const noCooldown = new Set(["help","help_admin","help_owner","status","ping","diag","maintenance"]);
+        const noCooldown = new Set(["help","ping","diag","maintenance","sys"]);
         if (!noCooldown.has(interaction.commandName)) {
           const cd = checkCooldown({ userId: interaction.user.id, commandName: interaction.commandName });
           if (!cd.ok) {

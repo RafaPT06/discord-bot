@@ -50,11 +50,6 @@ module.exports = [
       ,
   ),
   // Status
-  cmd(
-    new SlashCommandBuilder()
-      .setName("status")
-      .setDescription("Uptime + ping + runtime info."),
-  ),
   cmd(new SlashCommandBuilder().setName("ping").setDescription("Bot latency.")),
   cmd(new SlashCommandBuilder().setName("maintenance").setDescription("Toggle maintenance mode (Owner for on/off).").addStringOption(o=>o.setName("action").setDescription("on | off | status").setRequired(true).addChoices({ name: "on", value: "on" },{ name: "off", value: "off" },{ name: "status", value: "status" }))),
   cmd(
@@ -63,7 +58,7 @@ module.exports = [
       .setDescription("Roblox online/in-game status (Owner)."),
   ),
 
-  cmd(
+cmd(
     new SlashCommandBuilder()
       .setName("diag")
       .setDescription("Diagnostics: checks bot health + configuration (Manage Server / Owner)."),
