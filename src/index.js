@@ -157,6 +157,12 @@ client.on(Events.InteractionCreate, async (interaction) => {
         const { handleHelpButton } = require("./handlers/helpButtons");
         return handleHelpButton(interaction);
       }
+
+      if (kind === "panel") {
+        const { handlePanelButton } = require("./handlers/panelButtons");
+        return handlePanelButton(interaction, client);
+      }
+
     }
   } catch (err) {
     console.error("Interaction error:", err);

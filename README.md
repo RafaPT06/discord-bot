@@ -1,114 +1,105 @@
-# Discord Bot
+# 🤖 Discord Utility Bot (Postgres + Railway)
 
-Advanced multi-system Discord bot with modular architecture and PostgreSQL storage.
+A modular Discord bot built with **discord.js v14**, designed for server utilities, fun commands, deploy tracking, and external status monitoring (Roblox).
 
----
-
-## Features
-
-### Public
-- `/help` — Interactive command menu with category tabs
-- `/sys` — Public system panel (runtime, environment, DB latency)
-- `/compliment`
-- `/roast`
-- `/mimic`
-- `/cat`
-- `/crazy`
+Built to run on **Railway** with **PostgreSQL**.
 
 ---
 
-### Feed System
-- `/set_feed_channel`
-- `/show_feed_channel`
-- `/reset_feed_channel`
-- `/feed_level`
-- `/feed_test`
-- `/simulate_feed` (Owner)
+## ✨ Features
 
-Multi-level event feed:
-1 = Critical  
-2 = System  
-3 = Activity  
+### 🎉 Fun / Social
+- `/compliment @user` — send a random compliment
+- `/roast @user` — roast someone 🔥
+- `/mimic <text>` — SpOnGeBoB cAsE
+- `/cat` — random chaotic cat
+- `/crazy [1–3]` — the crazy copypasta
 
 ---
 
-### Deploy Notifications
+### 📊 Status
+- `/status` — uptime, ping, runtime info
+- `/ping` — bot latency
+- `/roblox_status` — Roblox presence (Owner only)
+
+---
+
+### 🗒️ Global TODOs
+- `/todo_add <text>` — add a TODO
+- `/todo_list [all]` — list TODOs
+- `/todo_done <id>` — mark TODO as done
+
+> Permissions: **Manage Server** or **Owner**
+
+---
+
+### 🛠️ Content Management
+- `/add_roast`, `/add_compliment`
+- `/list_roasts`, `/list_compliments` (paginated)
+- `/remove_roast <id>`, `/remove_compliment <id>`
+
+> Uses **real database IDs** (PostgreSQL)
+
+---
+
+### 🚀 Deploy Notifications
 - `/set_deploy_channel`
 - `/show_deploy_channel`
 - `/reset_deploy_channel`
-- `/test_deploy`
 
-Auto-detects Railway deploys.
-
----
-
-### Backup System
-- `/set_backup_channel`
-- `/show_backup_channel`
-- `/reset_backup_channel`
-- `/backup_now`
-
-Weekly automatic backups.
+Automatically posts detailed deploy info on Railway:
+- environment
+- commit hash
+- commit message
+- author
+- GitHub link
+- Node version
+- timestamp
 
 ---
 
-### Roblox
-- `/roblox_status`
+### 🔔 Roblox Alerts (Owner)
+- Detects Roblox presence changes (offline / online / in-game)
+- Posts updates automatically
+- Refresh button included
 
-Presence-only system (online / in-game / offline).
-
----
-
-### Permissions
-- `/perm_set`
-- `/perm_add_role`
-- `/perm_show`
-- `/perm_list`
-- `/perm_clear`
-
-Granular per-command permissions.
+Commands:
+- `/set_roblox_alert_channel`
+- `/show_roblox_alert_channel`
+- `/reset_roblox_alert_channel`
 
 ---
 
-### Maintenance
-- `/maintenance <on|off|status>`
+### 🚨 Error Alerts (Owner)
+- Captures:
+  - unhandled rejections
+    - uncaught exceptions
+      - Discord client errors
+      - Redacts secrets automatically
+      - Rate-limited to prevent spam
 
-Hard lock mode (Owner override).
+      Commands:
+      - `/set_error_alert_channel`
+      - `/show_error_alert_channel`
+      - `/reset_error_alert_channel`
+      - `/test_error_alert`
 
----
+      ---
 
-## Setup
+      ## 🧱 Tech Stack
+      - **Node.js** ≥ 18
+      - **discord.js v14**
+      - **PostgreSQL**
+      - **Railway**
+      - **GitHub Deploys**
 
-1. Install dependencies:
-npm install 
+      ---
 
-2. Deploy slash commands:
-npm run deploy
+      ## 🔐 Environment Variables
 
-3. Start the bot:
-node index.js
-
----
-
-## Environment Variables
-
-Required:
-
-- BOT_TOKEN
-- OWNER_ID
-- DATABASE_URL
-
-Optional:
-
-- ROBLOX_USERNAME
-
----
-
-## Architecture
-
-- Dynamic command loader
-- PostgreSQL storage
-- Modular services
-- Embed-based UI
-- Event feed framework
-- Railway deploy detection
+      ### Required
+      ```env
+      BOT_TOKEN=
+      APP_ID=
+      OWNER_ID=
+      DATABASE_URL=

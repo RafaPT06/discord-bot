@@ -11,6 +11,7 @@ function buildFunText() {
     "",
     "**Public Status**",
     "• `/sys` — system panel (Restricted)",
+    "• `/panel` — control panel (Restricted)",
     "• `/ping` — bot latency",
     "",
     "**Help Tabs**",

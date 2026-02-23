@@ -1,5 +1,4 @@
 require("dotenv").config();
-
 const { REST, Routes } = require("discord.js");
 const fs = require("fs");
 const path = require("path");
@@ -13,35 +12,33 @@ if (!token || !appId) {
   process.exit(1);
 }
 
-function loadCommandJson() {
-  const cmdDir = path.join(__dirname, "src", "commands");
-  const files = fs
-    .readdirSync(cmdDir)
-    .filter((f) => f.endsWith(".js") && f !== "definitions.js");
-
-  const out = [];
+function loadCommands() {
+  const dir = path.join(__dirname, "src", "commands");
+  const files = fs.readdirSync(dir).filter(f => f.endsWith(".js") && f !== "definitions.js");
+  const cmds = [];
   for (const f of files) {
-    const mod = require(path.join(cmdDir, f));
-    if (!mod?.data?.name || typeof mod.execute !== "function") continue;
-    out.push(mod.data.toJSON());
+    const mod = require(path.join(dir, f));
+    if (mod?.data && typeof mod.data.toJSON === "function") cmds.push(mod.data.toJSON());
   }
-  return out;
+  return cmds;
 }
 
 (async () => {
+  const rest = new REST({ version: "10" }).setToken(token);
+  const commands = loadCommands();
+
   try {
-    const rest = new REST({ version: "10" }).setToken(token);
-    const commands = loadCommandJson();
+    console.log(`Deploying ${commands.length} commands...`);
 
     if (guildId) {
       await rest.put(Routes.applicationGuildCommands(appId, guildId), { body: commands });
-      console.log(`Deployed ${commands.length} guild commands to ${guildId}`);
+      console.log(`Deployed to guild ${guildId}`);
     } else {
       await rest.put(Routes.applicationCommands(appId), { body: commands });
-      console.log(`Deployed ${commands.length} global commands`);
+      console.log("Deployed globally");
     }
   } catch (err) {
-    console.error(err);
+    console.error("Deploy failed:", err);
     process.exit(1);
   }
 })();
