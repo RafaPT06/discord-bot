@@ -269,6 +269,16 @@ if (pageName === "sim") {
     `Roblox alerts: ${robloxCh || "not set"}`,
     "",
     "Tip: Check **Logs** for recent events.",
+    "",
+    "**Recent Events**",
+    (await (async()=>{
+      const ev = await listPanelEvents(guildId, 3).catch(()=>[]);
+      if (!ev.length) return "(none yet)";
+      return ev.map(r=>{
+        const ts = Math.floor(new Date(r.created_at).getTime()/1000);
+        return `• ${r.kind}: ${r.message} (<t:${ts}:R>)`;
+      }).join("\n");
+    })()),
   ].join("\n"));
   return e;
 }

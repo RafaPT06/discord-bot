@@ -32,25 +32,30 @@ function selectRow(active) {
   return new ActionRowBuilder().addComponents(menu);
 }
 
-function actionRow() {
+function actionRows() {
   const mk = (id, label, style = ButtonStyle.Secondary) =>
     new ButtonBuilder()
       .setCustomId(`panelact:${id}`)
       .setLabel(label)
       .setStyle(style);
 
-  // Max 5 buttons per row
-  return new ActionRowBuilder().addComponents(
+  const row1 = new ActionRowBuilder().addComponents(
     mk("maintenance_toggle", "Toggle Maintenance", ButtonStyle.Danger),
     mk("backup_now", "Backup Now", ButtonStyle.Primary),
     mk("feed_test", "Feed Test", ButtonStyle.Secondary),
-    mk("deploy_test", "Deploy Test", ButtonStyle.Secondary),
+    mk("deploy_test", "Deploy Test", ButtonStyle.Secondary)
+  );
+
+  const row2 = new ActionRowBuilder().addComponents(
+    mk("setup_wizard", "Setup Channels", ButtonStyle.Primary),
     mk("logs_clear", "Clear Logs", ButtonStyle.Danger)
   );
+
+  return [row1, row2];
 }
 
 function buildComponents(page) {
-  return [selectRow(page), actionRow()];
+  return [selectRow(page), ...actionRows()];
 }
 
 module.exports = {

@@ -84,3 +84,5 @@ Optional:
 - Logs (recent events)
 
 Overview includes Quick Actions buttons (restricted) for Maintenance toggle, Backup Now, Feed Test, Deploy Test, and Clear Logs.
+
+- Panel Quick Actions include **Setup Channels** (creates category + system channels and configures them).

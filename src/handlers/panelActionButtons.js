@@ -1,5 +1,6 @@
 const { EmbedBuilder } = require("discord.js");
 const { buildPanelEmbed } = require("../utils/panelPages");
+const { pool } = require("../db/pool");
 const { canRunCommand } = require("../services/commandPerms");
 const { addPanelEvent, clearPanelEvents } = require("../services/panelEvents");
 const { getMaintenanceEnabled, setMaintenanceEnabled } = require("../services/maintenance");
@@ -7,6 +8,74 @@ const { getBackupSetting, sendBackupToChannel } = require("../services/backupSch
 const { sendFeed } = require("../services/feed");
 const { buildFeedEmbed } = require("../utils/feedEmbed");
 const { buildDeployEmbed, sendDeployNotices } = require("../services/deployNotifier");
+
+async function upsertSetting(table, guildId, channelId) {
+  await pool.query(
+    `INSERT INTO ${table} (guild_id, channel_id)
+     VALUES ($1, $2)
+     ON CONFLICT (guild_id) DO UPDATE SET channel_id=EXCLUDED.channel_id, enabled=TRUE, updated_at=NOW()`,
+    [guildId, channelId]
+  );
+}
+
+async function runSetupWizard(interaction) {
+  const { ChannelType, PermissionFlagsBits } = require("discord.js");
+  const guild = interaction.guild;
+  const guildId = interaction.guildId;
+
+  const me = guild.members.me;
+  if (!me?.permissions?.has(PermissionFlagsBits.ManageChannels)) {
+    throw new Error("Bot is missing Manage Channels permission.");
+  }
+
+  const categoryName = "bot";
+
+  let category = guild.channels.cache.find(
+    c => c.type === ChannelType.GuildCategory && c.name.toLowerCase() === categoryName
+  );
+
+  if (!category) {
+    category = await guild.channels.create({ name: categoryName, type: ChannelType.GuildCategory });
+  }
+
+  const everyoneId = guild.roles.everyone.id;
+  const botId = interaction.client.user.id;
+
+  const overwrites = [
+    { id: everyoneId, deny: [PermissionFlagsBits.SendMessages] },
+    { id: botId, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.EmbedLinks, PermissionFlagsBits.AttachFiles] },
+  ];
+
+  async function ensureText(name) {
+    const existing = guild.channels.cache.find(
+      c => (c.type === ChannelType.GuildText || c.type === ChannelType.GuildAnnouncement) &&
+           c.parentId === category.id &&
+           c.name.toLowerCase() === name.toLowerCase()
+    );
+    if (existing) return existing;
+
+    return guild.channels.create({
+      name,
+      type: ChannelType.GuildText,
+      parent: category.id,
+      permissionOverwrites: overwrites,
+    });
+  }
+
+  const deployCh = await ensureText("deploy-updates");
+  const robloxCh = await ensureText("roblox-alerts");
+  const errorCh = await ensureText("error-alerts");
+  const backupCh = await ensureText("backups");
+  const feedCh = await ensureText("bot-feed");
+
+  await upsertSetting("deploy_channel_settings", guildId, deployCh.id);
+  await upsertSetting("roblox_alert_settings", guildId, robloxCh.id);
+  await upsertSetting("error_alert_settings", guildId, errorCh.id);
+  await upsertSetting("backup_channel_settings", guildId, backupCh.id);
+  await upsertSetting("feed_channel_settings", guildId, feedCh.id);
+
+  return { category, deployCh, robloxCh, errorCh, backupCh, feedCh };
+}
 
 function okEmbed(title, text) {
   return new EmbedBuilder().setTitle(title).setDescription(text).setTimestamp(new Date());
@@ -28,6 +97,7 @@ async function handlePanelAction(interaction, client) {
     feed_test: "feed_test",
     deploy_test: "deploy_test",
     logs_clear: "perm_clear", // keep restricted
+    setup_wizard: "setup_channels",
   }[action] || null;
 
   if (requireCmd) {
@@ -57,27 +127,72 @@ async function handlePanelAction(interaction, client) {
       const s = await getBackupSetting(guildId);
       if (!s?.enabled || !s?.channel_id) throw new Error("Backup channel is not set.");
       await sendBackupToChannel(client, s.channel_id, "panel");
-      await addPanelEvent(guildId, { level: 2, kind: "backup", message: `Backup sent to #${s.channel_id}` });
+      const who = interaction.user ? `<@${interaction.user.id}>` : "unknown";
+      await addPanelEvent(guildId, { level: 2, kind: "backup", message: `Backup sent (by ${who})` });
       try { await interaction.followUp({ content: "Backup sent.", ephemeral: true }); } catch {}
     }
 
     if (action === "feed_test") {
       const embed = buildFeedEmbed("Feed Test", "Panel test message", 2);
       await sendFeed(client, guildId, 2, embed);
-      await addPanelEvent(guildId, { level: 3, kind: "feed", message: "Feed test sent" });
+      const who = interaction.user ? `<@${interaction.user.id}>` : "unknown";
+      await addPanelEvent(guildId, { level: 3, kind: "feed", message: `Feed test sent (by ${who})` });
       try { await interaction.followUp({ content: "Feed test sent.", ephemeral: true }); } catch {}
     }
 
     if (action === "deploy_test") {
       // Send to configured deploy channels; if none, just log
       await sendDeployNotices(client, "deploy_test");
-      await addPanelEvent(guildId, { level: 2, kind: "deploy", message: "Deploy test sent" });
+      const who = interaction.user ? `<@${interaction.user.id}>` : "unknown";
+      await addPanelEvent(guildId, { level: 2, kind: "deploy", message: `Deploy test sent (by ${who})` });
       try { await interaction.followUp({ content: "Deploy test sent.", ephemeral: true }); } catch {}
     }
 
-    if (action === "logs_clear") {
+    
+    
+    if (action === "setup_wizard") {
+      const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
+
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId("panelact:setup_confirm")
+          .setLabel("Confirm Setup")
+          .setStyle(ButtonStyle.Danger),
+        new ButtonBuilder()
+          .setCustomId("panelact:setup_cancel")
+          .setLabel("Cancel")
+          .setStyle(ButtonStyle.Secondary)
+      );
+
+      return interaction.followUp({
+        content: "This will create a category and system channels. Continue?",
+        components: [row],
+        ephemeral: true
+      });
+    }
+
+    if (action === "setup_cancel") {
+      return interaction.followUp({ content: "Setup cancelled.", ephemeral: true });
+    }
+
+    if (action === "setup_confirm") {
+      const res = await runSetupWizard(interaction);
+      const who = interaction.user ? `<@${interaction.user.id}>` : "unknown";
+
+      await addPanelEvent(guildId, { level: 2, kind: "setup", message: `Setup completed (by ${who})` });
+
+      try {
+        const embed = okEmbed("Setup Complete", `Category **${res.category.name}** is ready.`);
+        await sendFeed(client, guildId, 2, embed);
+      } catch {}
+
+      return interaction.followUp({ content: "Setup finished successfully.", ephemeral: true });
+    }
+
+if (action === "logs_clear") {
       await clearPanelEvents(guildId);
-      await addPanelEvent(guildId, { level: 2, kind: "logs", message: "Logs cleared" });
+      const who = interaction.user ? `<@${interaction.user.id}>` : "unknown";
+      await addPanelEvent(guildId, { level: 2, kind: "logs", message: `Logs cleared (by ${who})` });
       try { await interaction.followUp({ content: "Logs cleared.", ephemeral: true }); } catch {}
     }
 
