@@ -3,67 +3,60 @@ const {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
+  StringSelectMenuBuilder,
 } = require("discord.js");
-
 const { buildPanelEmbed } = require("../utils/panelPages");
 
 const PAGES = ["overview", "channels", "diag", "feed", "perms", "sim", "logs"];
 
-function rows(active) {
+function selectRow(active) {
   const p = (active || "overview").toLowerCase();
+  const options = [
+    { label: "Overview", value: "overview" },
+    { label: "Channels", value: "channels" },
+    { label: "Diagnostics", value: "diag" },
+    { label: "Feed", value: "feed" },
+    { label: "Permissions", value: "perms" },
+    { label: "Simulation", value: "sim" },
+    { label: "Logs", value: "logs" },
+  ];
 
-  const mk = (id, label) =>
-    new ButtonBuilder()
-      .setCustomId(`panel:${id}`)
-      .setLabel(label)
-      .setStyle(ButtonStyle.Secondary)
-      .setDisabled(id === p);
+  const menu = new StringSelectMenuBuilder()
+    .setCustomId("panel_select")
+    .setPlaceholder("Select a panel page…")
+    .addOptions(options)
+    .setMinValues(1)
+    .setMaxValues(1);
 
-  const row1 = new ActionRowBuilder().addComponents(
-    mk("overview", "Overview"),
-    mk("channels", "Channels"),
-    mk("diag", "Diag"),
-    mk("feed", "Feed"),
-    mk("perms", "Perms")
-  );
-
-  const row2 = new ActionRowBuilder().addComponents(
-    mk("sim", "Sim"),
-    mk("logs", "Logs")
-  );
-
-  return [row1, row2];
+  // Discord doesn't allow setting selected option directly; we just keep it consistent by updating embed title.
+  return new ActionRowBuilder().addComponents(menu);
 }
 
-function actionRows(page) {
-  // Only show quick actions on Overview and Logs pages
-  const p = (page || "overview").toLowerCase();
-  const show = (p === "overview" || p === "logs");
-  if (!show) return [];
-
-  const mk = (id, label, style = ButtonStyle.Primary) =>
+function actionRow() {
+  const mk = (id, label, style = ButtonStyle.Secondary) =>
     new ButtonBuilder()
       .setCustomId(`panelact:${id}`)
       .setLabel(label)
       .setStyle(style);
 
-  // One row max 5 buttons
-  const row = new ActionRowBuilder().addComponents(
+  // Max 5 buttons per row
+  return new ActionRowBuilder().addComponents(
     mk("maintenance_toggle", "Toggle Maintenance", ButtonStyle.Danger),
     mk("backup_now", "Backup Now", ButtonStyle.Primary),
     mk("feed_test", "Feed Test", ButtonStyle.Secondary),
     mk("deploy_test", "Deploy Test", ButtonStyle.Secondary),
-    mk("logs_clear", "Clear Logs", ButtonStyle.Danger),
+    mk("logs_clear", "Clear Logs", ButtonStyle.Danger)
   );
+}
 
-  return [row];
+function buildComponents(page) {
+  return [selectRow(page), actionRow()];
 }
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("panel")
     .setDescription("Open the bot control panel."),
-
   async execute(interaction, client) {
     if (!interaction.guildId) {
       return interaction.reply({ content: "Server only.", ephemeral: true });
@@ -73,13 +66,11 @@ module.exports = {
 
     try {
       const built = await buildPanelEmbed(client, interaction.guildId, "overview");
-
-      // supports either embed directly OR { embed, components }
       const embed = built?.embed ?? built;
 
       return interaction.editReply({
         embeds: [embed],
-        components: [...rows("overview"), ...actionRows("overview")],
+        components: buildComponents("overview"),
       });
     } catch (err) {
       console.error("panel error:", err);
@@ -90,7 +81,6 @@ module.exports = {
       }).catch(() => {});
     }
   },
-
-  rows,
   PAGES,
+  buildComponents,
 };

@@ -29,7 +29,7 @@ async function getChannelSetting(table, guildId) {
 }
 
 async function getBackupSetting(guildId) {
-  const { rows } = await pool.query("SELECT channel_id, enabled, interval_days FROM backup_channel_settings WHERE guild_id=$1", [guildId]);
+  const { rows } = await pool.query("SELECT channel_id, enabled, last_sent_at FROM backup_channel_settings WHERE guild_id=$1", [guildId]);
   return rows?.[0] || null;
 }
 

@@ -140,7 +140,15 @@ client.on(Events.InteractionCreate, async (interaction) => {
       return;
     }
 
-    if (interaction.isButton()) {
+    
+    if (interaction.isStringSelectMenu()) {
+      if (interaction.customId === "panel_select") {
+        const { handlePanelSelect } = require("./handlers/panelSelect");
+        return handlePanelSelect(interaction, client);
+      }
+    }
+
+if (interaction.isButton()) {
       const [kind, ...rest] = interaction.customId.split(":");
       if (kind === "list") {
         const type = rest[0];
