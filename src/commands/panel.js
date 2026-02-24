@@ -1,10 +1,17 @@
-const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
+const {
+  SlashCommandBuilder,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+} = require("discord.js");
+
 const { buildPanelEmbed } = require("../utils/panelPages");
 
-const PAGES = ["overview","channels","diag","feed","perms","sim"];
+const PAGES = ["overview", "channels", "diag", "feed", "perms", "sim"];
 
-function row(active) {
+function rows(active) {
   const p = (active || "overview").toLowerCase();
+
   const mk = (id, label) =>
     new ButtonBuilder()
       .setCustomId(`panel:${id}`)
@@ -12,48 +19,52 @@ function row(active) {
       .setStyle(ButtonStyle.Secondary)
       .setDisabled(id === p);
 
-  return new ActionRowBuilder().addComponents(
-    mk("overview","Overview"),
-    mk("channels","Channels"),
-    mk("diag","Diag"),
-    mk("feed","Feed"),
-    mk("perms","Perms"),
-    mk("sim","Sim")
+  // Discord limit: max 5 buttons per row
+  const row1 = new ActionRowBuilder().addComponents(
+    mk("overview", "Overview"),
+    mk("channels", "Channels"),
+    mk("diag", "Diag"),
+    mk("feed", "Feed"),
+    mk("perms", "Perms")
   );
+
+  const row2 = new ActionRowBuilder().addComponents(mk("sim", "Sim"));
+
+  return [row1, row2];
 }
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("panel")
     .setDescription("Open the bot control panel."),
+
   async execute(interaction, client) {
     if (!interaction.guildId) {
       return interaction.reply({ content: "Server only.", ephemeral: true });
     }
 
-    await interaction.deferReply({ ephemeral: false });
+    await interaction.deferReply({ ephemeral: false }).catch(() => {});
 
     try {
-      const embed = await buildPanelEmbed(client, interaction.guildId, "overview");
+      const built = await buildPanelEmbed(client, interaction.guildId, "overview");
 
-      // safety: if buildPanelEmbed returns {embed,...} instead of an embed
-      const realEmbed = embed?.embed ?? embed;
+      // supports either embed directly OR { embed, components }
+      const embed = built?.embed ?? built;
 
-      return await interaction.editReply({
-        embeds: [realEmbed],
-        components: [row("overview")],
+      return interaction.editReply({
+        embeds: [embed],
+        components: rows("overview"),
       });
     } catch (err) {
       console.error("panel error:", err);
-
-      // always respond so it never gets stuck
-      return await interaction.editReply({
+      return interaction.editReply({
         content: `Error: ${err?.message || String(err)}`,
         embeds: [],
         components: [],
       }).catch(() => {});
     }
   },
-  row,
+
+  rows,
   PAGES,
 };
