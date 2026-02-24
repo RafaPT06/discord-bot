@@ -1,105 +1,72 @@
-# 🤖 Discord Utility Bot (Postgres + Railway)
+# Discord Bot
 
-A modular Discord bot built with **discord.js v14**, designed for server utilities, fun commands, deploy tracking, and external status monitoring (Roblox).
+A modular Discord bot built for automation, monitoring, and admin tooling.
 
-Built to run on **Railway** with **PostgreSQL**.
+## Main UI
 
----
+- `/help` — Interactive help with tabs (Fun / Admin / Owner)
+- `/panel` — Control panel with buttons (Overview / Channels / Diag / Feed / Perms / Sim)
 
-## ✨ Features
+## Public Commands
 
-### 🎉 Fun / Social
-- `/compliment @user` — send a random compliment
-- `/roast @user` — roast someone 🔥
-- `/mimic <text>` — SpOnGeBoB cAsE
-- `/cat` — random chaotic cat
-- `/crazy [1–3]` — the crazy copypasta
+- `/compliment [user]`
+- `/roast [user]`
+- `/mimic <text>`
+- `/cat`
+- `/crazy`
+- `/ping`
 
----
+## Admin / Manage Server (default)
 
-### 📊 Status
-- `/status` — uptime, ping, runtime info
-- `/ping` — bot latency
-- `/roblox_status` — Roblox presence (Owner only)
+These require **Manage Server** by default (or a custom `/perm_set` override):
 
----
+- Setup: `/setup_channels`
+- Deploy channel: `/set_deploy_channel` `/show_deploy_channel` `/reset_deploy_channel`
+- Backup channel: `/set_backup_channel` `/show_backup_channel` `/reset_backup_channel` `/test_backup`
+- Feed: `/set_feed_channel` `/show_feed_channel` `/reset_feed_channel` `/feed_level` `/feed_test`
+- Roblox alerts: `/set_roblox_alert_channel` `/show_roblox_alert_channel` `/reset_roblox_alert_channel`
+- Error alerts: `/set_error_alert_channel` `/show_error_alert_channel` `/reset_error_alert_channel` `/test_error_alert`
+- Content: `/add_compliment` `/remove_compliment` `/list_compliments`, `/add_roast` `/remove_roast` `/list_roasts`
+- TODOs: `/todo_add` `/todo_list` `/todo_done`
+- Permissions: `/perm_set` `/perm_add_role` `/perm_show` `/perm_list` `/perm_clear`
+- Deploy test: `/deploy_test`
 
-### 🗒️ Global TODOs
-- `/todo_add <text>` — add a TODO
-- `/todo_list [all]` — list TODOs
-- `/todo_done <id>` — mark TODO as done
+## Owner (default)
 
-> Permissions: **Manage Server** or **Owner**
+Owner-only by default (can be overridden with `/perm_set` if you want):
 
----
+- `/maintenance <on|off|status>`
+- `/roblox_status`
+- Simulation: `/simulate_deploy` `/simulate_error` `/simulate_backup` `/simulate_roblox` `/simulate_feed`
 
-### 🛠️ Content Management
-- `/add_roast`, `/add_compliment`
-- `/list_roasts`, `/list_compliments` (paginated)
-- `/remove_roast <id>`, `/remove_compliment <id>`
+## Setup
 
-> Uses **real database IDs** (PostgreSQL)
+1. Install:
+```bash
+npm install
+```
 
----
+2. Deploy slash commands:
+```bash
+npm run deploy
+```
 
-### 🚀 Deploy Notifications
-- `/set_deploy_channel`
-- `/show_deploy_channel`
-- `/reset_deploy_channel`
+3. Run:
+```bash
+node index.js
+```
 
-Automatically posts detailed deploy info on Railway:
-- environment
-- commit hash
-- commit message
-- author
-- GitHub link
-- Node version
-- timestamp
+## Environment Variables
 
----
+Required:
+- `BOT_TOKEN`
+- `OWNER_ID`
+- `DATABASE_URL`
 
-### 🔔 Roblox Alerts (Owner)
-- Detects Roblox presence changes (offline / online / in-game)
-- Posts updates automatically
-- Refresh button included
+Optional:
+- `ROBLOX_USERNAME`
 
-Commands:
-- `/set_roblox_alert_channel`
-- `/show_roblox_alert_channel`
-- `/reset_roblox_alert_channel`
+## Notes
 
----
-
-### 🚨 Error Alerts (Owner)
-- Captures:
-  - unhandled rejections
-    - uncaught exceptions
-      - Discord client errors
-      - Redacts secrets automatically
-      - Rate-limited to prevent spam
-
-      Commands:
-      - `/set_error_alert_channel`
-      - `/show_error_alert_channel`
-      - `/reset_error_alert_channel`
-      - `/test_error_alert`
-
-      ---
-
-      ## 🧱 Tech Stack
-      - **Node.js** ≥ 18
-      - **discord.js v14**
-      - **PostgreSQL**
-      - **Railway**
-      - **GitHub Deploys**
-
-      ---
-
-      ## 🔐 Environment Variables
-
-      ### Required
-      ```env
-      BOT_TOKEN=
-      APP_ID=
-      OWNER_ID=
-      DATABASE_URL=
+- This bot uses PostgreSQL (Railway) for settings and data.
+- The deploy script auto-loads commands from `src/commands/*.js`.

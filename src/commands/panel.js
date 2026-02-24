@@ -1,7 +1,7 @@
 const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
 const { buildPanelEmbed } = require("../utils/panelPages");
 
-const PAGES = ["overview","channels","feed","perms","sim"];
+const PAGES = ["overview","channels","diag","feed","perms","sim"];
 
 function row(active) {
   const p = (active || "overview").toLowerCase();
@@ -9,6 +9,7 @@ function row(active) {
   return new ActionRowBuilder().addComponents(
     mk("overview","Overview"),
     mk("channels","Channels"),
+    mk("diag","Diag"),
     mk("feed","Feed"),
     mk("perms","Perms"),
     mk("sim","Sim")

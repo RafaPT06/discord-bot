@@ -51,7 +51,7 @@ function base(title, pageLabel, pageNo, pageTotal) {
 
 async function buildPanelEmbed(client, guildId, page) {
   const p = (page || "overview").toLowerCase();
-  const pages = ["overview","channels","feed","perms","sim"];
+  const pages = ["overview","channels","diag","feed","perms","sim"];
   const idx = Math.max(0, pages.indexOf(p));
   const pageName = pages[idx] || "overview";
   const pageNo = idx + 1;
@@ -79,6 +79,62 @@ async function buildPanelEmbed(client, guildId, page) {
     );
     return e;
   }
+
+  if (pageName === "diag") {
+    const e = base("Control Panel — Diagnostics", "Diagnostics", pageNo, pageTotal);
+
+    // Env checks (only show missing names)
+    const required = ["BOT_TOKEN", "OWNER_ID", "DATABASE_URL"];
+    const missing = required.filter((k) => !process.env[k]);
+
+    // Bot permissions in guild
+    let permsText = "n/a";
+    try {
+      const g = client.guilds.cache.get(guildId);
+      const me = g?.members?.me;
+      if (me) {
+        const perms = me.permissions;
+        const need = [
+          ["View Channels", "ViewChannel"],
+          ["Send Messages", "SendMessages"],
+          ["Embed Links", "EmbedLinks"],
+          ["Manage Channels", "ManageChannels"],
+        ];
+        const missingPerms = need
+          .filter(([_, f]) => !perms.has(f))
+          .map(([n]) => n);
+        permsText = missingPerms.length ? `Missing: ${missingPerms.join(", ")}` : "OK";
+      }
+    } catch {}
+
+    // Channel config checks (best-effort)
+    const checks = [];
+    async function checkSetting(label, sql) {
+      try {
+        const { rows } = await pool.query(sql, [guildId]);
+        const chId = rows?.[0]?.channel_id;
+        checks.push(`${label}: ${chId ? `set (${chId})` : "not set"}`);
+      } catch {
+        checks.push(`${label}: n/a`);
+      }
+    }
+
+    await checkSetting("Deploy channel", "SELECT channel_id FROM deploy_channel_settings WHERE guild_id=$1 AND enabled=TRUE LIMIT 1");
+    await checkSetting("Roblox alerts", "SELECT channel_id FROM roblox_alert_settings WHERE guild_id=$1 AND enabled=TRUE LIMIT 1");
+    await checkSetting("Error alerts", "SELECT channel_id FROM error_alert_settings WHERE guild_id=$1 AND enabled=TRUE LIMIT 1");
+    await checkSetting("Backup channel", "SELECT channel_id FROM backup_channel_settings WHERE guild_id=$1 AND enabled=TRUE LIMIT 1");
+    await checkSetting("Feed channel", "SELECT channel_id FROM feed_channel_settings WHERE guild_id=$1 AND enabled=TRUE LIMIT 1");
+
+    e.addFields(
+      { name: "Env", value: missing.length ? `Missing: ${missing.join(", ")}` : "OK", inline: false },
+      { name: "Commands Loaded", value: String(client.commands?.size || 0), inline: true },
+      { name: "Bot Permissions", value: permsText, inline: false },
+      { name: "Channel Config", value: checks.join("\n"), inline: false },
+    );
+
+    return e;
+  }
+
 
   if (pageName === "feed") {
     const feed = await getFeedSetting(guildId).catch(()=>null);
