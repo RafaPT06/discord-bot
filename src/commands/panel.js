@@ -7,7 +7,7 @@ const {
 
 const { buildPanelEmbed } = require("../utils/panelPages");
 
-const PAGES = ["overview", "channels", "diag", "feed", "perms", "sim"];
+const PAGES = ["overview", "channels", "diag", "feed", "perms", "sim", "logs"];
 
 function rows(active) {
   const p = (active || "overview").toLowerCase();
@@ -19,7 +19,6 @@ function rows(active) {
       .setStyle(ButtonStyle.Secondary)
       .setDisabled(id === p);
 
-  // Discord limit: max 5 buttons per row
   const row1 = new ActionRowBuilder().addComponents(
     mk("overview", "Overview"),
     mk("channels", "Channels"),
@@ -28,9 +27,36 @@ function rows(active) {
     mk("perms", "Perms")
   );
 
-  const row2 = new ActionRowBuilder().addComponents(mk("sim", "Sim"));
+  const row2 = new ActionRowBuilder().addComponents(
+    mk("sim", "Sim"),
+    mk("logs", "Logs")
+  );
 
   return [row1, row2];
+}
+
+function actionRows(page) {
+  // Only show quick actions on Overview and Logs pages
+  const p = (page || "overview").toLowerCase();
+  const show = (p === "overview" || p === "logs");
+  if (!show) return [];
+
+  const mk = (id, label, style = ButtonStyle.Primary) =>
+    new ButtonBuilder()
+      .setCustomId(`panelact:${id}`)
+      .setLabel(label)
+      .setStyle(style);
+
+  // One row max 5 buttons
+  const row = new ActionRowBuilder().addComponents(
+    mk("maintenance_toggle", "Toggle Maintenance", ButtonStyle.Danger),
+    mk("backup_now", "Backup Now", ButtonStyle.Primary),
+    mk("feed_test", "Feed Test", ButtonStyle.Secondary),
+    mk("deploy_test", "Deploy Test", ButtonStyle.Secondary),
+    mk("logs_clear", "Clear Logs", ButtonStyle.Danger),
+  );
+
+  return [row];
 }
 
 module.exports = {
@@ -53,7 +79,7 @@ module.exports = {
 
       return interaction.editReply({
         embeds: [embed],
-        components: rows("overview"),
+        components: [...rows("overview"), ...actionRows("overview")],
       });
     } catch (err) {
       console.error("panel error:", err);

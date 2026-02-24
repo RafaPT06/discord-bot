@@ -70,3 +70,17 @@ Optional:
 
 - This bot uses PostgreSQL (Railway) for settings and data.
 - The deploy script auto-loads commands from `src/commands/*.js`.
+
+
+## Panel
+
+`/panel` is the main control center. It includes:
+- Overview (live status)
+- Channels
+- Diagnostics
+- Feed
+- Permissions
+- Simulation
+- Logs (recent events)
+
+Overview includes Quick Actions buttons (restricted) for Maintenance toggle, Backup Now, Feed Test, Deploy Test, and Clear Logs.

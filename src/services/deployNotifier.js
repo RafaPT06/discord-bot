@@ -128,7 +128,7 @@ function buildDeployEmbed(type = "deploy") {
   return embed;
 }
 
-async function sendDeployNotices(client) {
+async function sendDeployNotices(client, type = "deploy") {
   const rows = await getDeployChannels();
   if (!rows.length) return;
 

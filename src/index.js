@@ -163,6 +163,11 @@ client.on(Events.InteractionCreate, async (interaction) => {
         return handlePanelButton(interaction, client);
       }
 
+      if (kind === "panelact") {
+        const { handlePanelAction } = require("./handlers/panelActionButtons");
+        return handlePanelAction(interaction, client);
+      }
+
     }
   } catch (err) {
     console.error("Interaction error:", err);

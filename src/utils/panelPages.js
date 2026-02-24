@@ -2,6 +2,7 @@ const { EmbedBuilder } = require("discord.js");
 const os = require("os");
 const { pool } = require("../db/pool");
 const { getMaintenanceEnabled } = require("../services/maintenance");
+const { listPanelEvents } = require("../services/panelEvents");
 
 function formatUptime(seconds) {
   const h = Math.floor(seconds / 3600);
@@ -51,7 +52,7 @@ function base(title, pageLabel, pageNo, pageTotal) {
 
 async function buildPanelEmbed(client, guildId, page) {
   const p = (page || "overview").toLowerCase();
-  const pages = ["overview","channels","diag","feed","perms","sim"];
+  const pages = ["overview","channels","diag","feed","perms","sim","logs"];
   const idx = Math.max(0, pages.indexOf(p));
   const pageName = pages[idx] || "overview";
   const pageNo = idx + 1;
@@ -176,7 +177,26 @@ async function buildPanelEmbed(client, guildId, page) {
     return e;
   }
 
-  if (pageName === "sim") {
+  
+  if (pageName === "logs") {
+    const e = base("Control Panel — Logs", "Logs", pageNo, pageTotal);
+    const rows = await listPanelEvents(guildId, 12).catch(()=>[]);
+    if (!rows.length) {
+      e.setDescription("No events logged yet.");
+      return e;
+    }
+
+    const fmt = (r) => {
+      const ts = Math.floor(new Date(r.created_at).getTime()/1000);
+      return `[#${r.id}] [L${r.level}] ${r.kind} — ${r.message}\n<t:${ts}:R>`;
+    };
+
+    e.setDescription(rows.map(fmt).join("\n\n"));
+    e.setFooter({ text: `Panel • Logs • Page ${pageNo}/${pageTotal} • Showing ${rows.length}` });
+    return e;
+  }
+
+if (pageName === "sim") {
     const e = base("Control Panel — Simulation", "Simulation", pageNo, pageTotal);
     e.setDescription(
       [
@@ -198,6 +218,31 @@ async function buildPanelEmbed(client, guildId, page) {
   const env = process.env.NODE_ENV || "unknown";
   const maintenance = await getMaintenanceEnabled().catch(()=>false);
 
+  // Quick config (best-effort)
+  let deployCh = null, backupCh = null, feedCh = null, feedLevel = 2, errCh = null, robloxCh = null;
+  try {
+    const deploy = await getChannelSetting("deploy_channel_settings", guildId).catch(()=>null);
+    if (deploy?.enabled && deploy?.channel_id) deployCh = `<#${deploy.channel_id}>`;
+  } catch {}
+  try {
+    const backup = await getBackupSetting(guildId).catch(()=>null);
+    if (backup?.enabled && backup?.channel_id) backupCh = `<#${backup.channel_id}>`;
+  } catch {}
+  try {
+    const feed = await getFeedSetting(guildId).catch(()=>null);
+    if (feed?.enabled && feed?.channel_id) feedCh = `<#${feed.channel_id}>`;
+    if (feed?.level) feedLevel = feed.level;
+  } catch {}
+  try {
+    const err = await getChannelSetting("error_alert_settings", guildId).catch(()=>null);
+    if (err?.enabled && err?.channel_id) errCh = `<#${err.channel_id}>`;
+  } catch {}
+  try {
+    const roblox = await getChannelSetting("roblox_alert_settings", guildId).catch(()=>null);
+    if (roblox?.enabled && roblox?.channel_id) robloxCh = `<#${roblox.channel_id}>`;
+  } catch {}
+
+
   let latency = "n/a";
   try { latency = `${await dbLatencyMs()}ms`; } catch {}
 
@@ -213,7 +258,18 @@ async function buildPanelEmbed(client, guildId, page) {
     { name: "Environment", value: env, inline: true },
     { name: "Platform", value: `${os.platform()} ${os.arch()}`, inline: true },
   );
-  e.setDescription("Use the buttons to navigate.");
+  e.setDescription([
+    "Use the buttons to navigate.",
+    "",
+    "**Quick Status**",
+    `Deploy channel: ${deployCh || "not set"}`,
+    `Backup channel: ${backupCh || "not set"}`,
+    `Feed channel: ${feedCh || "not set"} (level: ${feedLevel})`,
+    `Error alerts: ${errCh || "not set"}`,
+    `Roblox alerts: ${robloxCh || "not set"}`,
+    "",
+    "Tip: Check **Logs** for recent events.",
+  ].join("\n"));
   return e;
 }
 

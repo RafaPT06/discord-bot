@@ -23,7 +23,7 @@ function buildAdminText() {
     "Default: requires Manage Server (or a custom `/perm_set`).",
     "",
     "**System**",
-    "• `/panel` — control panel + diagnostics",
+    "• `/panel` — control panel + diagnostics + logs",
     "• `/setup_channels` — create bot category + channels",
     "",
     "**Channels / Settings**",
