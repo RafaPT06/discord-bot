@@ -88,16 +88,18 @@ function memberRoleIds(interaction) {
 }
 
 async function canRunCommand(interaction, commandName) {
-  if (!interaction.guildId) {
-  return PUBLIC_COMMANDS.has(commandName);
+  const inGuild = Boolean(interaction.guildId);
+
+  // ---- DMs ----
+  // Only allow public commands in DMs (fun/social + help/ping/etc)
+  if (!inGuild) {
+    return PUBLIC_COMMANDS.has(commandName);
   }
 
-  
+  // ---- Guild ----
+
   // Public commands bypass everything
   if (PUBLIC_COMMANDS.has(commandName)) return true;
-
-  // DMs: keep non-public commands locked to owner
-  if (!interaction.guildId) return isOwner(interaction);
 
   // Owner always allowed
   if (isOwner(interaction)) return true;
