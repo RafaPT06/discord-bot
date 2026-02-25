@@ -1,5 +1,4 @@
-const { SlashCommandBuilder } = require("discord.js");
-
+const { SlashCommandBuilder, InteractionContextType } = require("discord.js");
 const CRAZY_LINES = [
   "That's crazy…",
   "                o    o",
@@ -34,7 +33,12 @@ const CRAZY_LINES = [
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("crazy")
-    .setDescription("The classic 'crazy' copypasta (rats version)."),
+    .setDescription("The classic 'crazy' copypasta (rats version)")
+    .setContexts(
+      InteractionContextType.Guild,
+      InteractionContextType.BotDM,
+      InteractionContextType.PrivateChannel
+    ),
   async execute(interaction) {
     // public command
     return interaction.reply({

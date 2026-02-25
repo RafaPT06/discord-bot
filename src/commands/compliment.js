@@ -1,4 +1,4 @@
-const { SlashCommandBuilder } = require("discord.js");
+const { SlashCommandBuilder, InteractionContextType } = require("discord.js");
 const { pool } = require("../db/pool");
 const { randomRow } = require("../utils/dbHelpers");
 
@@ -13,6 +13,11 @@ module.exports = {
   data: new SlashCommandBuilder()
     .setName("compliment")
     .setDescription("Send a random compliment.")
+    .setContexts(
+      InteractionContextType.Guild,
+      InteractionContextType.BotDM,
+      InteractionContextType.PrivateChannel
+    )
     .addUserOption(o => o.setName("user").setDescription("Who to compliment").setRequired(true)),
   async execute(interaction) {
     const user = interaction.options.getUser("user", true);

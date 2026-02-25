@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
+const { SlashCommandBuilder, EmbedBuilder, InteractionContextType } = require("discord.js");
 const { request } = require("undici");
 
 async function getCatUrl() {
@@ -29,7 +29,12 @@ async function getCatUrl() {
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("cat")
-    .setDescription("Random cat."),
+    .setDescription("Random cat.")
+    .setContexts(
+      InteractionContextType.Guild,
+      InteractionContextType.BotDM,
+      InteractionContextType.PrivateChannel
+    ),
 
   async execute(interaction) {
     await interaction.deferReply({ ephemeral: false }).catch(() => {});

@@ -1,9 +1,4 @@
-const {
-  SlashCommandBuilder,
-  ActionRowBuilder,
-  ButtonBuilder,
-  ButtonStyle,
-} = require("discord.js");
+const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, InteractionContextType } = require("discord.js");
 const { buildHelpEmbed } = require("../utils/helpPages");
 
 function helpRow(active) {
@@ -23,7 +18,12 @@ function helpRow(active) {
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("help")
-    .setDescription("Show commands you can use."),
+    .setDescription("Show commands you can use.")
+    .setContexts(
+      InteractionContextType.Guild,
+      InteractionContextType.BotDM,
+      InteractionContextType.PrivateChannel
+    ),
   async execute(interaction) {
     const embed = buildHelpEmbed("fun");
     return interaction.reply({ embeds: [embed], components: [helpRow("fun")], ephemeral: false });
