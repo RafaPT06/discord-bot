@@ -65,6 +65,7 @@ const MANAGE_GUILD_COMMANDS = new Set([
 // Owner-only by default (unless overridden via /perm_set)
 const OWNER_COMMANDS = new Set([
   "maintenance",
+  "presence",
   "roblox_status",
   "simulate_deploy",
   "simulate_error",

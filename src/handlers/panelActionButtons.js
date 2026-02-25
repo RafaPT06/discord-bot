@@ -4,6 +4,7 @@ const { pool } = require("../db/pool");
 const { canRunCommand } = require("../services/commandPerms");
 const { addPanelEvent, clearPanelEvents } = require("../services/panelEvents");
 const { getMaintenanceEnabled, setMaintenanceEnabled } = require("../services/maintenance");
+const { refreshPresenceRotation } = require("../services/presenceManager");
 const { getBackupSetting, sendBackupToChannel } = require("../services/backupScheduler");
 const { sendFeed } = require("../services/feed");
 const { buildFeedEmbed } = require("../utils/feedEmbed");
@@ -114,6 +115,8 @@ async function handlePanelAction(interaction, client) {
       const cur = await getMaintenanceEnabled().catch(() => false);
       const next = !cur;
       await setMaintenanceEnabled(next);
+      // keep bot status bubble/activity in sync immediately
+      refreshPresenceRotation(client).catch(() => {});
       await addPanelEvent(guildId, { level: 2, kind: "maintenance", message: `Maintenance toggled to ${next ? "ON" : "OFF"}` });
       try {
         const who = interaction.user ? `${interaction.user.tag}` : "unknown";

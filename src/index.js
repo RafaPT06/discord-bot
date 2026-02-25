@@ -13,6 +13,7 @@ const { getMaintenanceEnabled } = require("./services/maintenance");
 const { sendFeed } = require("./services/feed");
 const { checkCooldown } = require("./services/cooldowns");
 const { fieldsEmbed, errorEmbed } = require("./utils/embeds");
+const { startPresenceRotation } = require("./services/presenceManager");
 
 const token = process.env.BOT_TOKEN;
 const ownerId = process.env.OWNER_ID;
@@ -43,6 +44,7 @@ client.once(Events.ClientReady, async () => {
   startRobloxAlerts(client);
   startBackupScheduler(client);
   await sendDeployNotices(client);
+  startPresenceRotation(client).catch(() => {});
   console.log(" DB init + services started");
 });
 
