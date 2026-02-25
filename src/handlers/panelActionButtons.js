@@ -149,45 +149,57 @@ async function handlePanelAction(interaction, client) {
     }
 
     
-    
     if (action === "setup_wizard") {
-      const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
+  const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
 
-      const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-          .setCustomId("panelact:setup_confirm")
-          .setLabel("Confirm Setup")
-          .setStyle(ButtonStyle.Danger),
-        new ButtonBuilder()
-          .setCustomId("panelact:setup_cancel")
-          .setLabel("Cancel")
-          .setStyle(ButtonStyle.Secondary)
-      );
+  const row = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId("panelact:setup_confirm")
+      .setLabel("Confirm Setup")
+      .setStyle(ButtonStyle.Danger),
+    new ButtonBuilder()
+      .setCustomId("panelact:setup_cancel")
+      .setLabel("Cancel")
+      .setStyle(ButtonStyle.Secondary)
+  );
 
-      return interaction.followUp({
-        content: "This will create a category and system channels. Continue?",
-        components: [row],
-        ephemeral: true
-      });
-    }
+  return interaction.followUp({
+    content: "This will create a category and system channels. Continue?",
+    components: [row],
+    ephemeral: true
+  });
+}
 
-    if (action === "setup_cancel") {
-      return interaction.followUp({ content: "Setup cancelled.", ephemeral: true });
-    }
+if (action === "setup_cancel") {
+  return interaction.followUp({
+    content: "Setup cancelled.",
+    ephemeral: true
+  });
+}
 
-    if (action === "setup_confirm") {
-      const res = await runSetupWizard(interaction);
-      const who = interaction.user ? `<@${interaction.user.id}>` : "unknown";
+if (action === "setup_confirm") {
+  const res = await runSetupWizard(interaction);
+  const who = interaction.user ? `<@${interaction.user.id}>` : "unknown";
 
-      await addPanelEvent(guildId, { level: 2, kind: "setup", message: `Setup completed (by ${who})` });
+  await addPanelEvent(guildId, {
+    level: 2,
+    kind: "setup",
+    message: `Setup completed (by ${who})`
+  });
 
-      try {
-        const embed = okEmbed("Setup Complete", `Category **${res.category.name}** is ready.`);
-        await sendFeed(client, guildId, 2, embed);
-      } catch {}
+  try {
+    const embed = okEmbed(
+      "Setup Complete",
+      `Category **${res.category.name}** is ready.`
+    );
+    await sendFeed(client, guildId, 2, embed);
+  } catch {}
 
-      return interaction.followUp({ content: "Setup finished successfully.", ephemeral: true });
-    }
+  return interaction.followUp({
+    content: "Setup finished successfully.",
+    ephemeral: true
+  });
+}
 
 if (action === "logs_clear") {
       await clearPanelEvents(guildId);
