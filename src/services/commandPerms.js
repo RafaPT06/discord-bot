@@ -87,6 +87,13 @@ function memberRoleIds(interaction) {
   return [];
 }
 
+// Allow specific commands in DMs (no guildId)
+const DM_ALLOWED = new Set(["help", "ping", "compliment", "roast", "mimic", "cat", "crazy"]);
+
+if (!interaction.guildId) {
+  return DM_ALLOWED.has(commandName);
+}
+
 async function canRunCommand(interaction, commandName) {
   // Public commands bypass everything
   if (PUBLIC_COMMANDS.has(commandName)) return true;
