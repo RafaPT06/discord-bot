@@ -34,13 +34,12 @@ async function applyPresence(client) {
   const name = await buildActivityText(client);
 
   // IMPORTANT: maintenance does NOT change dot status — only command does
-  await client.user
-    .setPresence({
-      status: currentStatus,
-      activities: [{ name, type: ActivityType.Watching }],
-    })
-    .catch(() => { });
-}
+  try {
+  client.user.setPresence({
+    status: currentStatus,
+    activities: [{ name, type: ActivityType.Watching }],
+  });
+} catch {}
 
 function startPresenceRotation(client, opts = {}) {
   // rotationEnabled is optional; by default we just refresh every 30s to keep uptime current
