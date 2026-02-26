@@ -44,7 +44,7 @@ client.once(Events.ClientReady, async () => {
   startRobloxAlerts(client);
   startBackupScheduler(client);
   await sendDeployNotices(client);
-  startPresenceRotation(client).catch(() => {});
+  startPresenceRotation(client);
   console.log(" DB init + services started");
 });
 
