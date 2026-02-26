@@ -35,11 +35,12 @@ async function applyPresence(client) {
 
   // IMPORTANT: maintenance does NOT change dot status — only command does
   try {
-  client.user.setPresence({
-    status: currentStatus,
-    activities: [{ name, type: ActivityType.Watching }],
-  });
-} catch {}
+    client.user.setPresence({
+      status: currentStatus,
+      activities: [{ name, type: ActivityType.Watching }],
+    });
+  } catch {}
+}
 
 function startPresenceRotation(client, opts = {}) {
   // rotationEnabled is optional; by default we just refresh every 30s to keep uptime current
