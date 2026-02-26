@@ -16,6 +16,7 @@ const MANAGE_GUILD_COMMANDS = new Set([
   // Panel / setup
   "panel",
   "setup_channels",
+  "ai",
 
   // Channels / settings
   "set_deploy_channel",

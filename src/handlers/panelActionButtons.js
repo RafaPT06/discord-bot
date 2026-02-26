@@ -115,16 +115,32 @@ async function handlePanelAction(interaction, client) {
       const cur = await getMaintenanceEnabled().catch(() => false);
       const next = !cur;
       await setMaintenanceEnabled(next);
-      // keep bot status bubble/activity in sync immediately
-      refreshPresenceRotation(client).catch(() => {});
-      await addPanelEvent(guildId, { level: 2, kind: "maintenance", message: `Maintenance toggled to ${next ? "ON" : "OFF"}` });
+
+      // keep presence text in sync immediately (activity changes to Updating…)
+      try { await refreshPresenceRotation(client); } catch {}
+
+      await addPanelEvent(guildId, {
+        level: 2,
+        kind: "maintenance",
+        message: `Maintenance toggled to ${next ? "ON" : "OFF"}`
+      });
+
+      // Confirmation should appear where the panel is being used (not in feed)
       try {
         const who = interaction.user ? `${interaction.user.tag}` : "unknown";
         const embed = okEmbed("Maintenance", `Maintenance is now **${next ? "ON" : "OFF"}** (by ${who})`);
-        await sendFeed(client, guildId, 2, embed);
+        // If panel is on an existing reply, we still reply ephemerally + also post to same channel
+        await interaction.channel?.send({ embeds: [embed] }).catch(() => {});
       } catch {}
-      try { await interaction.followUp({ content: `Maintenance is now ${next ? "ON" : "OFF"}.`, ephemeral: true }); } catch {}
+
+      try {
+        await interaction.followUp({
+          content: `Maintenance is now ${next ? "ON" : "OFF"}.`,
+          ephemeral: true
+        });
+      } catch {}
     }
+
 
     if (action === "backup_now") {
       const s = await getBackupSetting(guildId);

@@ -14,6 +14,7 @@ const { sendFeed } = require("./services/feed");
 const { checkCooldown } = require("./services/cooldowns");
 const { fieldsEmbed, errorEmbed } = require("./utils/embeds");
 const { startPresenceRotation } = require("./services/presenceManager");
+const { onMessage: aiOnMessage, periodicIdleCheck: aiIdleCheck } = require("./services/aiMonitor");
 
 const token = process.env.BOT_TOKEN;
 const ownerId = process.env.OWNER_ID;
@@ -45,6 +46,7 @@ client.once(Events.ClientReady, async () => {
   startBackupScheduler(client);
   await sendDeployNotices(client);
   startPresenceRotation(client);
+  setInterval(() => aiIdleCheck(client), 60_000);
   console.log(" DB init + services started");
 });
 
@@ -194,5 +196,10 @@ if (interaction.isButton()) {
   }
 });
 
+
+// AI Monitor: observe message activity (feed-only alerts)
+client.on(Events.MessageCreate, async (message) => {
+  aiOnMessage(client, message);
+});
 
 client.login(token);
