@@ -23,9 +23,16 @@ async function buildActivityText(client) {
     return "Updating…";
   }
 
-  // Default: uptime only
-  const up = formatUptime(Math.floor(process.uptime()));
-  return `Uptime: ${up}`;
+const relationshipStart = new Date('2026-04-14');
+const now = new Date();
+
+const diff = now - relationshipStart;
+
+const totalDays = Math.floor(diff / (1000 * 60 * 60 * 24));
+const months = Math.floor(totalDays / 30);
+const days = totalDays % 30;
+
+return `❤️ Together for ${months} month${months !== 1 ? 's' : ''} and ${days} day${days !== 1 ? 's' : ''} ❤️`;
 }
 
 async function applyPresence(client) {
