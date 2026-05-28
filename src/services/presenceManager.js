@@ -26,11 +26,17 @@ async function buildActivityText(client) {
 const relationshipStart = new Date('2026-04-14');
 const now = new Date();
 
-const diff = now - relationshipStart;
+let months = now.getMonth() - relationshipStart.getMonth()
+  + (12 * (now.getFullYear() - relationshipStart.getFullYear()));
 
-const totalDays = Math.floor(diff / (1000 * 60 * 60 * 24));
-const months = Math.floor(totalDays / 30);
-const days = totalDays % 30;
+let days = now.getDate() - relationshipStart.getDate();
+
+if (days < 0) {
+  months--;
+  
+  const previousMonth = new Date(now.getFullYear(), now.getMonth(), 0);
+  days += previousMonth.getDate();
+}
 
 return `❤️ Together for ${months} month${months !== 1 ? 's' : ''} and ${days} day${days !== 1 ? 's' : ''} ❤️`;
 }
