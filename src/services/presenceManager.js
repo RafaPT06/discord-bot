@@ -38,7 +38,7 @@ if (days < 0) {
   days += previousMonth.getDate();
 }
 
-return `Missing you for ${months} month${months !== 1 ? 's' : ''} and ${days} day${days !== 1 ? 's' : ''} 💔`;
+return `Missing you for ${days} day${days !== 1 ? 's' : ''} 💔`;
 }
 
 async function applyPresence(client) {
