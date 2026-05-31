@@ -23,7 +23,7 @@ async function buildActivityText(client) {
     return "Updating…";
   }
 
-const relationshipStart = new Date('2026-04-14');
+const relationshipStart = new Date('2026-05-30');
 const now = new Date();
 
 let months = now.getMonth() - relationshipStart.getMonth()
@@ -38,7 +38,7 @@ if (days < 0) {
   days += previousMonth.getDate();
 }
 
-return `❤️ Together for ${months} month${months !== 1 ? 's' : ''} and ${days} day${days !== 1 ? 's' : ''} ❤️`;
+return `Missing you for ${months} month${months !== 1 ? 's' : ''} and ${days} day${days !== 1 ? 's' : ''} 💔`;
 }
 
 async function applyPresence(client) {
