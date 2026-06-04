@@ -23,23 +23,9 @@ async function buildActivityText(client) {
     return "Updating…";
   }
 
-const relationshipStart = new Date('2026-05-30');
-const now = new Date();
-
-let months = now.getMonth() - relationshipStart.getMonth()
-  + (12 * (now.getFullYear() - relationshipStart.getFullYear()));
-
-let days = now.getDate() - relationshipStart.getDate();
-
-if (days < 0) {
-  months--;
-  
-  const previousMonth = new Date(now.getFullYear(), now.getMonth(), 0);
-  days += previousMonth.getDate();
-}
-
-//return `Missing you for ${days} day${days !== 1 ? 's' : ''} 💔`;
-  return `I miss you`;
+  const guilds = client?.guilds?.cache?.size || 0;
+  const uptime = formatUptime(process.uptime());
+  return `Serving ${guilds} server${guilds === 1 ? "" : "s"} • ${uptime}`;
 }
 
 async function applyPresence(client) {

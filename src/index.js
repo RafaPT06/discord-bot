@@ -98,7 +98,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       }
       // Cooldowns (owner bypass)
       if (!isOwner) {
-        const noCooldown = new Set(["help","ping","diag","maintenance","sys"]);
+        const noCooldown = new Set(["help","ping","maintenance","panel"]);
         if (!noCooldown.has(interaction.commandName)) {
           const cd = checkCooldown({ userId: interaction.user.id, commandName: interaction.commandName });
           if (!cd.ok) {
@@ -109,8 +109,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
       }
 
 
+      const commandStartedAt = Date.now();
       try {
         await cmd.execute(interaction, client);
+        const durationMs = Date.now() - commandStartedAt;
         // Feed: activity (level 3)
         try {
           const embed = fieldsEmbed("Command Executed", [
@@ -125,6 +127,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
           userId: interaction.user?.id,
           commandName: interaction.commandName,
           ok: true,
+          durationMs,
         });
       } catch (err) {
         logCommandUsage({
@@ -133,6 +136,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
           commandName: interaction.commandName,
           ok: false,
           error: err?.message || String(err),
+          durationMs: Date.now() - commandStartedAt,
         });
         // Feed: critical (level 1)
         try {

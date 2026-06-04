@@ -56,6 +56,7 @@ const MANAGE_GUILD_COMMANDS = new Set([
   "perm_show",
   "perm_list",
   "perm_clear",
+  "permissions_check",
 
   // Tests (still restricted)
   "deploy_test",
@@ -89,24 +90,45 @@ function memberRoleIds(interaction) {
   return [];
 }
 
-async function canRunCommand(interaction, commandName) {
+async function explainCommandPermission(interaction, commandName, targetMember = null) {
   const inGuild = Boolean(interaction.guildId);
+  const targetUser = targetMember?.user || interaction.user;
+  const targetId = targetUser?.id || interaction.user?.id;
+  const targetRoles = targetMember?.roles?.cache
+    ? [...targetMember.roles.cache.keys()]
+    : memberRoleIds(interaction);
+  const targetHasManageGuild = targetMember?.permissions
+    ? Boolean(targetMember.permissions.has("ManageGuild"))
+    : hasManageGuild(interaction);
+  const targetIsOwner = targetId === process.env.OWNER_ID;
 
-  // ---- DMs ----
-  // Only allow public commands in DMs (fun/social + help/ping/etc)
+  const reasons = [];
+  const result = (allowed, source) => ({
+    allowed,
+    commandName,
+    source,
+    targetId,
+    targetIsOwner,
+    hasManageGuild: targetHasManageGuild,
+    roleIds: targetRoles,
+    reasons,
+  });
+
   if (!inGuild) {
-    return PUBLIC_COMMANDS.has(commandName);
+    reasons.push(PUBLIC_COMMANDS.has(commandName) ? "Public command is allowed in DMs." : "Only public commands are allowed in DMs.");
+    return result(PUBLIC_COMMANDS.has(commandName), "dm");
   }
 
-  // ---- Guild ----
+  if (PUBLIC_COMMANDS.has(commandName)) {
+    reasons.push("This command is public.");
+    return result(true, "public");
+  }
 
-  // Public commands bypass everything
-  if (PUBLIC_COMMANDS.has(commandName)) return true;
+  if (targetIsOwner) {
+    reasons.push("Bot owner bypass applies.");
+    return result(true, "owner");
+  }
 
-  // Owner always allowed
-  if (isOwner(interaction)) return true;
-
-  // If a custom rule exists for this guild+command, enforce it
   const { rows } = await pool.query(
     `SELECT allowed_role_ids, allow_manage_guild
      FROM command_permissions
@@ -118,19 +140,45 @@ async function canRunCommand(interaction, commandName) {
     const allowedRoles = rows[0].allowed_role_ids || [];
     const allowManageGuild = rows[0].allow_manage_guild !== false;
 
-    if (allowManageGuild && hasManageGuild(interaction)) return true;
-    if (!allowedRoles.length) return false;
+    reasons.push("Custom permission override exists.");
+    if (allowManageGuild && targetHasManageGuild) {
+      reasons.push("Allowed because Manage Server is enabled for this command and the user has it.");
+      return result(true, "custom_manage_guild");
+    }
 
-    const myRoles = new Set(memberRoleIds(interaction));
-    return allowedRoles.some((rid) => myRoles.has(rid));
+    if (!allowedRoles.length) {
+      reasons.push(allowManageGuild ? "No allowed roles matched." : "Manage Server is disabled and no allowed roles are configured.");
+      return result(false, "custom_denied");
+    }
+
+    const myRoles = new Set(targetRoles);
+    const matched = allowedRoles.filter((rid) => myRoles.has(rid));
+    if (matched.length) {
+      reasons.push(`Allowed by role override: ${matched.map((id) => `<@&${id}>`).join(", ")}.`);
+      return result(true, "custom_role");
+    }
+
+    reasons.push(`Required role override did not match: ${allowedRoles.map((id) => `<@&${id}>`).join(", ")}.`);
+    return result(false, "custom_denied");
   }
 
-  // No custom rule: apply defaults
-  if (OWNER_COMMANDS.has(commandName)) return false;
-  if (MANAGE_GUILD_COMMANDS.has(commandName)) return hasManageGuild(interaction);
+  if (OWNER_COMMANDS.has(commandName)) {
+    reasons.push("Default rule: owner-only command.");
+    return result(false, "default_owner_only");
+  }
 
-  // Everything else open by default
-  return true;
+  if (MANAGE_GUILD_COMMANDS.has(commandName)) {
+    reasons.push("Default rule: requires Manage Server.");
+    return result(targetHasManageGuild, "default_manage_guild");
+  }
+
+  reasons.push("No restriction matched, so the command is open by default.");
+  return result(true, "default_open");
 }
 
-module.exports = { canRunCommand, PUBLIC_COMMANDS, MANAGE_GUILD_COMMANDS, OWNER_COMMANDS };
+async function canRunCommand(interaction, commandName) {
+  const info = await explainCommandPermission(interaction, commandName);
+  return info.allowed;
+}
+
+module.exports = { canRunCommand, explainCommandPermission, PUBLIC_COMMANDS, MANAGE_GUILD_COMMANDS, OWNER_COMMANDS };

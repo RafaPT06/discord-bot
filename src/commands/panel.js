@@ -5,9 +5,7 @@ const {
   ButtonStyle,
   StringSelectMenuBuilder,
 } = require("discord.js");
-const { buildPanelEmbed } = require("../utils/panelPages");
-
-const PAGES = ["overview", "channels", "diag", "feed", "perms", "sim", "logs"];
+const { buildPanelEmbed, PAGES } = require("../utils/panelPages");
 
 function selectRow(active) {
   const p = (active || "overview").toLowerCase();
@@ -15,6 +13,9 @@ function selectRow(active) {
     { label: "Overview", value: "overview" },
     { label: "Channels", value: "channels" },
     { label: "Diagnostics", value: "diag" },
+    { label: "System", value: "system" },
+    { label: "Usage", value: "usage" },
+    { label: "Backups", value: "backups" },
     { label: "Feed", value: "feed" },
     { label: "Permissions", value: "perms" },
     { label: "Simulation", value: "sim" },

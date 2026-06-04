@@ -1,16 +1,17 @@
 const { pool } = require("../db/pool");
 
-async function logCommandUsage({ guildId, userId, commandName, ok, error }) {
+async function logCommandUsage({ guildId, userId, commandName, ok, error, durationMs }) {
   try {
     await pool.query(
-      `INSERT INTO command_usage (guild_id, user_id, command_name, ok, error)
-       VALUES ($1, $2, $3, $4, $5)`,
+      `INSERT INTO command_usage (guild_id, user_id, command_name, ok, error, duration_ms)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
       [
         guildId || null,
         userId || null,
         String(commandName),
         Boolean(ok),
         error ? String(error).slice(0, 400) : null,
+        Number.isFinite(Number(durationMs)) ? Math.max(0, Math.round(Number(durationMs))) : null,
       ]
     );
   } catch {

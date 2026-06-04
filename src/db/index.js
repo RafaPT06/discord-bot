@@ -96,6 +96,15 @@ async function initDb() {
   );
 
   await pool.query(`
+    ALTER TABLE command_usage
+    ADD COLUMN IF NOT EXISTS duration_ms INT;
+  `);
+
+  await pool.query(
+    `CREATE INDEX IF NOT EXISTS command_usage_guild_duration_idx ON command_usage (guild_id, duration_ms DESC);`,
+  );
+
+  await pool.query(`
   CREATE TABLE IF NOT EXISTS command_permissions (
     guild_id TEXT NOT NULL,
     command_name TEXT NOT NULL,
