@@ -9,6 +9,20 @@ const PUBLIC_COMMANDS = new Set([
   "mimic",
   "cat",
   "crazy",
+  "poll",
+  "quote",
+  "suggest",
+  "summarize",
+  "improve",
+  "translate",
+  "explain",
+  "8ball",
+  "would_you_rather",
+  "fact",
+  "trivia",
+  "roblox_profile",
+  "roblox_avatar",
+  "roblox_game",
 ]);
 
 // Default: requires Manage Server (unless overridden via /perm_set)
@@ -57,6 +71,7 @@ const MANAGE_GUILD_COMMANDS = new Set([
   "perm_list",
   "perm_clear",
   "permissions_check",
+  "starboard",
 
   // Tests (still restricted)
   "deploy_test",

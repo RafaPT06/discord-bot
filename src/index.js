@@ -16,6 +16,8 @@ const { fieldsEmbed, errorEmbed } = require("./utils/embeds");
 const { startPresenceRotation } = require("./services/presenceManager");
 const { onMessage: aiOnMessage, periodicIdleCheck: aiIdleCheck } = require("./services/aiMonitor");
 
+const { handleStarboardReaction } = require("./services/starboard");
+
 const token = process.env.BOT_TOKEN;
 const ownerId = process.env.OWNER_ID;
 const databaseUrl = process.env.DATABASE_URL;
@@ -25,8 +27,8 @@ if (!ownerId) throw new Error("Missing OWNER_ID");
 if (!databaseUrl) throw new Error("Missing DATABASE_URL");
 
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages],
-  partials: [Partials.Channel],
+  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent, GatewayIntentBits.GuildMessageReactions],
+  partials: [Partials.Channel, Partials.Message, Partials.Reaction, Partials.User],
 });
 
 client.commands = new Collection();
@@ -204,6 +206,14 @@ if (interaction.isButton()) {
 // AI Monitor: observe message activity (feed-only alerts)
 client.on(Events.MessageCreate, async (message) => {
   aiOnMessage(client, message);
+});
+
+client.on(Events.MessageReactionAdd, async (reaction, user) => {
+  try {
+    await handleStarboardReaction(client, reaction, user);
+  } catch (err) {
+    console.error("Starboard reaction error:", err);
+  }
 });
 
 client.login(token);

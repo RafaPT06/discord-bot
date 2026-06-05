@@ -1,0 +1,3 @@
+const { SlashCommandBuilder } = require('discord.js');
+const { runTextAi } = require('../services/textAi');
+module.exports = { data: new SlashCommandBuilder().setName('translate').setDescription('Translate text.').addStringOption(o=>o.setName('text').setDescription('Text to translate').setRequired(true).setMaxLength(3500)).addStringOption(o=>o.setName('to').setDescription('Target language').setRequired(true).setMaxLength(50)), async execute(interaction){ await interaction.deferReply(); const to=interaction.options.getString('to', true); const out=await runTextAi('Translate this text', interaction.options.getString('text', true), `Target language: ${to}. Return only the translation.`); return interaction.editReply(out.slice(0,1900)); } };

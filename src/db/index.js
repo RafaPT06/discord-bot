@@ -130,6 +130,57 @@ await pool.query(`
     ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
   `);
 
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS starboard_settings (
+      guild_id TEXT PRIMARY KEY,
+      channel_id TEXT NOT NULL,
+      threshold INT NOT NULL DEFAULT 3,
+      emoji TEXT NOT NULL DEFAULT '⭐',
+      enabled BOOLEAN NOT NULL DEFAULT TRUE,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS starboard_posts (
+      guild_id TEXT NOT NULL,
+      source_message_id TEXT NOT NULL,
+      starboard_message_id TEXT NOT NULL,
+      channel_id TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (guild_id, source_message_id)
+    );
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS suggestions (
+      id BIGSERIAL PRIMARY KEY,
+      guild_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      text TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pending',
+      staff_id TEXT,
+      staff_note TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+  await pool.query(`CREATE INDEX IF NOT EXISTS suggestions_guild_status_idx ON suggestions (guild_id, status, id DESC);`);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS quotes (
+      id BIGSERIAL PRIMARY KEY,
+      guild_id TEXT NOT NULL,
+      user_id TEXT,
+      author_id TEXT,
+      text TEXT NOT NULL,
+      source_url TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+  await pool.query(`CREATE INDEX IF NOT EXISTS quotes_guild_id_idx ON quotes (guild_id, id DESC);`);
+
 }
 
 module.exports = { initDb };
