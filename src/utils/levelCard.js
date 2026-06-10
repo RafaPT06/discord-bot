@@ -343,8 +343,8 @@ if (isLevelUpCard) {
   drawPixelText(ctx, "LEVEL", 900, 90, 4, "#ffffff", "right", 0.75);
   drawPixelText(
     ctx,
-    `${previousLevel} > ${safeLevel}`,
-    1080,
+    `${previousLevel} → ${safeLevel}`,
+    1100,
     90,
     4,
     "#ffffff",
