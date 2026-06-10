@@ -65,6 +65,16 @@ function hexFromColor(color) {
   return `#${n.toString(16).padStart(6, "0").slice(-6)}`;
 }
 
+function shortNumber(n) {
+  const num = Number(n || 0);
+
+  if (num >= 1000000000) return `${(num / 1000000000).toFixed(1)}B`;
+  if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
+  if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
+
+  return num.toString();
+}
+
 function normalizeText(text) {
   return String(text || "UNKNOWN")
     .normalize("NFD")
@@ -76,10 +86,12 @@ function normalizeText(text) {
 function measurePixelText(text, size) {
   const value = normalizeText(text);
   let width = 0;
+
   for (const ch of value) {
     const glyph = GLYPHS[ch] || GLYPHS["?"];
     width += glyph[0].length * size + size;
   }
+
   return Math.max(0, width - size);
 }
 
@@ -87,6 +99,7 @@ function drawPixelText(ctx, text, x, y, size, color = "#ffffff", align = "left",
   const value = normalizeText(text);
   let startX = x;
   const width = measurePixelText(value, size);
+
   if (align === "center") startX = x - width / 2;
   if (align === "right") startX = x - width;
 
@@ -95,8 +108,10 @@ function drawPixelText(ctx, text, x, y, size, color = "#ffffff", align = "left",
   ctx.fillStyle = color;
 
   let cursor = startX;
+
   for (const ch of value) {
     const glyph = GLYPHS[ch] || GLYPHS["?"];
+
     for (let row = 0; row < glyph.length; row += 1) {
       for (let col = 0; col < glyph[row].length; col += 1) {
         if (glyph[row][col] === "1") {
@@ -104,6 +119,7 @@ function drawPixelText(ctx, text, x, y, size, color = "#ffffff", align = "left",
         }
       }
     }
+
     cursor += glyph[0].length * size + size;
   }
 
@@ -112,15 +128,18 @@ function drawPixelText(ctx, text, x, y, size, color = "#ffffff", align = "left",
 
 function fitPixelText(text, maxWidth, startSize, minSize = 4) {
   let size = startSize;
+
   while (size > minSize) {
     if (measurePixelText(text, size) <= maxWidth) return size;
     size -= 1;
   }
+
   return minSize;
 }
 
 function roundRect(ctx, x, y, w, h, r) {
   const radius = Math.min(r, w / 2, h / 2);
+
   ctx.beginPath();
   ctx.moveTo(x + radius, y);
   ctx.arcTo(x + w, y, x + w, y + h, radius);
@@ -132,27 +151,38 @@ function roundRect(ctx, x, y, w, h, r) {
 
 async function imageFromUrl(url) {
   if (!url) throw new Error("Missing image URL");
-  const res = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0 DiscordBot LevelCard" } });
+
+  const res = await fetch(url, {
+    headers: {
+      "User-Agent": "Mozilla/5.0 DiscordBot LevelCard",
+    },
+  });
+
   if (!res.ok) throw new Error(`Failed to fetch image: ${res.status}`);
+
   const buffer = Buffer.from(await res.arrayBuffer());
   return loadImage(buffer);
 }
 
 function drawDefaultBackground(ctx, accent) {
   const gradient = ctx.createLinearGradient(0, 0, WIDTH, HEIGHT);
+
   gradient.addColorStop(0, "#050505");
   gradient.addColorStop(0.55, "#111111");
   gradient.addColorStop(1, "#030303");
+
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, WIDTH, HEIGHT);
 
   ctx.globalAlpha = 0.16;
+
   for (let i = 0; i < 26; i += 1) {
     ctx.fillStyle = i % 2 ? "#ffffff" : accent;
     ctx.beginPath();
     ctx.arc(Math.random() * WIDTH, Math.random() * HEIGHT, 60 + Math.random() * 150, 0, Math.PI * 2);
     ctx.fill();
   }
+
   ctx.globalAlpha = 1;
 
   ctx.fillStyle = "rgba(0,0,0,0.52)";
@@ -161,6 +191,7 @@ function drawDefaultBackground(ctx, accent) {
 
 function drawAccentShapes(ctx, accent) {
   ctx.fillStyle = accent;
+
   ctx.beginPath();
   ctx.moveTo(0, HEIGHT);
   ctx.lineTo(0, 255);
@@ -179,43 +210,55 @@ function drawAccentShapes(ctx, accent) {
 
 function drawAvatarFallback(ctx, x, y, size) {
   ctx.save();
+
   ctx.beginPath();
   ctx.arc(x + size / 2, y + size / 2, size / 2, 0, Math.PI * 2);
   ctx.closePath();
+
   ctx.fillStyle = "#111111";
   ctx.fill();
+
   ctx.strokeStyle = "rgba(255,255,255,0.18)";
   ctx.lineWidth = 8;
   ctx.stroke();
+
   drawPixelText(ctx, "?", x + size / 2, y + size / 2 - 24, 10, "#ffffff", "center");
+
   ctx.restore();
 }
 
 function drawCircularImage(ctx, img, x, y, size) {
   ctx.save();
+
   ctx.beginPath();
   ctx.arc(x + size / 2, y + size / 2, size / 2, 0, Math.PI * 2);
   ctx.closePath();
   ctx.clip();
+
   ctx.drawImage(img, x, y, size, size);
+
   ctx.restore();
 
   ctx.save();
+
   ctx.beginPath();
   ctx.arc(x + size / 2, y + size / 2, size / 2, 0, Math.PI * 2);
   ctx.strokeStyle = "rgba(255,255,255,0.12)";
   ctx.lineWidth = 8;
   ctx.stroke();
+
   ctx.restore();
 }
 
 function drawProgressBar(ctx, x, y, w, h, percent, accent) {
   const safePercent = clamp(Number(percent) || 0, 0, 100);
+
   roundRect(ctx, x, y, w, h, h / 2);
   ctx.fillStyle = "rgba(120,120,120,0.70)";
   ctx.fill();
 
   const filled = clamp(w * (safePercent / 100), 0, w);
+
   if (filled > 0) {
     roundRect(ctx, x, y, filled, h, h / 2);
     ctx.fillStyle = accent;
@@ -238,6 +281,7 @@ async function createLevelCardBuffer({
   title,
 }) {
   const accent = hexFromColor(accentColor);
+
   const safeName = String(displayName || username || "Unknown");
   const safeRank = rank || "-";
   const safeLevel = Number(level || 0);
@@ -245,6 +289,7 @@ async function createLevelCardBuffer({
   const safeNeededXp = Math.max(1, Number(neededXp || 1));
   const safeTotalXp = Number(totalXp || 0);
   const percent = Math.floor((safeCurrentXp / safeNeededXp) * 100);
+  const isLevelUpCard = Boolean(title);
 
   const canvas = createCanvas(WIDTH, HEIGHT);
   const ctx = canvas.getContext("2d");
@@ -255,7 +300,9 @@ async function createLevelCardBuffer({
       const scale = Math.max(WIDTH / bg.width, HEIGHT / bg.height);
       const sw = bg.width * scale;
       const sh = bg.height * scale;
+
       ctx.drawImage(bg, (WIDTH - sw) / 2, (HEIGHT - sh) / 2, sw, sh);
+
       ctx.fillStyle = "rgba(0,0,0,0.62)";
       ctx.fillRect(0, 0, WIDTH, HEIGHT);
     } catch {
@@ -266,6 +313,7 @@ async function createLevelCardBuffer({
   }
 
   drawAccentShapes(ctx, accent);
+
   roundRect(ctx, 40, 45, WIDTH - 80, HEIGHT - 90, 18);
   ctx.fillStyle = "rgba(0,0,0,0.45)";
   ctx.fill();
@@ -276,26 +324,52 @@ async function createLevelCardBuffer({
   } catch {
     drawAvatarFallback(ctx, 110, 92, 190);
   }
-if (title) drawPixelText(ctx, title, 365, 95, 5, accent, "left");
 
-const nameSize = fitPixelText(safeName, 430, 6, 4);
-drawPixelText(ctx, safeName, 365, 178, nameSize, "#ffffff", "left");
+  if (isLevelUpCard) {
+    drawPixelText(ctx, "LEVEL UP!", 365, 95, 5, accent, "left");
+  }
 
-if (discriminator && discriminator !== "0") {
-  const nameWidth = measurePixelText(safeName, nameSize);
-  drawPixelText(ctx, `#${discriminator}`, 365 + nameWidth + 14, 184, 4, "#ffffff", "left", 0.4);
-}
-drawPixelText(ctx, "RANK", 800, 90, 4, "#ffffff", "right", 0.75);
-drawPixelText(ctx, `#${safeRank}`, 870, 90, 4, "#ffffff", "right");
+  const nameSize = fitPixelText(safeName, 430, 6, 4);
+  drawPixelText(ctx, safeName, 365, 178, nameSize, "#ffffff", "left");
 
-drawPixelText(ctx, "LEVEL", 1050, 90, 4, "#ffffff", "right", 0.75);
-drawPixelText(ctx, String(safeLevel).padStart(2, "0"), 1120, 90, 4, "#ffffff", "right");
+  if (discriminator && discriminator !== "0") {
+    const nameWidth = measurePixelText(safeName, nameSize);
+    drawPixelText(ctx, `#${discriminator}`, 365 + nameWidth + 14, 184, 4, "#ffffff", "left", 0.4);
+  }
 
-drawPixelText(ctx, `${safeCurrentXp.toLocaleString()}/${safeNeededXp.toLocaleString()} XP`, 1060, 205, 5, "#ffffff", "right");
+  if (isLevelUpCard) {
+    drawPixelText(ctx, "LEVEL", 1050, 92, 4, "#ffffff", "right", 0.75);
+    drawPixelText(ctx, String(safeLevel).padStart(2, "0"), 1120, 90, 4, "#ffffff", "right");
+  } else {
+    drawPixelText(ctx, "RANK", 800, 90, 4, "#ffffff", "right", 0.75);
+    drawPixelText(ctx, `#${safeRank}`, 870, 90, 4, "#ffffff", "right");
 
-drawProgressBar(ctx, 365, 250, 720, 54, percent, accent);
+    drawPixelText(ctx, "LEVEL", 1050, 90, 4, "#ffffff", "right", 0.75);
+    drawPixelText(ctx, String(safeLevel).padStart(2, "0"), 1120, 90, 4, "#ffffff", "right");
+  }
 
-drawPixelText(ctx, `TOTAL: ${safeTotalXp.toLocaleString()} XP`, 725, 330, 4, "#ffffff", "center");
+  drawPixelText(
+    ctx,
+    `${shortNumber(safeCurrentXp)}/${shortNumber(safeNeededXp)} XP`,
+    1060,
+    205,
+    5,
+    "#ffffff",
+    "right"
+  );
+
+  drawProgressBar(ctx, 365, 250, 720, 54, percent, accent);
+
+  drawPixelText(
+    ctx,
+    `TOTAL: ${shortNumber(safeTotalXp)} XP`,
+    725,
+    330,
+    4,
+    "#ffffff",
+    "center"
+  );
+
   return canvas.toBuffer("image/png");
 }
 
