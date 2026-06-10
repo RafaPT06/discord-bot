@@ -329,7 +329,7 @@ async function createLevelCardBuffer({
   }
 
   if (isLevelUpCard) {
-    drawPixelText(ctx, "LEVEL UP!", 365, 95, 5, accent, "left");
+    drawPixelText(ctx, "LEVEL UP!", 365, 95, 5, "#ffffff", "left");
   }
 
   const nameSize = fitPixelText(safeName, 430, 6, 4);
@@ -381,7 +381,7 @@ if (isLevelUpCard) {
     "right"
   );
 
-  drawProgressBar(ctx, 365, 250, 720, 54, percent, accent);
+  drawProgressBar(ctx, 365, 250, 720, 54, percent, "#ffffff");
 
   drawPixelText(
     ctx,
