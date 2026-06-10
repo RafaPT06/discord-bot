@@ -1,66 +1,61 @@
-const { createCanvas, loadImage, registerFont } = require("canvas");
-const { execFileSync } = require("child_process");
-const fs = require("fs");
+const { createCanvas, loadImage } = require("canvas");
 
 const WIDTH = 1200;
 const HEIGHT = 420;
 
-let fontsReady = false;
-
-function registerFontIfExists(file, options) {
-  if (!file || !fs.existsSync(file)) return false;
-  try {
-    registerFont(file, options);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-function fontFromFcMatch(query) {
-  try {
-    const out = execFileSync("fc-match", ["-f", "%{file}", query], {
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "ignore"],
-    }).trim();
-    return out || null;
-  } catch {
-    return null;
-  }
-}
-
-function ensureFonts() {
-  if (fontsReady) return;
-
-  const regularCandidates = [
-    fontFromFcMatch("DejaVu Sans"),
-    fontFromFcMatch("Liberation Sans"),
-    "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-    "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
-    "/usr/share/fonts/truetype/liberation2/LiberationSans-Regular.ttf",
-  ];
-
-  const boldCandidates = [
-    fontFromFcMatch("DejaVu Sans:style=Bold"),
-    fontFromFcMatch("Liberation Sans:style=Bold"),
-    "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
-    "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
-    "/usr/share/fonts/truetype/liberation2/LiberationSans-Bold.ttf",
-  ];
-
-  const regular = regularCandidates.find((file) => file && fs.existsSync(file));
-  const bold = boldCandidates.find((file) => file && fs.existsSync(file));
-
-  if (regular) {
-    registerFontIfExists(regular, { family: "LevelSans", weight: "normal" });
-  }
-
-  if (bold) {
-    registerFontIfExists(bold, { family: "LevelSans", weight: "bold" });
-  }
-
-  fontsReady = true;
-}
+const GLYPHS = {
+  "A": ["01110","10001","10001","11111","10001","10001","10001"],
+  "B": ["11110","10001","10001","11110","10001","10001","11110"],
+  "C": ["01111","10000","10000","10000","10000","10000","01111"],
+  "D": ["11110","10001","10001","10001","10001","10001","11110"],
+  "E": ["11111","10000","10000","11110","10000","10000","11111"],
+  "F": ["11111","10000","10000","11110","10000","10000","10000"],
+  "G": ["01111","10000","10000","10111","10001","10001","01111"],
+  "H": ["10001","10001","10001","11111","10001","10001","10001"],
+  "I": ["11111","00100","00100","00100","00100","00100","11111"],
+  "J": ["00111","00010","00010","00010","10010","10010","01100"],
+  "K": ["10001","10010","10100","11000","10100","10010","10001"],
+  "L": ["10000","10000","10000","10000","10000","10000","11111"],
+  "M": ["10001","11011","10101","10101","10001","10001","10001"],
+  "N": ["10001","11001","10101","10011","10001","10001","10001"],
+  "O": ["01110","10001","10001","10001","10001","10001","01110"],
+  "P": ["11110","10001","10001","11110","10000","10000","10000"],
+  "Q": ["01110","10001","10001","10001","10101","10010","01101"],
+  "R": ["11110","10001","10001","11110","10100","10010","10001"],
+  "S": ["01111","10000","10000","01110","00001","00001","11110"],
+  "T": ["11111","00100","00100","00100","00100","00100","00100"],
+  "U": ["10001","10001","10001","10001","10001","10001","01110"],
+  "V": ["10001","10001","10001","10001","10001","01010","00100"],
+  "W": ["10001","10001","10001","10101","10101","10101","01010"],
+  "X": ["10001","10001","01010","00100","01010","10001","10001"],
+  "Y": ["10001","10001","01010","00100","00100","00100","00100"],
+  "Z": ["11111","00001","00010","00100","01000","10000","11111"],
+  "0": ["01110","10001","10011","10101","11001","10001","01110"],
+  "1": ["00100","01100","00100","00100","00100","00100","01110"],
+  "2": ["01110","10001","00001","00010","00100","01000","11111"],
+  "3": ["11110","00001","00001","01110","00001","00001","11110"],
+  "4": ["00010","00110","01010","10010","11111","00010","00010"],
+  "5": ["11111","10000","10000","11110","00001","00001","11110"],
+  "6": ["01110","10000","10000","11110","10001","10001","01110"],
+  "7": ["11111","00001","00010","00100","01000","01000","01000"],
+  "8": ["01110","10001","10001","01110","10001","10001","01110"],
+  "9": ["01110","10001","10001","01111","00001","00001","01110"],
+  "#": ["01010","01010","11111","01010","11111","01010","01010"],
+  "/": ["00001","00010","00010","00100","01000","01000","10000"],
+  ">": ["10000","01000","00100","00010","00100","01000","10000"],
+  ":": ["00000","00100","00100","00000","00100","00100","00000"],
+  ".": ["00000","00000","00000","00000","00000","01100","01100"],
+  "-": ["00000","00000","00000","11111","00000","00000","00000"],
+  "_": ["00000","00000","00000","00000","00000","00000","11111"],
+  "!": ["00100","00100","00100","00100","00100","00000","00100"],
+  "?": ["01110","10001","00001","00010","00100","00000","00100"],
+  "%": ["11001","11010","00010","00100","01000","01011","10011"],
+  "(": ["00010","00100","01000","01000","01000","00100","00010"],
+  ")": ["01000","00100","00010","00010","00010","00100","01000"],
+  "@": ["01110","10001","10111","10101","10111","10000","01110"],
+  "'": ["00100","00100","01000","00000","00000","00000","00000"],
+  " ": ["000","000","000","000","000","000","000"],
+};
 
 function clamp(n, min, max) {
   return Math.max(min, Math.min(max, n));
@@ -71,12 +66,82 @@ function hexFromColor(color) {
   return `#${n.toString(16).padStart(6, "0").slice(-6)}`;
 }
 
-function font(size, bold = true) {
-  return `${bold ? "700 " : "400 "}${size}px LevelSans, "DejaVu Sans", "Liberation Sans", Arial, sans-serif`;
+function shortNumber(n) {
+  const num = Number(n || 0);
+
+  if (num >= 1000000000) return `${(num / 1000000000).toFixed(1)}B`;
+  if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
+  if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
+
+  return num.toString();
+}
+
+function normalizeText(text) {
+  return String(text || "UNKNOWN")
+    .replace(/[→➜]/g, ">")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase()
+    .replace(/[^A-Z0-9#/:._\-!?%()@' >]/g, "?");
+}
+
+function measurePixelText(text, size) {
+  const value = normalizeText(text);
+  let width = 0;
+
+  for (const ch of value) {
+    const glyph = GLYPHS[ch] || GLYPHS["?"];
+    width += glyph[0].length * size + size;
+  }
+
+  return Math.max(0, width - size);
+}
+
+function drawPixelText(ctx, text, x, y, size, color = "#ffffff", align = "left", alpha = 1) {
+  const value = normalizeText(text);
+  let startX = x;
+  const width = measurePixelText(value, size);
+
+  if (align === "center") startX = x - width / 2;
+  if (align === "right") startX = x - width;
+
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = color;
+
+  let cursor = startX;
+
+  for (const ch of value) {
+    const glyph = GLYPHS[ch] || GLYPHS["?"];
+
+    for (let row = 0; row < glyph.length; row += 1) {
+      for (let col = 0; col < glyph[row].length; col += 1) {
+        if (glyph[row][col] === "1") {
+          ctx.fillRect(cursor + col * size, y + row * size, size, size);
+        }
+      }
+    }
+
+    cursor += glyph[0].length * size + size;
+  }
+
+  ctx.restore();
+}
+
+function fitPixelText(text, maxWidth, startSize, minSize = 4) {
+  let size = startSize;
+
+  while (size > minSize) {
+    if (measurePixelText(text, size) <= maxWidth) return size;
+    size -= 1;
+  }
+
+  return minSize;
 }
 
 function roundRect(ctx, x, y, w, h, r) {
   const radius = Math.min(r, w / 2, h / 2);
+
   ctx.beginPath();
   ctx.moveTo(x + radius, y);
   ctx.arcTo(x + w, y, x + w, y + h, radius);
@@ -84,19 +149,6 @@ function roundRect(ctx, x, y, w, h, r) {
   ctx.arcTo(x, y + h, x, y, radius);
   ctx.arcTo(x, y, x + w, y, radius);
   ctx.closePath();
-}
-
-function fitText(ctx, text, maxWidth, startSize, minSize = 24, bold = true) {
-  let size = startSize;
-  const value = String(text || "Unknown");
-
-  while (size > minSize) {
-    ctx.font = font(size, bold);
-    if (ctx.measureText(value).width <= maxWidth) return size;
-    size -= 2;
-  }
-
-  return minSize;
 }
 
 async function imageFromUrl(url) {
@@ -116,6 +168,7 @@ async function imageFromUrl(url) {
 
 function drawDefaultBackground(ctx, accent) {
   const gradient = ctx.createLinearGradient(0, 0, WIDTH, HEIGHT);
+
   gradient.addColorStop(0, "#050505");
   gradient.addColorStop(0.55, "#111111");
   gradient.addColorStop(1, "#030303");
@@ -128,13 +181,7 @@ function drawDefaultBackground(ctx, accent) {
   for (let i = 0; i < 26; i += 1) {
     ctx.fillStyle = i % 2 ? "#ffffff" : accent;
     ctx.beginPath();
-    ctx.arc(
-      Math.random() * WIDTH,
-      Math.random() * HEIGHT,
-      60 + Math.random() * 150,
-      0,
-      Math.PI * 2
-    );
+    ctx.arc(Math.random() * WIDTH, Math.random() * HEIGHT, 60 + Math.random() * 150, 0, Math.PI * 2);
     ctx.fill();
   }
 
@@ -165,9 +212,11 @@ function drawAccentShapes(ctx, accent) {
 
 function drawAvatarFallback(ctx, x, y, size) {
   ctx.save();
+
   ctx.beginPath();
   ctx.arc(x + size / 2, y + size / 2, size / 2, 0, Math.PI * 2);
   ctx.closePath();
+
   ctx.fillStyle = "#111111";
   ctx.fill();
 
@@ -175,29 +224,31 @@ function drawAvatarFallback(ctx, x, y, size) {
   ctx.lineWidth = 8;
   ctx.stroke();
 
-  ctx.font = font(72, true);
-  ctx.fillStyle = "#ffffff";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText("?", x + size / 2, y + size / 2);
+  drawPixelText(ctx, "?", x + size / 2, y + size / 2 - 24, 10, "#ffffff", "center");
+
   ctx.restore();
 }
 
 function drawCircularImage(ctx, img, x, y, size) {
   ctx.save();
+
   ctx.beginPath();
   ctx.arc(x + size / 2, y + size / 2, size / 2, 0, Math.PI * 2);
   ctx.closePath();
   ctx.clip();
+
   ctx.drawImage(img, x, y, size, size);
+
   ctx.restore();
 
   ctx.save();
+
   ctx.beginPath();
   ctx.arc(x + size / 2, y + size / 2, size / 2, 0, Math.PI * 2);
   ctx.strokeStyle = "rgba(255,255,255,0.12)";
   ctx.lineWidth = 8;
   ctx.stroke();
+
   ctx.restore();
 }
 
@@ -217,25 +268,6 @@ function drawProgressBar(ctx, x, y, w, h, percent, accent) {
   }
 }
 
-function drawText(ctx, text, x, y, size, options = {}) {
-  const {
-    color = "#ffffff",
-    alpha = 1,
-    align = "left",
-    bold = true,
-    baseline = "alphabetic",
-  } = options;
-
-  ctx.save();
-  ctx.textAlign = align;
-  ctx.textBaseline = baseline;
-  ctx.font = font(size, bold);
-  ctx.fillStyle = color;
-  ctx.globalAlpha = alpha;
-  ctx.fillText(String(text), x, y);
-  ctx.restore();
-}
-
 async function createLevelCardBuffer({
   username,
   displayName,
@@ -243,6 +275,7 @@ async function createLevelCardBuffer({
   avatarUrl,
   rank,
   level,
+  previousLevel,
   currentXp,
   neededXp,
   totalXp,
@@ -250,16 +283,16 @@ async function createLevelCardBuffer({
   backgroundUrl,
   title,
 }) {
-  ensureFonts();
-
   const accent = hexFromColor(accentColor);
+
   const safeName = String(displayName || username || "Unknown");
-  const safeRank = rank || "—";
+  const safeRank = rank || "-";
   const safeLevel = Number(level || 0);
   const safeCurrentXp = Number(currentXp || 0);
   const safeNeededXp = Math.max(1, Number(neededXp || 1));
   const safeTotalXp = Number(totalXp || 0);
   const percent = Math.floor((safeCurrentXp / safeNeededXp) * 100);
+  const isLevelUpCard = Boolean(title);
 
   const canvas = createCanvas(WIDTH, HEIGHT);
   const ctx = canvas.getContext("2d");
@@ -270,7 +303,9 @@ async function createLevelCardBuffer({
       const scale = Math.max(WIDTH / bg.width, HEIGHT / bg.height);
       const sw = bg.width * scale;
       const sh = bg.height * scale;
+
       ctx.drawImage(bg, (WIDTH - sw) / 2, (HEIGHT - sh) / 2, sw, sh);
+
       ctx.fillStyle = "rgba(0,0,0,0.62)";
       ctx.fillRect(0, 0, WIDTH, HEIGHT);
     } catch {
@@ -293,68 +328,164 @@ async function createLevelCardBuffer({
     drawAvatarFallback(ctx, 110, 92, 190);
   }
 
-  if (title) {
-    drawText(ctx, title, 365, 110, 30, { color: accent, bold: true });
+  if (isLevelUpCard) {
+    drawPixelText(ctx, "LEVEL UP!", 365, 95, 5, accent, "left");
   }
 
-  const nameSize = fitText(ctx, safeName, 430, 48, 30, true);
-  drawText(ctx, safeName, 365, 190, nameSize, { color: "#ffffff", bold: true });
+  const nameSize = fitPixelText(safeName, 430, 6, 4);
+  drawPixelText(ctx, safeName, 365, 178, nameSize, "#ffffff", "left");
 
   if (discriminator && discriminator !== "0") {
-    ctx.font = font(nameSize, true);
-    const nameWidth = ctx.measureText(safeName).width;
-    drawText(ctx, `#${discriminator}`, 365 + nameWidth + 12, 190, 34, {
-      color: "#ffffff",
-      alpha: 0.4,
-      bold: false,
-    });
+    const nameWidth = measurePixelText(safeName, nameSize);
+    drawPixelText(ctx, `#${discriminator}`, 365 + nameWidth + 14, 184, 4, "#ffffff", "left", 0.4);
   }
 
-  drawText(ctx, "RANK", 825, 120, 34, {
-    color: "#ffffff",
-    alpha: 0.75,
-    align: "right",
-    bold: false,
-  });
-  drawText(ctx, `#${safeRank}`, 985, 125, 70, {
-    color: "#ffffff",
-    align: "right",
-    bold: true,
-  });
+if (isLevelUpCard) {
+  const oldLevel = Number(previousLevel ?? Math.max(0, safeLevel - 1));
+  const transitionText = `${oldLevel} > ${safeLevel}`;
+  const transitionSize = fitPixelText(transitionText, 300, 4, 3);
 
-  drawText(ctx, "LEVEL", 1080, 120, 34, {
-    color: "#ffffff",
-    alpha: 0.75,
-    align: "right",
-    bold: false,
-  });
-  drawText(ctx, String(safeLevel).padStart(2, "0"), 1160, 125, 70, {
-    color: "#ffffff",
-    align: "right",
-    bold: true,
-  });
+  drawPixelText(ctx, "LEVEL", 895, 90, 4, "#ffffff", "right", 0.75);
+  drawPixelText(
+    ctx,
+    transitionText,
+    1120,
+    90,
+    transitionSize,
+    "#ffffff",
+    "right"
+  );
+} else {
+  drawPixelText(ctx, "RANK", 800, 90, 4, "#ffffff", "right", 0.75);
+  drawPixelText(ctx, `#${safeRank}`, 870, 90, 4, "#ffffff", "right");
 
-  drawText(ctx, safeCurrentXp.toLocaleString(), 870, 225, 36, {
-    color: "#ffffff",
-    align: "right",
-    bold: true,
-  });
-  drawText(ctx, `/${safeNeededXp.toLocaleString()} XP`, 1060, 225, 36, {
-    color: "#ffffff",
-    alpha: 0.45,
-    align: "right",
-    bold: true,
-  });
+  drawPixelText(ctx, "LEVEL", 1050, 90, 4, "#ffffff", "right", 0.75);
+  drawPixelText(
+    ctx,
+    String(safeLevel).padStart(2, "0"),
+    1120,
+    90,
+    4,
+    "#ffffff",
+    "right"
+  );
+}
+
+  drawPixelText(
+    ctx,
+    `${shortNumber(safeCurrentXp)}/${shortNumber(safeNeededXp)} XP`,
+    1060,
+    205,
+    5,
+    "#ffffff",
+    "right"
+  );
 
   drawProgressBar(ctx, 365, 250, 720, 54, percent, accent);
 
-  drawText(ctx, `Total: ${safeTotalXp.toLocaleString()} XP`, 725, 340, 28, {
-    color: "#ffffff",
-    align: "center",
-    bold: true,
-  });
+  drawPixelText(
+    ctx,
+    `TOTAL: ${shortNumber(safeTotalXp)} XP`,
+    725,
+    330,
+    4,
+    "#ffffff",
+    "center"
+  );
 
   return canvas.toBuffer("image/png");
 }
 
-module.exports = { createLevelCardBuffer };
+
+async function createLeaderboardCardBuffer({
+  guildName = "Level Ranking",
+  entries = [],
+  accentColor = 0x7c3aed,
+}) {
+  const accent = hexFromColor(accentColor);
+  const width = 1200;
+  const height = 900;
+  const canvas = createCanvas(width, height);
+  const ctx = canvas.getContext("2d");
+
+  const gradient = ctx.createLinearGradient(0, 0, width, height);
+  gradient.addColorStop(0, "#050505");
+  gradient.addColorStop(0.55, "#151515");
+  gradient.addColorStop(1, "#050505");
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, width, height);
+
+  ctx.globalAlpha = 0.10;
+  for (let i = 0; i < 34; i += 1) {
+    ctx.fillStyle = i % 2 ? "#ffffff" : accent;
+    ctx.beginPath();
+    ctx.arc(Math.random() * width, Math.random() * height, 50 + Math.random() * 170, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  drawPixelText(ctx, "LEVEL RANKING", width / 2, 65, 7, "#ffffff", "center", 0.92);
+
+  roundRect(ctx, 70, 150, width - 140, 680, 16);
+  ctx.fillStyle = "rgba(0,0,0,0.62)";
+  ctx.fill();
+
+  const list = entries.slice(0, 10);
+  if (!list.length) {
+    drawPixelText(ctx, "NO XP YET", width / 2, 455, 8, "#ffffff", "center", 0.8);
+    return canvas.toBuffer("image/png");
+  }
+
+  for (let i = 0; i < list.length; i += 1) {
+    const entry = list[i];
+    const y = 190 + i * 62;
+    const rankText = `${i + 1}.`;
+    const levelText = String(Number(entry.level || 0));
+    const name = String(entry.displayName || entry.username || "Unknown");
+    const xpText = `${shortNumber(entry.totalXp)} XP`;
+
+    if (i > 0) {
+      ctx.fillStyle = "rgba(255,255,255,0.05)";
+      ctx.fillRect(105, y - 14, width - 210, 1);
+    }
+
+    drawPixelText(ctx, rankText, 115, y, 5, "#ffffff", "left");
+
+    const circleX = 188;
+    const circleY = y - 17;
+    const circleSize = 44;
+
+    try {
+      if (entry.avatarUrl) {
+        const avatar = await imageFromUrl(entry.avatarUrl);
+        drawCircularImage(ctx, avatar, circleX, circleY, circleSize);
+      } else {
+        throw new Error("No avatar");
+      }
+    } catch {
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(circleX + circleSize / 2, circleY + circleSize / 2, circleSize / 2, 0, Math.PI * 2);
+      ctx.fillStyle = "rgba(255,255,255,0.10)";
+      ctx.fill();
+      ctx.strokeStyle = accent;
+      ctx.lineWidth = 3;
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    const lvlSize = fitPixelText(levelText, 35, 4, 3);
+    drawPixelText(ctx, levelText, circleX + circleSize / 2, y - 2, lvlSize, "#ffffff", "center");
+
+    const nameSize = fitPixelText(name, 430, 5, 3);
+    drawPixelText(ctx, name, 260, y, nameSize, "#ffffff", "left");
+
+    const xpSize = fitPixelText(xpText, 260, 5, 3);
+    drawPixelText(ctx, xpText, 1090, y, xpSize, "#ffffff", "right", 0.9);
+  }
+
+  return canvas.toBuffer("image/png");
+}
+
+
+module.exports = { createLevelCardBuffer, createLeaderboardCardBuffer };

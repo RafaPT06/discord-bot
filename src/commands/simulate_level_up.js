@@ -64,6 +64,7 @@ module.exports = {
         avatarUrl: user.displayAvatarURL({ extension: "png", size: 256 }),
         rank: rank || 1,
         level: previewLevel,
+        previousLevel: oldLevel,
         currentXp: progress.current,
         neededXp: progress.needed,
         totalXp,

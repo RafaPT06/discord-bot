@@ -268,6 +268,7 @@ async function handleLevelMessage(client, message) {
         avatarUrl: message.author.displayAvatarURL({ extension: "png", size: 256 }),
         rank,
         level: newLevel,
+        previousLevel: oldLevel,
         currentXp: progress.current,
         neededXp: progress.needed,
         totalXp: newTotal,
