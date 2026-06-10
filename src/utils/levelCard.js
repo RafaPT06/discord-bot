@@ -286,10 +286,10 @@ if (discriminator && discriminator !== "0") {
   drawPixelText(ctx, `#${discriminator}`, 365 + nameWidth + 14, 184, 4, "#ffffff", "left", 0.4);
 }
 drawPixelText(ctx, "RANK", 910, 90, 4, "#ffffff", "right", 0.75);
-drawPixelText(ctx, `#${safeRank}`, 1030, 82, 7, "#ffffff", "right");
+drawPixelText(ctx, `#${safeRank}`, 960, 82, 4, "#ffffff", "right");
 
 drawPixelText(ctx, "LEVEL", 1110, 90, 4, "#ffffff", "right", 0.75);
-drawPixelText(ctx, String(safeLevel).padStart(2, "0"), 1190, 82, 7, "#ffffff", "right");
+drawPixelText(ctx, String(safeLevel).padStart(2, "0"), 1160, 82, 4, "#ffffff", "right");
 
 drawPixelText(ctx, `${safeCurrentXp.toLocaleString()}/${safeNeededXp.toLocaleString()} XP`, 1060, 205, 5, "#ffffff", "right");
 
