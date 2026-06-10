@@ -56,13 +56,7 @@ module.exports = {
         name: "level.png",
       });
 
-      return interaction.reply({
-        content:
-          "```json\n" +
-          JSON.stringify(debugData, null, 2).slice(0, 1800) +
-          "\n```",
-        files: [attachment],
-      });
+      return interaction.reply({ files: [attachment] });
     } catch (err) {
       return interaction.reply({
         content:

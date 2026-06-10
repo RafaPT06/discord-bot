@@ -1,7 +1,37 @@
-const { createCanvas, loadImage } = require('canvas');
+const fs = require("fs");
+const { createCanvas, loadImage, registerFont } = require("canvas");
 
 const WIDTH = 1200;
 const HEIGHT = 420;
+const FONT_FAMILY = "LevelCardSans";
+
+function registerLevelFont() {
+  const candidates = [
+    "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+    "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+    "/usr/share/fonts/truetype/liberation2/LiberationSans-Regular.ttf",
+    "/usr/share/fonts/truetype/liberation2/LiberationSans-Bold.ttf",
+    "/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf",
+    "/usr/share/fonts/truetype/noto/NotoSans-Bold.ttf",
+  ];
+
+  let loaded = false;
+
+  for (const file of candidates) {
+    try {
+      if (fs.existsSync(file)) {
+        registerFont(file, { family: FONT_FAMILY });
+        loaded = true;
+      }
+    } catch {
+      // Ignore bad/missing font files and try the next one.
+    }
+  }
+
+  return loaded;
+}
+
+registerLevelFont();
 
 function clamp(n, min, max) {
   return Math.max(min, Math.min(max, n));
@@ -25,7 +55,7 @@ function roundRect(ctx, x, y, w, h, r) {
 }
 
 function font(size, bold = true) {
-  return `${bold ? "bold " : ""}${size}px sans-serif`;
+  return `${bold ? "bold " : ""}${size}px "${FONT_FAMILY}", "DejaVu Sans", "Liberation Sans", Arial, sans-serif`;
 }
 
 function fitText(ctx, text, maxWidth, startSize, minSize = 28) {
@@ -285,10 +315,6 @@ async function createLevelCardBuffer({
   ctx.font = font(28, true);
   ctx.fillStyle = "#ffffff";
   ctx.fillText(`Total: ${safeTotalXp.toLocaleString()} XP`, 725, 340);
-
-  ctx.fillStyle = "#ff0000";
-  ctx.font = "60px Arial";
-  ctx.fillText("HELLO WORLD", 100, 100);
 
   return canvas.toBuffer("image/png");
 }
