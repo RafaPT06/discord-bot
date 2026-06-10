@@ -340,11 +340,11 @@ async function createLevelCardBuffer({
 if (isLevelUpCard) {
   const previousLevel = Math.max(0, safeLevel - 1);
 
-  drawPixelText(ctx, "LEVEL", 1050, 92, 4, "#ffffff", "right", 0.75);
+  drawPixelText(ctx, "LEVEL", 900, 90, 4, "#ffffff", "right", 0.75);
   drawPixelText(
     ctx,
     `${previousLevel} > ${safeLevel}`,
-    1135,
+    1080,
     90,
     4,
     "#ffffff",
