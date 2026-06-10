@@ -1,4 +1,4 @@
-const { createCanvas, loadImage } = require("@napi-rs/canvas");
+const { createCanvas, loadImage } = require('canvas');
 
 const WIDTH = 1200;
 const HEIGHT = 420;
@@ -286,7 +286,11 @@ async function createLevelCardBuffer({
   ctx.fillStyle = "#ffffff";
   ctx.fillText(`Total: ${safeTotalXp.toLocaleString()} XP`, 725, 340);
 
-  return canvas.encode("png");
+  ctx.fillStyle = "#ff0000";
+  ctx.font = "60px Arial";
+  ctx.fillText("HELLO WORLD", 100, 100);
+
+  return canvas.toBuffer("image/png");
 }
 
 module.exports = { createLevelCardBuffer };
