@@ -337,16 +337,34 @@ async function createLevelCardBuffer({
     drawPixelText(ctx, `#${discriminator}`, 365 + nameWidth + 14, 184, 4, "#ffffff", "left", 0.4);
   }
 
-  if (isLevelUpCard) {
-    drawPixelText(ctx, "LEVEL", 1050, 92, 4, "#ffffff", "right", 0.75);
-    drawPixelText(ctx, String(safeLevel).padStart(2, "0"), 1120, 90, 4, "#ffffff", "right");
-  } else {
-    drawPixelText(ctx, "RANK", 800, 90, 4, "#ffffff", "right", 0.75);
-    drawPixelText(ctx, `#${safeRank}`, 870, 90, 4, "#ffffff", "right");
+if (isLevelUpCard) {
+  const previousLevel = Math.max(0, safeLevel - 1);
 
-    drawPixelText(ctx, "LEVEL", 1050, 90, 4, "#ffffff", "right", 0.75);
-    drawPixelText(ctx, String(safeLevel).padStart(2, "0"), 1120, 90, 4, "#ffffff", "right");
-  }
+  drawPixelText(ctx, "LEVEL", 1050, 92, 4, "#ffffff", "right", 0.75);
+  drawPixelText(
+    ctx,
+    `${previousLevel} > ${safeLevel}`,
+    1135,
+    90,
+    4,
+    "#ffffff",
+    "right"
+  );
+} else {
+  drawPixelText(ctx, "RANK", 800, 90, 4, "#ffffff", "right", 0.75);
+  drawPixelText(ctx, `#${safeRank}`, 870, 90, 4, "#ffffff", "right");
+
+  drawPixelText(ctx, "LEVEL", 1050, 90, 4, "#ffffff", "right", 0.75);
+  drawPixelText(
+    ctx,
+    String(safeLevel).padStart(2, "0"),
+    1120,
+    90,
+    4,
+    "#ffffff",
+    "right"
+  );
+}
 
   drawPixelText(
     ctx,
