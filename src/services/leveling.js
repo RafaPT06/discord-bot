@@ -140,27 +140,72 @@ async function assignLevelRoles(member, level) {
   return added;
 }
 
-function buildLevelUpEmbed({ member, oldLevel, newLevel, totalXp, addedRoles }) {
+function getMemberEmbedColor(member) {
+  const color = member?.displayColor || 0;
+  return color && color !== 0 ? color : 0x5865f2;
+}
+
+function formatCompactLevel(level) {
+  return String(Math.max(0, Number(level) || 0)).padStart(2, "0");
+}
+
+function buildLevelUpEmbed({ member, oldLevel, newLevel, totalXp, addedRoles, simulated = false }) {
   const progress = progressForLevel(totalXp, newLevel);
-  const embed = new EmbedBuilder()
-    .setColor(0x5865f2)
-    .setTitle("Level up")
-    .setDescription(`${member} levelled up to **lvl ${newLevel}**.`)
+  const xpLeft = Math.max(0, progress.needed - progress.current);
+  const roleText = addedRoles?.length ? addedRoles.map((r) => `${r}`).join(" ") : "No role reward for this level";
+
+  return new EmbedBuilder()
+    .setColor(getMemberEmbedColor(member))
+    .setAuthor({
+      name: simulated ? "Level-up preview" : "Level up!",
+      iconURL: member.user.displayAvatarURL({ size: 64 }),
+    })
+    .setDescription(`${member} levelled up to **lvl ${newLevel}**${simulated ? " *(simulation)*" : ""}.`)
     .setThumbnail(member.user.displayAvatarURL({ size: 128 }))
     .addFields(
-      { name: "Previous", value: `Level ${oldLevel}`, inline: true },
-      { name: "Current", value: `Level ${newLevel}`, inline: true },
+      { name: "Level", value: `**${oldLevel}** → **${newLevel}**`, inline: true },
       { name: "Total XP", value: `${Number(totalXp).toLocaleString()} XP`, inline: true },
-      { name: "Next level", value: `${progress.current}/${progress.needed} XP (${progress.percent}%)\n${progressBar(progress.current, progress.needed)}`, inline: false }
+      { name: "Next level", value: `${progress.current}/${progress.needed} XP (${progress.percent}%)`, inline: true },
+      { name: "Progress", value: `${progressBar(progress.current, progress.needed, 14)}\n**${xpLeft.toLocaleString()} XP** left until lvl ${newLevel + 1}`, inline: false },
+      { name: "Reward", value: roleText, inline: false }
     )
     .setFooter({ text: "Keep chatting to earn XP" })
     .setTimestamp();
+}
 
-  if (addedRoles?.length) {
-    embed.addFields({ name: "Role unlocked", value: addedRoles.map((r) => `${r}`).join(" "), inline: false });
-  }
+async function getUserRank(guildId, userId) {
+  await ensureLevelTables();
+  const res = await pool.query(
+    `SELECT rank FROM (
+       SELECT user_id, RANK() OVER (ORDER BY level DESC, total_xp DESC) AS rank
+       FROM user_levels
+       WHERE guild_id=$1
+     ) ranked WHERE user_id=$2`,
+    [guildId, userId]
+  );
+  return Number(res.rows[0]?.rank || 0);
+}
 
-  return embed;
+function buildLevelEmbed({ user, member, levelData, rank }) {
+  const level = Number(levelData.level || 0);
+  const totalXp = Number(levelData.total_xp || 0);
+  const progress = levelData.progress || progressForLevel(totalXp, level);
+  const xpLeft = Math.max(0, progress.needed - progress.current);
+
+  return new EmbedBuilder()
+    .setColor(getMemberEmbedColor(member))
+    .setAuthor({ name: `${user.username}'s level`, iconURL: user.displayAvatarURL({ size: 64 }) })
+    .setThumbnail(user.displayAvatarURL({ size: 128 }))
+    .setDescription([
+      `**#${rank || "—"}** rank · **${formatCompactLevel(level)}** level`,
+      "",
+      `**${progress.current}/${progress.needed} XP** (${progress.percent}%)`,
+      progressBar(progress.current, progress.needed, 16),
+      `Total: **${totalXp.toLocaleString()} XP**`,
+      `Next level in: **${xpLeft.toLocaleString()} XP**`,
+    ].join("\n"))
+    .setFooter({ text: "XP is earned by chatting, with a cooldown to prevent spam" })
+    .setTimestamp();
 }
 
 async function handleLevelMessage(client, message) {
@@ -244,5 +289,8 @@ module.exports = {
   ensureLevelRewardRoles,
   handleLevelMessage,
   getUserLevel,
+  getUserRank,
   getLeaderboard,
+  buildLevelEmbed,
+  buildLevelUpEmbed,
 };
