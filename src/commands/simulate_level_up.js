@@ -1,9 +1,13 @@
-const { SlashCommandBuilder, PermissionFlagsBits } = require("discord.js");
+const { SlashCommandBuilder, PermissionFlagsBits, AttachmentBuilder } = require("discord.js");
 const {
   getUserLevel,
+  getUserRank,
   xpNeededForNextLevel,
+  progressForLevel,
   buildLevelUpEmbed,
+  getMemberEmbedColor,
 } = require("../services/leveling");
+const { createLevelCardBuffer } = require("../utils/levelCard");
 
 function totalXpAtStartOfLevel(level) {
   let total = 0;
@@ -45,21 +49,46 @@ module.exports = {
     const previewLevel = interaction.options.getInteger("level") || currentLevel + 1;
     const oldLevel = Math.max(0, previewLevel - 1);
 
-    // Put the preview around the middle of the new level, so the progress bar is visible.
     const needed = xpNeededForNextLevel(previewLevel);
     const totalXp = totalXpAtStartOfLevel(previewLevel) + Math.floor(needed * 0.54);
-
-    const rewardRole = interaction.guild.roles.cache.find((r) => r.name.toLowerCase() === `level ${previewLevel}`);
-    const embed = buildLevelUpEmbed({
-      member,
-      oldLevel,
-      newLevel: previewLevel,
-      totalXp,
-      addedRoles: rewardRole ? [rewardRole] : [],
-      simulated: true,
-    });
+    const progress = progressForLevel(totalXp, previewLevel);
+    const rank = await getUserRank(interaction.guildId, user.id);
 
     const isPublic = interaction.options.getBoolean("public") || false;
-    return interaction.reply({ embeds: [embed], ephemeral: !isPublic });
+
+    try {
+      const image = await createLevelCardBuffer({
+        username: user.username,
+        displayName: member.displayName || user.username,
+        discriminator: user.discriminator,
+        avatarUrl: user.displayAvatarURL({ extension: "png", size: 256 }),
+        rank: rank || 1,
+        level: previewLevel,
+        currentXp: progress.current,
+        neededXp: progress.needed,
+        totalXp,
+        accentColor: getMemberEmbedColor(member),
+        title: `Level up! ${oldLevel} → ${previewLevel}`,
+      });
+
+      const attachment = new AttachmentBuilder(image, { name: "level-up-preview.png" });
+      return interaction.reply({
+        content: `${member} levelled up to **lvl ${previewLevel}**! *(simulation)*`,
+        files: [attachment],
+        ephemeral: !isPublic,
+      });
+    } catch (err) {
+      console.error("Failed to build simulated level-up card:", err);
+      const rewardRole = interaction.guild.roles.cache.find((r) => r.name.toLowerCase() === `level ${previewLevel}`);
+      const embed = buildLevelUpEmbed({
+        member,
+        oldLevel,
+        newLevel: previewLevel,
+        totalXp,
+        addedRoles: rewardRole ? [rewardRole] : [],
+        simulated: true,
+      });
+      return interaction.reply({ embeds: [embed], ephemeral: !isPublic });
+    }
   },
 };

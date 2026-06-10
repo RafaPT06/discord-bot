@@ -1,4 +1,5 @@
-const { EmbedBuilder, PermissionFlagsBits } = require("discord.js");
+const { EmbedBuilder, PermissionFlagsBits, AttachmentBuilder } = require("discord.js");
+const { createLevelCardBuffer } = require("../utils/levelCard");
 const { pool } = require("../db/pool");
 
 const LEVEL_ROLE_STEPS = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50];
@@ -255,8 +256,30 @@ async function handleLevelMessage(client, message) {
   const channel = settings.channel_id
     ? await client.channels.fetch(settings.channel_id).catch(() => null)
     : message.channel;
+
   if (channel?.isTextBased()) {
-    await channel.send({ embeds: [embed] }).catch(() => {});
+    try {
+      const progress = progressForLevel(newTotal, newLevel);
+      const rank = await getUserRank(message.guild.id, message.author.id);
+      const image = await createLevelCardBuffer({
+        username: message.author.username,
+        displayName: member.displayName || message.author.username,
+        discriminator: message.author.discriminator,
+        avatarUrl: message.author.displayAvatarURL({ extension: "png", size: 256 }),
+        rank,
+        level: newLevel,
+        currentXp: progress.current,
+        neededXp: progress.needed,
+        totalXp: newTotal,
+        accentColor: getMemberEmbedColor(member),
+        title: `Level up! ${oldLevel} → ${newLevel}`,
+      });
+      const attachment = new AttachmentBuilder(image, { name: "level-up.png" });
+      await channel.send({ content: `${member} levelled up to **lvl ${newLevel}**!`, files: [attachment] }).catch(() => {});
+    } catch (err) {
+      console.error("Failed to build level-up card:", err);
+      await channel.send({ embeds: [embed] }).catch(() => {});
+    }
   }
 }
 
@@ -293,4 +316,5 @@ module.exports = {
   getLeaderboard,
   buildLevelEmbed,
   buildLevelUpEmbed,
+  getMemberEmbedColor,
 };
