@@ -278,19 +278,18 @@ async function createLevelCardBuffer({
   }
 if (title) drawPixelText(ctx, title, 365, 95, 5, accent, "left");
 
-const nameSize = fitPixelText(safeName, 430, 7, 4);
+const nameSize = fitPixelText(safeName, 430, 6, 4);
 drawPixelText(ctx, safeName, 365, 178, nameSize, "#ffffff", "left");
 
 if (discriminator && discriminator !== "0") {
   const nameWidth = measurePixelText(safeName, nameSize);
   drawPixelText(ctx, `#${discriminator}`, 365 + nameWidth + 14, 184, 4, "#ffffff", "left", 0.4);
 }
+drawPixelText(ctx, "RANK", 910, 90, 4, "#ffffff", "right", 0.75);
+drawPixelText(ctx, `#${safeRank}`, 1030, 82, 7, "#ffffff", "right");
 
-drawPixelText(ctx, "RANK", 840, 92, 4, "#ffffff", "right", 0.75);
-drawPixelText(ctx, `#${safeRank}`, 980, 86, 8, "#ffffff", "right");
-
-drawPixelText(ctx, "LEVEL", 1090, 92, 4, "#ffffff", "right", 0.75);
-drawPixelText(ctx, String(safeLevel).padStart(2, "0"), 1160, 86, 8, "#ffffff", "right");
+drawPixelText(ctx, "LEVEL", 1110, 90, 4, "#ffffff", "right", 0.75);
+drawPixelText(ctx, String(safeLevel).padStart(2, "0"), 1190, 82, 7, "#ffffff", "right");
 
 drawPixelText(ctx, `${safeCurrentXp.toLocaleString()}/${safeNeededXp.toLocaleString()} XP`, 1060, 205, 5, "#ffffff", "right");
 
