@@ -17,6 +17,7 @@ const { startPresenceRotation } = require("./services/presenceManager");
 const { onMessage: aiOnMessage, periodicIdleCheck: aiIdleCheck } = require("./services/aiMonitor");
 
 const { handleStarboardReaction } = require("./services/starboard");
+const { handleLevelMessage } = require("./services/leveling");
 
 const token = process.env.BOT_TOKEN;
 const ownerId = process.env.OWNER_ID;
@@ -206,6 +207,11 @@ if (interaction.isButton()) {
 // AI Monitor: observe message activity (feed-only alerts)
 client.on(Events.MessageCreate, async (message) => {
   aiOnMessage(client, message);
+  try {
+    await handleLevelMessage(client, message);
+  } catch (err) {
+    console.error("Leveling error:", err);
+  }
 });
 
 client.on(Events.MessageReactionAdd, async (reaction, user) => {

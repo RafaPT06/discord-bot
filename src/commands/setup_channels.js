@@ -3,6 +3,7 @@ const { SlashCommandBuilder, ChannelType, PermissionFlagsBits } = require("disco
 const { pool } = require("../db/pool");
 const { canManageSettings } = require("../utils/perms");
 const { ensureFeedTables } = require("../services/feed");
+const { ensureLevelTables, upsertLevelChannel, ensureLevelRewardRoles } = require("../services/leveling");
 
 async function upsertSetting(table, guildId, channelId) {
   await pool.query(
@@ -36,6 +37,7 @@ module.exports = {
     await interaction.deferReply({ ephemeral: true }).catch(() => {});
 
     await ensureFeedTables();
+    await ensureLevelTables();
 
     const categoryName = (interaction.options.getString("category") || "bot").trim().slice(0, 90);
 
@@ -81,12 +83,15 @@ module.exports = {
     const errorCh = await ensureText("error-alerts");
     const backupCh = await ensureText("backups");
     const feedCh = await ensureText("bot-feed");
+    const levelCh = await ensureText("level-up");
 
     await upsertSetting("deploy_channel_settings", interaction.guildId, deployCh.id);
     await upsertSetting("roblox_alert_settings", interaction.guildId, robloxCh.id);
     await upsertSetting("error_alert_settings", interaction.guildId, errorCh.id);
     await upsertSetting("backup_channel_settings", interaction.guildId, backupCh.id);
     await upsertSetting("feed_channel_settings", interaction.guildId, feedCh.id);
+    await upsertLevelChannel(interaction.guildId, levelCh.id);
+    const levelRoles = await ensureLevelRewardRoles(interaction.guild).catch(() => []);
 
     return interaction.editReply({
       content: [
@@ -97,6 +102,8 @@ module.exports = {
         `Errors: ${errorCh}`,
         `Backups: ${backupCh}`,
         `Feed: ${feedCh}`,
+        `Level-up: ${levelCh}`,
+        `Level roles: ${levelRoles.length ? levelRoles.map(({ level }) => `Level ${level}`).join(", ") : "not created (missing Manage Roles or role position)"}`,
       ].join("\n")
     });
   }

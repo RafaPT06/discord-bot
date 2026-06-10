@@ -181,6 +181,42 @@ await pool.query(`
   `);
   await pool.query(`CREATE INDEX IF NOT EXISTS quotes_guild_id_idx ON quotes (guild_id, id DESC);`);
 
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS level_settings (
+      guild_id TEXT PRIMARY KEY,
+      channel_id TEXT,
+      enabled BOOLEAN NOT NULL DEFAULT TRUE,
+      xp_min INT NOT NULL DEFAULT 15,
+      xp_max INT NOT NULL DEFAULT 25,
+      cooldown_seconds INT NOT NULL DEFAULT 60,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS user_levels (
+      guild_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      total_xp BIGINT NOT NULL DEFAULT 0,
+      level INT NOT NULL DEFAULT 0,
+      last_xp_at TIMESTAMPTZ,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (guild_id, user_id)
+    );
+  `);
+  await pool.query(`CREATE INDEX IF NOT EXISTS user_levels_guild_level_idx ON user_levels (guild_id, level DESC, total_xp DESC);`);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS level_role_rewards (
+      guild_id TEXT NOT NULL,
+      level INT NOT NULL,
+      role_id TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (guild_id, level)
+    );
+  `);
+
 }
 
 module.exports = { initDb };
