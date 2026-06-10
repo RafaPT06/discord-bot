@@ -1,13 +1,7 @@
-const { createCanvas, loadImage, GlobalFonts } = require('@napi-rs/canvas');
-console.log('Fonts:', GlobalFonts.families);
+const { createCanvas, loadImage } = require("@napi-rs/canvas");
 
 const WIDTH = 1200;
 const HEIGHT = 420;
-
-try {
-  GlobalFonts.registerFromPath('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 'CardBold');
-  GlobalFonts.registerFromPath('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 'CardRegular');
-} catch {}
 
 function clamp(n, min, max) {
   return Math.max(min, Math.min(max, n));
@@ -15,11 +9,12 @@ function clamp(n, min, max) {
 
 function hexFromColor(color) {
   const n = Number(color) || 0x7c3aed;
-  return `#${n.toString(16).padStart(6, '0').slice(-6)}`;
+  return `#${n.toString(16).padStart(6, "0").slice(-6)}`;
 }
 
 function roundRect(ctx, x, y, w, h, r) {
   const radius = Math.min(r, w / 2, h / 2);
+
   ctx.beginPath();
   ctx.moveTo(x + radius, y);
   ctx.arcTo(x + w, y, x + w, y + h, radius);
@@ -29,16 +24,16 @@ function roundRect(ctx, x, y, w, h, r) {
   ctx.closePath();
 }
 
-function font(size, family = 'CardBold') {
-  return `${size}px ${family}`;
+function font(size, bold = true) {
+  return `${bold ? "bold " : ""}${size}px sans-serif`;
 }
 
-function fitText(ctx, text, maxWidth, startSize, minSize = 28, family = 'CardBold') {
+function fitText(ctx, text, maxWidth, startSize, minSize = 28) {
   let size = startSize;
-  const value = String(text || 'Unknown');
+  const value = String(text || "Unknown");
 
   while (size > minSize) {
-    ctx.font = font(size, family);
+    ctx.font = font(size, true);
     if (ctx.measureText(value).width <= maxWidth) return size;
     size -= 2;
   }
@@ -47,11 +42,11 @@ function fitText(ctx, text, maxWidth, startSize, minSize = 28, family = 'CardBol
 }
 
 async function imageFromUrl(url) {
-  if (!url) throw new Error('Missing image URL');
+  if (!url) throw new Error("Missing image URL");
 
   const res = await fetch(url, {
     headers: {
-      'User-Agent': 'Mozilla/5.0 DiscordBot LevelCard',
+      "User-Agent": "Mozilla/5.0 DiscordBot LevelCard",
     },
   });
 
@@ -63,9 +58,10 @@ async function imageFromUrl(url) {
 
 function drawDefaultBackground(ctx, accent) {
   const gradient = ctx.createLinearGradient(0, 0, WIDTH, HEIGHT);
-  gradient.addColorStop(0, '#050505');
-  gradient.addColorStop(0.55, '#111111');
-  gradient.addColorStop(1, '#030303');
+
+  gradient.addColorStop(0, "#050505");
+  gradient.addColorStop(0.55, "#111111");
+  gradient.addColorStop(1, "#030303");
 
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, WIDTH, HEIGHT);
@@ -73,7 +69,8 @@ function drawDefaultBackground(ctx, accent) {
   ctx.globalAlpha = 0.16;
 
   for (let i = 0; i < 26; i += 1) {
-    ctx.fillStyle = i % 2 ? '#ffffff' : accent;
+    ctx.fillStyle = i % 2 ? "#ffffff" : accent;
+
     ctx.beginPath();
     ctx.arc(
       Math.random() * WIDTH,
@@ -87,7 +84,7 @@ function drawDefaultBackground(ctx, accent) {
 
   ctx.globalAlpha = 1;
 
-  ctx.fillStyle = 'rgba(0,0,0,0.52)';
+  ctx.fillStyle = "rgba(0,0,0,0.52)";
   ctx.fillRect(0, 0, WIDTH, HEIGHT);
 }
 
@@ -117,18 +114,18 @@ function drawAvatarFallback(ctx, x, y, size) {
   ctx.arc(x + size / 2, y + size / 2, size / 2, 0, Math.PI * 2);
   ctx.closePath();
 
-  ctx.fillStyle = '#111111';
+  ctx.fillStyle = "#111111";
   ctx.fill();
 
-  ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+  ctx.strokeStyle = "rgba(255,255,255,0.18)";
   ctx.lineWidth = 8;
   ctx.stroke();
 
-  ctx.font = font(72, 'CardBold');
-  ctx.fillStyle = '#ffffff';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText('?', x + size / 2, y + size / 2);
+  ctx.font = font(72, true);
+  ctx.fillStyle = "#ffffff";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("?", x + size / 2, y + size / 2);
 
   ctx.restore();
 }
@@ -146,11 +143,13 @@ function drawCircularImage(ctx, img, x, y, size) {
   ctx.restore();
 
   ctx.save();
+
   ctx.beginPath();
   ctx.arc(x + size / 2, y + size / 2, size / 2, 0, Math.PI * 2);
-  ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+  ctx.strokeStyle = "rgba(255,255,255,0.12)";
   ctx.lineWidth = 8;
   ctx.stroke();
+
   ctx.restore();
 }
 
@@ -158,7 +157,7 @@ function drawProgressBar(ctx, x, y, w, h, percent, accent) {
   const safePercent = clamp(Number(percent) || 0, 0, 100);
 
   roundRect(ctx, x, y, w, h, h / 2);
-  ctx.fillStyle = 'rgba(120,120,120,0.70)';
+  ctx.fillStyle = "rgba(120,120,120,0.70)";
   ctx.fill();
 
   const filled = clamp(w * (safePercent / 100), 0, w);
@@ -186,9 +185,8 @@ async function createLevelCardBuffer({
 }) {
   const accent = hexFromColor(accentColor);
 
-  const safeUsername = String(username || 'Unknown');
-  const safeName = String(displayName || username || 'Unknown');
-  const safeRank = rank || '—';
+  const safeName = String(displayName || username || "Unknown");
+  const safeRank = rank || "—";
   const safeLevel = Number(level || 0);
   const safeCurrentXp = Number(currentXp || 0);
   const safeNeededXp = Math.max(1, Number(neededXp || 1));
@@ -196,10 +194,10 @@ async function createLevelCardBuffer({
   const percent = Math.floor((safeCurrentXp / safeNeededXp) * 100);
 
   const canvas = createCanvas(WIDTH, HEIGHT);
-  const ctx = canvas.getContext('2d');
+  const ctx = canvas.getContext("2d");
 
-  ctx.textBaseline = 'alphabetic';
-  ctx.textAlign = 'left';
+  ctx.textBaseline = "alphabetic";
+  ctx.textAlign = "left";
 
   if (backgroundUrl) {
     try {
@@ -210,7 +208,7 @@ async function createLevelCardBuffer({
 
       ctx.drawImage(bg, (WIDTH - sw) / 2, (HEIGHT - sh) / 2, sw, sh);
 
-      ctx.fillStyle = 'rgba(0,0,0,0.62)';
+      ctx.fillStyle = "rgba(0,0,0,0.62)";
       ctx.fillRect(0, 0, WIDTH, HEIGHT);
     } catch {
       drawDefaultBackground(ctx, accent);
@@ -222,77 +220,73 @@ async function createLevelCardBuffer({
   drawAccentShapes(ctx, accent);
 
   roundRect(ctx, 40, 45, WIDTH - 80, HEIGHT - 90, 18);
-  ctx.fillStyle = 'rgba(0,0,0,0.45)';
+  ctx.fillStyle = "rgba(0,0,0,0.45)";
   ctx.fill();
 
   try {
     const avatar = await imageFromUrl(avatarUrl);
     drawCircularImage(ctx, avatar, 110, 92, 190);
-  } catch (err) {
-    console.error('Level card avatar failed:', err.message);
+  } catch {
     drawAvatarFallback(ctx, 110, 92, 190);
   }
 
-  ctx.textAlign = 'left';
-  ctx.textBaseline = 'alphabetic';
+  ctx.textAlign = "left";
+  ctx.textBaseline = "alphabetic";
 
   if (title) {
-    ctx.font = font(30, 'CardBold');
+    ctx.font = font(30, true);
     ctx.fillStyle = accent;
     ctx.fillText(String(title), 365, 110);
   }
 
-  ctx.fillStyle = '#ffffff';
+  ctx.fillStyle = "#ffffff";
   const nameSize = fitText(ctx, safeName, 430, 48, 30);
-  ctx.font = font(nameSize, 'CardBold');
+
+  ctx.font = font(nameSize, true);
   ctx.fillText(safeName, 365, 190);
 
-  if (discriminator && discriminator !== '0') {
+  if (discriminator && discriminator !== "0") {
     const nameWidth = ctx.measureText(safeName).width;
 
-    ctx.font = font(34, 'CardRegular');
-    ctx.fillStyle = 'rgba(255,255,255,0.40)';
+    ctx.font = font(34, false);
+    ctx.fillStyle = "rgba(255,255,255,0.40)";
     ctx.fillText(`#${discriminator}`, 365 + nameWidth + 12, 190);
   }
 
-  ctx.textAlign = 'right';
+  ctx.textAlign = "right";
 
-  ctx.font = font(34, 'CardRegular');
-  ctx.fillStyle = 'rgba(255,255,255,0.75)';
-  ctx.fillText('RANK', 825, 120);
+  ctx.font = font(34, false);
+  ctx.fillStyle = "rgba(255,255,255,0.75)";
+  ctx.fillText("RANK", 825, 120);
 
-  ctx.font = font(70, 'CardBold');
-  ctx.fillStyle = '#ffffff';
+  ctx.font = font(70, true);
+  ctx.fillStyle = "#ffffff";
   ctx.fillText(`#${safeRank}`, 985, 125);
 
-  ctx.font = font(34, 'CardRegular');
-  ctx.fillStyle = 'rgba(255,255,255,0.75)';
-  ctx.fillText('LEVEL', 1080, 120);
+  ctx.font = font(34, false);
+  ctx.fillStyle = "rgba(255,255,255,0.75)";
+  ctx.fillText("LEVEL", 1080, 120);
 
-  ctx.font = font(70, 'CardBold');
-  ctx.fillStyle = '#ffffff';
-  ctx.fillText(String(safeLevel).padStart(2, '0'), 1160, 125);
+  ctx.font = font(70, true);
+  ctx.fillStyle = "#ffffff";
+  ctx.fillText(String(safeLevel).padStart(2, "0"), 1160, 125);
 
-  ctx.font = font(36, 'CardBold');
-  ctx.fillStyle = '#ffffff';
+  ctx.font = font(36, true);
+  ctx.fillStyle = "#ffffff";
   ctx.fillText(safeCurrentXp.toLocaleString(), 870, 225);
 
-  ctx.fillStyle = 'rgba(255,255,255,0.45)';
+  ctx.fillStyle = "rgba(255,255,255,0.45)";
   ctx.fillText(`/${safeNeededXp.toLocaleString()} XP`, 1060, 225);
 
-  ctx.textAlign = 'left';
+  ctx.textAlign = "left";
   drawProgressBar(ctx, 365, 250, 720, 54, percent, accent);
 
-  ctx.textAlign = 'center';
-  ctx.font = font(28, 'CardBold');
-  ctx.fillStyle = '#ffffff';
+  ctx.textAlign = "center";
+  ctx.font = font(28, true);
+  ctx.fillStyle = "#ffffff";
   ctx.fillText(`Total: ${safeTotalXp.toLocaleString()} XP`, 725, 340);
 
-ctx.fillStyle = '#ff0000';
-ctx.font = '60px sans-serif';
-ctx.fillText('HELLO WORLD', 100, 100);
-
-  return canvas.encode('png');
+  return canvas.encode("png");
 }
 
 module.exports = { createLevelCardBuffer };
