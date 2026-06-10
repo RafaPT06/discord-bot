@@ -1,4 +1,5 @@
 const { createCanvas, loadImage, GlobalFonts } = require('@napi-rs/canvas');
+console.log('Fonts:', GlobalFonts.families);
 
 const WIDTH = 1200;
 const HEIGHT = 420;
@@ -286,6 +287,10 @@ async function createLevelCardBuffer({
   ctx.font = font(28, 'CardBold');
   ctx.fillStyle = '#ffffff';
   ctx.fillText(`Total: ${safeTotalXp.toLocaleString()} XP`, 725, 340);
+
+ctx.fillStyle = '#ff0000';
+ctx.font = '60px sans-serif';
+ctx.fillText('HELLO WORLD', 100, 100);
 
   return canvas.encode('png');
 }
