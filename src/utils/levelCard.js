@@ -1,5 +1,4 @@
 const { createCanvas, loadImage } = require("canvas");
-const { createCanvas, loadImage } = require("canvas");
 
 const WIDTH = 1200;
 const HEIGHT = 420;
@@ -143,7 +142,6 @@ function fitPixelText(text, maxWidth, startSize, minSize = 4) {
 function roundRect(ctx, x, y, w, h, r) {
   const radius = Math.min(r, w / 2, h / 2);
 
-
   ctx.beginPath();
   ctx.moveTo(x + radius, y);
   ctx.arcTo(x + w, y, x + w, y + h, radius);
@@ -171,7 +169,6 @@ async function imageFromUrl(url) {
 function drawDefaultBackground(ctx, accent) {
   const gradient = ctx.createLinearGradient(0, 0, WIDTH, HEIGHT);
 
-
   gradient.addColorStop(0, "#050505");
   gradient.addColorStop(0.55, "#111111");
   gradient.addColorStop(1, "#030303");
@@ -184,7 +181,6 @@ function drawDefaultBackground(ctx, accent) {
   for (let i = 0; i < 26; i += 1) {
     ctx.fillStyle = i % 2 ? "#ffffff" : accent;
     ctx.beginPath();
-    ctx.arc(Math.random() * WIDTH, Math.random() * HEIGHT, 60 + Math.random() * 150, 0, Math.PI * 2);
     ctx.arc(Math.random() * WIDTH, Math.random() * HEIGHT, 60 + Math.random() * 150, 0, Math.PI * 2);
     ctx.fill();
   }
@@ -217,11 +213,9 @@ function drawAccentShapes(ctx, accent) {
 function drawAvatarFallback(ctx, x, y, size) {
   ctx.save();
 
-
   ctx.beginPath();
   ctx.arc(x + size / 2, y + size / 2, size / 2, 0, Math.PI * 2);
   ctx.closePath();
-
 
   ctx.fillStyle = "#111111";
   ctx.fill();
@@ -232,35 +226,28 @@ function drawAvatarFallback(ctx, x, y, size) {
 
   drawPixelText(ctx, "?", x + size / 2, y + size / 2 - 24, 10, "#ffffff", "center");
 
-  drawPixelText(ctx, "?", x + size / 2, y + size / 2 - 24, 10, "#ffffff", "center");
-
   ctx.restore();
 }
 
 function drawCircularImage(ctx, img, x, y, size) {
   ctx.save();
 
-
   ctx.beginPath();
   ctx.arc(x + size / 2, y + size / 2, size / 2, 0, Math.PI * 2);
   ctx.closePath();
   ctx.clip();
 
-
   ctx.drawImage(img, x, y, size, size);
-
 
   ctx.restore();
 
   ctx.save();
-
 
   ctx.beginPath();
   ctx.arc(x + size / 2, y + size / 2, size / 2, 0, Math.PI * 2);
   ctx.strokeStyle = "rgba(255,255,255,0.12)";
   ctx.lineWidth = 8;
   ctx.stroke();
-
 
   ctx.restore();
 }
@@ -298,16 +285,13 @@ async function createLevelCardBuffer({
 }) {
   const accent = hexFromColor(accentColor);
 
-
   const safeName = String(displayName || username || "Unknown");
-  const safeRank = rank || "-";
   const safeRank = rank || "-";
   const safeLevel = Number(level || 0);
   const safeCurrentXp = Number(currentXp || 0);
   const safeNeededXp = Math.max(1, Number(neededXp || 1));
   const safeTotalXp = Number(totalXp || 0);
   const percent = Math.floor((safeCurrentXp / safeNeededXp) * 100);
-  const isLevelUpCard = Boolean(title);
   const isLevelUpCard = Boolean(title);
 
   const canvas = createCanvas(WIDTH, HEIGHT);
@@ -320,9 +304,7 @@ async function createLevelCardBuffer({
       const sw = bg.width * scale;
       const sh = bg.height * scale;
 
-
       ctx.drawImage(bg, (WIDTH - sw) / 2, (HEIGHT - sh) / 2, sw, sh);
-
 
       ctx.fillStyle = "rgba(0,0,0,0.62)";
       ctx.fillRect(0, 0, WIDTH, HEIGHT);
@@ -348,12 +330,8 @@ async function createLevelCardBuffer({
 
   if (isLevelUpCard) {
     drawPixelText(ctx, "LEVEL UP!", 365, 95, 5, accent, "left");
-  if (isLevelUpCard) {
-    drawPixelText(ctx, "LEVEL UP!", 365, 95, 5, accent, "left");
   }
 
-  const nameSize = fitPixelText(safeName, 430, 6, 4);
-  drawPixelText(ctx, safeName, 365, 178, nameSize, "#ffffff", "left");
   const nameSize = fitPixelText(safeName, 430, 6, 4);
   drawPixelText(ctx, safeName, 365, 178, nameSize, "#ffffff", "left");
 
@@ -381,27 +359,6 @@ if (isLevelUpCard) {
   drawPixelText(ctx, "RANK", 800, 90, 4, "#ffffff", "right", 0.75);
   drawPixelText(ctx, `#${safeRank}`, 870, 90, 4, "#ffffff", "right");
 
-  drawPixelText(ctx, "LEVEL", 1050, 90, 4, "#ffffff", "right", 0.75);
-  drawPixelText(
-    ctx,
-    String(safeLevel).padStart(2, "0"),
-    1120,
-    90,
-    4,
-    "#ffffff",
-    "right"
-  );
-}
-
-  drawPixelText(
-    ctx,
-    `${shortNumber(safeCurrentXp)}/${shortNumber(safeNeededXp)} XP`,
-    1060,
-    205,
-    5,
-    "#ffffff",
-    "right"
-  );
   drawPixelText(ctx, "LEVEL", 1050, 90, 4, "#ffffff", "right", 0.75);
   drawPixelText(
     ctx,
