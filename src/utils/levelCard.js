@@ -488,4 +488,73 @@ async function createLeaderboardCardBuffer({
 }
 
 
-module.exports = { createLevelCardBuffer, createLeaderboardCardBuffer };
+
+async function createMemberEventCardBuffer({
+  type = "welcome",
+  username,
+  displayName,
+  avatarUrl,
+  memberNumber,
+  guildName,
+  accentColor = 0x7c3aed,
+  backgroundUrl,
+}) {
+  const accent = hexFromColor(accentColor);
+  const isGoodbye = String(type).toLowerCase() === "goodbye";
+  const safeName = String(displayName || username || "Unknown");
+  const safeGuild = String(guildName || "this server");
+  const memberText = memberNumber ? `MEMBER #${memberNumber}` : (isGoodbye ? "GOODBYE" : "WELCOME");
+
+  const canvas = createCanvas(WIDTH, HEIGHT);
+  const ctx = canvas.getContext("2d");
+
+  if (backgroundUrl) {
+    try {
+      const bg = await imageFromUrl(backgroundUrl);
+      const scale = Math.max(WIDTH / bg.width, HEIGHT / bg.height);
+      const sw = bg.width * scale;
+      const sh = bg.height * scale;
+      ctx.drawImage(bg, (WIDTH - sw) / 2, (HEIGHT - sh) / 2, sw, sh);
+      ctx.fillStyle = "rgba(0,0,0,0.66)";
+      ctx.fillRect(0, 0, WIDTH, HEIGHT);
+    } catch {
+      drawDefaultBackground(ctx, accent);
+    }
+  } else {
+    drawDefaultBackground(ctx, accent);
+  }
+
+  drawAccentShapes(ctx, accent);
+
+  roundRect(ctx, 40, 45, WIDTH - 80, HEIGHT - 90, 18);
+  ctx.fillStyle = "rgba(0,0,0,0.50)";
+  ctx.fill();
+
+  // top badge
+  roundRect(ctx, 410, 75, 380, 54, 14);
+  ctx.fillStyle = "rgba(255,255,255,0.12)";
+  ctx.fill();
+  drawPixelText(ctx, memberText, 600, 93, fitPixelText(memberText, 315, 4, 3), "#ffffff", "center", 0.95);
+
+  // avatar
+  try {
+    const avatar = await imageFromUrl(avatarUrl);
+    drawCircularImage(ctx, avatar, 505, 130, 170);
+  } catch {
+    drawAvatarFallback(ctx, 505, 130, 170);
+  }
+
+  const headline = isGoodbye ? "GOODBYE" : "WELCOME";
+  const headlineSize = fitPixelText(`${headline} ${safeName}`, 700, 6, 4);
+  drawPixelText(ctx, `${headline} ${safeName}`, 600, 320, headlineSize, "#ffffff", "center");
+
+  const sub = isGoodbye ? "LEFT" : "TO";
+  drawPixelText(ctx, sub, 600, 358, 4, "#ffffff", "center", 0.75);
+
+  const guildSize = fitPixelText(safeGuild, 740, 5, 3);
+  drawPixelText(ctx, safeGuild, 600, 385, guildSize, "#ffffff", "center", 0.9);
+
+  return canvas.toBuffer("image/png");
+}
+
+module.exports = { createLevelCardBuffer, createLeaderboardCardBuffer, createMemberEventCardBuffer };
