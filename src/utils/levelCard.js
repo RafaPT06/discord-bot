@@ -268,46 +268,43 @@ function drawProgressBar(ctx, x, y, w, h, percent, accent) {
   }
 }
 
-async function createLevelCardBuffer({
+async function createMemberEventCardBuffer({
+  type = "welcome",
   username,
   displayName,
-  discriminator,
   avatarUrl,
-  rank,
-  level,
-  previousLevel,
-  currentXp,
-  neededXp,
-  totalXp,
+  memberNumber,
+  guildName,
   accentColor = 0x7c3aed,
   backgroundUrl,
-  title,
 }) {
+  const EVENT_WIDTH = 1200;
+  const EVENT_HEIGHT = 650;
+
   const accent = hexFromColor(accentColor);
-
+  const isGoodbye = String(type).toLowerCase() === "goodbye";
   const safeName = String(displayName || username || "Unknown");
-  const safeRank = rank || "-";
-  const safeLevel = Number(level || 0);
-  const safeCurrentXp = Number(currentXp || 0);
-  const safeNeededXp = Math.max(1, Number(neededXp || 1));
-  const safeTotalXp = Number(totalXp || 0);
-  const percent = Math.floor((safeCurrentXp / safeNeededXp) * 100);
-  const isLevelUpCard = Boolean(title);
+  const safeGuild = String(guildName || "this server");
+  const memberText = memberNumber
+    ? `MEMBER #${memberNumber}`
+    : isGoodbye
+      ? "GOODBYE"
+      : "WELCOME";
 
-  const canvas = createCanvas(WIDTH, HEIGHT);
+  const canvas = createCanvas(EVENT_WIDTH, EVENT_HEIGHT);
   const ctx = canvas.getContext("2d");
 
   if (backgroundUrl) {
     try {
       const bg = await imageFromUrl(backgroundUrl);
-      const scale = Math.max(WIDTH / bg.width, HEIGHT / bg.height);
+      const scale = Math.max(EVENT_WIDTH / bg.width, EVENT_HEIGHT / bg.height);
       const sw = bg.width * scale;
       const sh = bg.height * scale;
 
-      ctx.drawImage(bg, (WIDTH - sw) / 2, (HEIGHT - sh) / 2, sw, sh);
+      ctx.drawImage(bg, (EVENT_WIDTH - sw) / 2, (EVENT_HEIGHT - sh) / 2, sw, sh);
 
-      ctx.fillStyle = "rgba(0,0,0,0.62)";
-      ctx.fillRect(0, 0, WIDTH, HEIGHT);
+      ctx.fillStyle = "rgba(0,0,0,0.66)";
+      ctx.fillRect(0, 0, EVENT_WIDTH, EVENT_HEIGHT);
     } catch {
       drawDefaultBackground(ctx, accent);
     }
@@ -317,85 +314,74 @@ async function createLevelCardBuffer({
 
   drawAccentShapes(ctx, accent);
 
-  roundRect(ctx, 40, 45, WIDTH - 80, HEIGHT - 90, 18);
-  ctx.fillStyle = "rgba(0,0,0,0.45)";
+  roundRect(ctx, 40, 55, EVENT_WIDTH - 80, EVENT_HEIGHT - 110, 18);
+  ctx.fillStyle = "rgba(0,0,0,0.50)";
   ctx.fill();
+
+  roundRect(ctx, 410, 80, 380, 54, 14);
+  ctx.fillStyle = "rgba(255,255,255,0.12)";
+  ctx.fill();
+
+  drawPixelText(
+    ctx,
+    memberText,
+    600,
+    98,
+    fitPixelText(memberText, 315, 4, 3),
+    "#ffffff",
+    "center",
+    0.95
+  );
 
   try {
     const avatar = await imageFromUrl(avatarUrl);
-    drawCircularImage(ctx, avatar, 110, 92, 190);
+    drawCircularImage(ctx, avatar, 505, 165, 170);
   } catch {
-    drawAvatarFallback(ctx, 110, 92, 190);
+    drawAvatarFallback(ctx, 505, 165, 170);
   }
 
-  if (isLevelUpCard) {
-    drawPixelText(ctx, "LEVEL UP!", 365, 95, 5, "#ffffff", "left");
-  }
-
-  const nameSize = fitPixelText(safeName, 430, 6, 4);
-  drawPixelText(ctx, safeName, 365, 178, nameSize, "#ffffff", "left");
-
-  if (discriminator && discriminator !== "0") {
-    const nameWidth = measurePixelText(safeName, nameSize);
-    drawPixelText(ctx, `#${discriminator}`, 365 + nameWidth + 14, 184, 4, "#ffffff", "left", 0.4);
-  }
-
-if (isLevelUpCard) {
-  const oldLevel = Number(previousLevel ?? Math.max(0, safeLevel - 1));
-  const transitionText = `${oldLevel} > ${safeLevel}`;
-  const transitionSize = fitPixelText(transitionText, 300, 4, 3);
-
-  drawPixelText(ctx, "LEVEL", 895, 90, 4, "#ffffff", "right", 0.75);
-  drawPixelText(
-    ctx,
-    transitionText,
-    1120,
-    90,
-    transitionSize,
-    "#ffffff",
-    "right"
-  );
-} else {
-  drawPixelText(ctx, "RANK", 800, 90, 4, "#ffffff", "right", 0.75);
-  drawPixelText(ctx, `#${safeRank}`, 870, 90, 4, "#ffffff", "right");
-
-  drawPixelText(ctx, "LEVEL", 1050, 90, 4, "#ffffff", "right", 0.75);
-  drawPixelText(
-    ctx,
-    String(safeLevel).padStart(2, "0"),
-    1120,
-    90,
-    4,
-    "#ffffff",
-    "right"
-  );
-}
+  const headline = isGoodbye ? "GOODBYE" : "WELCOME";
+  const headlineText = `${headline} ${safeName}`;
+  const headlineSize = fitPixelText(headlineText, 760, 6, 4);
 
   drawPixelText(
     ctx,
-    `${shortNumber(safeCurrentXp)}/${shortNumber(safeNeededXp)} XP`,
-    1060,
-    205,
-    5,
-    "#ffffff",
-    "right"
-  );
-
-  drawProgressBar(ctx, 365, 250, 720, 54, percent, "#ffffff");
-
-  drawPixelText(
-    ctx,
-    `TOTAL: ${shortNumber(safeTotalXp)} XP`,
-    725,
-    330,
-    4,
+    headlineText,
+    600,
+    395,
+    headlineSize,
     "#ffffff",
     "center"
   );
 
+  const sub = isGoodbye ? "LEFT" : "TO";
+
+  drawPixelText(
+    ctx,
+    sub,
+    600,
+    465,
+    4,
+    "#ffffff",
+    "center",
+    0.75
+  );
+
+  const guildSize = fitPixelText(safeGuild, 760, 5, 3);
+
+  drawPixelText(
+    ctx,
+    safeGuild,
+    600,
+    525,
+    guildSize,
+    "#ffffff",
+    "center",
+    0.9
+  );
+
   return canvas.toBuffer("image/png");
 }
-
 
 async function createLeaderboardCardBuffer({
   guildName = "Level Ranking",
