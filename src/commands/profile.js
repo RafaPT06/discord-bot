@@ -7,6 +7,9 @@ const {
   getMemberEmbedColor,
 } = require("../services/leveling");
 const { createProfileCardBuffer } = require("../utils/levelCard");
+const { getCardBackground } = require("../services/config");
+const { getUserStats } = require("../services/userStats");
+const { getUnlockedAchievements, ACHIEVEMENTS, prestigeForLevel } = require("../services/achievements");
 
 async function getCommandCount(guildId, userId) {
   try {
@@ -42,6 +45,9 @@ module.exports = {
     const rank = await getUserRank(interaction.guildId, user.id);
     const progress = levelData.progress || {};
     const commandCount = await getCommandCount(interaction.guildId, user.id);
+    const stats = await getUserStats(interaction.guildId, user.id).catch(() => ({}));
+    const unlocked = await getUnlockedAchievements(interaction.guildId, user.id).catch(() => new Map());
+    const backgroundUrl = await getCardBackground(interaction.guildId, "profile").catch(() => null);
 
     try {
       const image = await createProfileCardBuffer({
@@ -58,7 +64,12 @@ module.exports = {
         currentXp: Number(progress.current || 0),
         neededXp: Number(progress.needed || 0),
         totalXp: Number(levelData.total_xp || 0),
-        commandCount,
+        commandCount: Number(stats.commands_used || commandCount || 0),
+        messageCount: Number(stats.messages || 0),
+        achievementsUnlocked: unlocked.size || 0,
+        achievementsTotal: ACHIEVEMENTS.length,
+        prestige: prestigeForLevel(Number(levelData.level || 0)),
+        backgroundUrl,
         joinedAt: member?.joinedAt || null,
         createdAt: user.createdAt,
         accentColor: getMemberEmbedColor(member),

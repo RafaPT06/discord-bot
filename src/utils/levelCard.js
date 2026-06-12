@@ -3,4 +3,5 @@ module.exports = {
   ...require("./cards/leaderboardCard"),
   ...require("./cards/memberEventCard"),
   ...require("./cards/profileCard"),
+  ...require("./cards/achievementCard"),
 };

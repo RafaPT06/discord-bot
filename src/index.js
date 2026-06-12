@@ -19,6 +19,7 @@ const { onMessage: aiOnMessage, periodicIdleCheck: aiIdleCheck } = require("./se
 const { handleStarboardReaction } = require("./services/starboard");
 const { handleLevelMessage } = require("./services/leveling");
 const { handleMemberJoin, handleMemberLeave } = require("./services/welcome");
+const { getPrefix } = require("./services/config");
 
 const token = process.env.BOT_TOKEN;
 const ownerId = process.env.OWNER_ID;
@@ -208,6 +209,19 @@ if (interaction.isButton()) {
 // AI Monitor: observe message activity (feed-only alerts)
 client.on(Events.MessageCreate, async (message) => {
   aiOnMessage(client, message);
+
+  try {
+    if (message.guild && !message.author.bot) {
+      const prefix = await getPrefix(message.guild.id).catch(() => ".");
+      if (message.content === `${prefix}help`) {
+        const names = Array.from(client.commands.keys()).sort();
+        await message.reply(`Available slash commands: ${names.map((n) => `/${n}`).join(", ")}`.slice(0, 1900)).catch(() => {});
+      }
+    }
+  } catch (err) {
+    console.error("Prefix command error:", err);
+  }
+
   try {
     await handleLevelMessage(client, message);
   } catch (err) {

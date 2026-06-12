@@ -13,6 +13,10 @@ async function createProfileCardBuffer({
   neededXp,
   totalXp,
   commandCount = 0,
+  messageCount = 0,
+  achievementsUnlocked = 0,
+  achievementsTotal = 0,
+  prestige = 0,
   joinedAt,
   createdAt,
   accentColor = 0x7c3aed,
@@ -29,6 +33,10 @@ async function createProfileCardBuffer({
   const safeNeededXp = Math.max(1, Number(neededXp || 1));
   const safeTotalXp = Number(totalXp || 0);
   const safeCommandCount = Number(commandCount || 0);
+  const safeMessageCount = Number(messageCount || 0);
+  const safeAchievementsUnlocked = Number(achievementsUnlocked || 0);
+  const safeAchievementsTotal = Number(achievementsTotal || 0);
+  const safePrestige = Number(prestige || 0);
   const percent = Math.floor((safeCurrentXp / safeNeededXp) * 100);
 
   const joinedText = joinedAt ? new Date(joinedAt).toISOString().slice(0, 10) : "UNKNOWN";
@@ -92,6 +100,15 @@ async function createProfileCardBuffer({
 
   drawPixelText(ctx, "COMMANDS", 1080, 265, 4, "#ffffff", "right", 0.65);
   drawPixelText(ctx, shortNumber(safeCommandCount), 1145, 265, 4, "#ffffff", "right");
+
+  drawPixelText(ctx, "MSG", 620, 320, 3, "#ffffff", "right", 0.65);
+  drawPixelText(ctx, shortNumber(safeMessageCount), 700, 320, 3, "#ffffff", "right");
+
+  drawPixelText(ctx, "ACH", 860, 320, 3, "#ffffff", "right", 0.65);
+  drawPixelText(ctx, `${safeAchievementsUnlocked}/${safeAchievementsTotal}`, 945, 320, 3, "#ffffff", "right");
+
+  drawPixelText(ctx, "PRESTIGE", 1080, 320, 3, "#ffffff", "right", 0.65);
+  drawPixelText(ctx, String(safePrestige), 1145, 320, 3, "#ffffff", "right");
 
   drawPixelText(ctx, `${shortNumber(safeCurrentXp)}/${shortNumber(safeNeededXp)} XP`, 1085, 360, 5, "#ffffff", "right");
   drawProgressBar(ctx, 450, 400, 635, 46, percent, "#ffffff");

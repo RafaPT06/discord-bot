@@ -6,6 +6,7 @@ async function createLeaderboardCardBuffer({
   guildName = "Level Ranking",
   entries = [],
   accentColor = 0x7c3aed,
+  backgroundUrl,
 }) {
   const accent = hexFromColor(accentColor);
   const width = 1200;
@@ -13,13 +14,31 @@ async function createLeaderboardCardBuffer({
   const canvas = createCanvas(width, height);
   const ctx = canvas.getContext("2d");
 
-  const gradient = ctx.createLinearGradient(0, 0, width, height);
-  gradient.addColorStop(0, "#050505");
-  gradient.addColorStop(0.55, "#151515");
-  gradient.addColorStop(1, "#050505");
-
-  ctx.fillStyle = gradient;
-  ctx.fillRect(0, 0, width, height);
+  if (backgroundUrl) {
+    try {
+      const bg = await imageFromUrl(backgroundUrl);
+      const scale = Math.max(width / bg.width, height / bg.height);
+      const sw = bg.width * scale;
+      const sh = bg.height * scale;
+      ctx.drawImage(bg, (width - sw) / 2, (height - sh) / 2, sw, sh);
+      ctx.fillStyle = "rgba(0,0,0,0.70)";
+      ctx.fillRect(0, 0, width, height);
+    } catch {
+      const gradient = ctx.createLinearGradient(0, 0, width, height);
+      gradient.addColorStop(0, "#050505");
+      gradient.addColorStop(0.55, "#151515");
+      gradient.addColorStop(1, "#050505");
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, width, height);
+    }
+  } else {
+    const gradient = ctx.createLinearGradient(0, 0, width, height);
+    gradient.addColorStop(0, "#050505");
+    gradient.addColorStop(0.55, "#151515");
+    gradient.addColorStop(1, "#050505");
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, width, height);
+  }
 
   ctx.globalAlpha = 0.10;
 

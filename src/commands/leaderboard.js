@@ -1,6 +1,7 @@
 const { SlashCommandBuilder, AttachmentBuilder, EmbedBuilder } = require("discord.js");
 const { getLeaderboard } = require("../services/leveling");
 const { createLeaderboardCardBuffer } = require("../utils/levelCard");
+const { getCardBackground } = require("../services/config");
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -42,6 +43,7 @@ module.exports = {
         guildName: interaction.guild.name,
         entries,
         accentColor: interaction.guild.members.me?.displayColor || 0x7c3aed,
+        backgroundUrl: await getCardBackground(interaction.guildId, "leaderboard"),
       });
 
       const attachment = new AttachmentBuilder(image, { name: "leaderboard.png" });

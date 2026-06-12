@@ -1,7 +1,9 @@
 const { pool } = require("../db/pool");
+const { incrementCommands } = require("./userStats");
 
 async function logCommandUsage({ guildId, userId, commandName, ok, error, durationMs }) {
   try {
+    await incrementCommands(guildId, userId).catch(() => {});
     await pool.query(
       `INSERT INTO command_usage (guild_id, user_id, command_name, ok, error, duration_ms)
        VALUES ($1, $2, $3, $4, $5, $6)`,

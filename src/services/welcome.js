@@ -1,6 +1,7 @@
 const { AttachmentBuilder } = require("discord.js");
 const { pool } = require("../db/pool");
 const { createMemberEventCardBuffer } = require("../utils/levelCard");
+const { getCardBackground } = require("./config");
 
 async function ensureWelcomeTables() {
   await pool.query(`
@@ -77,6 +78,7 @@ function memberNumberFor(guild) {
 
 async function buildMemberEventAttachment({ member, type }) {
   const isGoodbye = type === "goodbye";
+  const backgroundUrl = await getCardBackground(member.guild.id, isGoodbye ? "goodbye" : "welcome").catch(() => null);
   const image = await createMemberEventCardBuffer({
     type,
     username: member.user?.username,
@@ -85,6 +87,7 @@ async function buildMemberEventAttachment({ member, type }) {
     memberNumber: memberNumberFor(member.guild),
     guildName: member.guild?.name,
     accentColor: member.displayColor || member.guild?.members?.me?.displayColor || 0x7c3aed,
+    backgroundUrl,
   });
 
   return new AttachmentBuilder(image, {

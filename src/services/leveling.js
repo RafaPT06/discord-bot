@@ -1,6 +1,9 @@
 const { EmbedBuilder, PermissionFlagsBits, AttachmentBuilder } = require("discord.js");
 const { createLevelCardBuffer } = require("../utils/levelCard");
 const { pool } = require("../db/pool");
+const { incrementMessages, addXpStats, getUserStats } = require("./userStats");
+const { checkAchievementUnlocks } = require("./achievements");
+const { getCardBackground } = require("./config");
 
 const LEVEL_ROLE_STEPS = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50];
 
@@ -213,6 +216,7 @@ async function handleLevelMessage(client, message) {
   if (!message.guild || message.author.bot) return;
   if (!message.content || message.content.trim().length < 2) return;
 
+  await incrementMessages(message.guild.id, message.author.id).catch(() => {});
   await ensureLevelTables();
   const settings = await getLevelSettings(message.guild.id);
   if (settings.enabled === false) return;
@@ -246,16 +250,23 @@ async function handleLevelMessage(client, message) {
     [message.guild.id, message.author.id, newTotal, newLevel]
   );
 
-  if (newLevel <= oldLevel) return;
+  await addXpStats(message.guild.id, message.author.id, gained, Math.max(0, newLevel - oldLevel)).catch(() => {});
 
   const member = message.member || await message.guild.members.fetch(message.author.id).catch(() => null);
   if (!member) return;
-  const addedRoles = await assignLevelRoles(member, newLevel).catch(() => []);
-  const embed = buildLevelUpEmbed({ member, oldLevel, newLevel, totalXp: newTotal, addedRoles });
 
   const channel = settings.channel_id
     ? await client.channels.fetch(settings.channel_id).catch(() => null)
     : message.channel;
+
+  if (newLevel <= oldLevel) {
+    const stats = await getUserStats(message.guild.id, message.author.id).catch(() => ({}));
+    await checkAchievementUnlocks({ guild: message.guild, member, level: newLevel, stats, channel }).catch(() => {});
+    return;
+  }
+
+  const addedRoles = await assignLevelRoles(member, newLevel).catch(() => []);
+  const embed = buildLevelUpEmbed({ member, oldLevel, newLevel, totalXp: newTotal, addedRoles });
 
   if (channel?.isTextBased()) {
     try {
@@ -273,10 +284,13 @@ async function handleLevelMessage(client, message) {
         neededXp: progress.needed,
         totalXp: newTotal,
         accentColor: getMemberEmbedColor(member),
+        backgroundUrl: await getCardBackground(message.guild.id, "level"),
         title: `Level up! ${oldLevel} → ${newLevel}`,
       });
       const attachment = new AttachmentBuilder(image, { name: "level-up.png" });
       await channel.send({ content: `${member} levelled up to **lvl ${newLevel}**!`, files: [attachment] }).catch(() => {});
+      const stats = await getUserStats(message.guild.id, message.author.id).catch(() => ({}));
+      await checkAchievementUnlocks({ guild: message.guild, member, level: newLevel, stats, channel }).catch(() => {});
     } catch (err) {
       console.error("Failed to build level-up card:", err);
       await channel.send({ embeds: [embed] }).catch(() => {});
