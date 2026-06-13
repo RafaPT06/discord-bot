@@ -6,7 +6,6 @@ const {
   getMemberEmbedColor,
 } = require("../services/leveling");
 const { createLevelCardBuffer } = require("../utils/levelCard");
-const { getCardBackground } = require("../services/config");
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -49,7 +48,6 @@ module.exports = {
         neededXp: Number(progress.needed || 0),
         totalXp: Number(levelData.total_xp || 0),
         accentColor: getMemberEmbedColor(member),
-        backgroundUrl: await getCardBackground(interaction.guildId, "level"),
       };
 
       const image = await createLevelCardBuffer(debugData);

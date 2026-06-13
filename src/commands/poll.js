@@ -1,10 +1,15 @@
-const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, InteractionContextType } = require('discord.js');
 const letters = ['1️⃣','2️⃣','3️⃣','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣','🔟'];
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('poll')
     .setDescription('Create a reaction poll.')
+    .setContexts(
+      InteractionContextType.Guild,
+      InteractionContextType.BotDM,
+      InteractionContextType.PrivateChannel
+    )
     .addStringOption(o => o.setName('question').setDescription('Poll question').setRequired(true).setMaxLength(250))
     .addStringOption(o => o.setName('option1').setDescription('Option 1').setRequired(true).setMaxLength(100))
     .addStringOption(o => o.setName('option2').setDescription('Option 2').setRequired(true).setMaxLength(100))
