@@ -217,15 +217,6 @@ await pool.query(`
     );
   `);
 
-
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS prefix_settings (
-      guild_id TEXT PRIMARY KEY,
-      prefix TEXT NOT NULL DEFAULT '.',
-      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    );
-  `);
-
 }
 
 module.exports = { initDb };

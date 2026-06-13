@@ -1,5 +1,10 @@
-const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, InteractionContextType } = require('discord.js');
 const { request } = require('undici');
 const { resolveUsername } = require('../services/robloxApi');
 async function getJson(url){ const res=await request(url); const text=await res.body.text(); if(res.statusCode<200||res.statusCode>=300) throw new Error(`Roblox API ${res.statusCode}: ${text.slice(0,200)}`); return JSON.parse(text); }
-module.exports = { data: new SlashCommandBuilder().setName('roblox_avatar').setDescription('Show a Roblox avatar image.').addStringOption(o=>o.setName('username').setDescription('Roblox username').setRequired(true)), async execute(interaction){ await interaction.deferReply(); const u=await resolveUsername(interaction.options.getString('username', true)); const data=await getJson(`https://thumbnails.roblox.com/v1/users/avatar?userIds=${u.userId}&size=720x720&format=Png&isCircular=false`); const img=data?.data?.[0]?.imageUrl; const embed=new EmbedBuilder().setTitle(`${u.name}'s avatar`).setURL(`https://www.roblox.com/users/${u.userId}/profile`).setTimestamp(); if(img) embed.setImage(img); return interaction.editReply({embeds:[embed]}); } };
+module.exports = { data: new SlashCommandBuilder().setName('roblox_avatar').setDescription('Show a Roblox avatar image.')
+    .setContexts(
+      InteractionContextType.Guild,
+      InteractionContextType.BotDM,
+      InteractionContextType.PrivateChannel
+    ).addStringOption(o=>o.setName('username').setDescription('Roblox username').setRequired(true)), async execute(interaction){ await interaction.deferReply(); const u=await resolveUsername(interaction.options.getString('username', true)); const data=await getJson(`https://thumbnails.roblox.com/v1/users/avatar?userIds=${u.userId}&size=720x720&format=Png&isCircular=false`); const img=data?.data?.[0]?.imageUrl; const embed=new EmbedBuilder().setTitle(`${u.name}'s avatar`).setURL(`https://www.roblox.com/users/${u.userId}/profile`).setTimestamp(); if(img) embed.setImage(img); return interaction.editReply({embeds:[embed]}); } };

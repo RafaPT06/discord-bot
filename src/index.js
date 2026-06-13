@@ -18,7 +18,6 @@ const { onMessage: aiOnMessage, periodicIdleCheck: aiIdleCheck } = require("./se
 
 const { handleStarboardReaction } = require("./services/starboard");
 const { handleLevelMessage } = require("./services/leveling");
-const { handlePrefixMessage } = require("./services/prefixCommands");
 
 const token = process.env.BOT_TOKEN;
 const ownerId = process.env.OWNER_ID;
@@ -29,7 +28,7 @@ if (!ownerId) throw new Error("Missing OWNER_ID");
 if (!databaseUrl) throw new Error("Missing DATABASE_URL");
 
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.DirectMessages, GatewayIntentBits.MessageContent, GatewayIntentBits.GuildMessageReactions],
+  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent, GatewayIntentBits.GuildMessageReactions],
   partials: [Partials.Channel, Partials.Message, Partials.Reaction, Partials.User],
 });
 
@@ -207,13 +206,6 @@ if (interaction.isButton()) {
 
 // AI Monitor: observe message activity (feed-only alerts)
 client.on(Events.MessageCreate, async (message) => {
-  try {
-    const handledPrefix = await handlePrefixMessage(client, message);
-    if (handledPrefix) return;
-  } catch (err) {
-    console.error("Prefix command error:", err);
-  }
-
   aiOnMessage(client, message);
   try {
     await handleLevelMessage(client, message);
