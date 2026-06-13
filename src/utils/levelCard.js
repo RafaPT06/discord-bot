@@ -4,4 +4,6 @@ module.exports = {
   ...require("./cards/memberEventCard"),
   ...require("./cards/profileCard"),
   ...require("./cards/achievementCard"),
+  ...require("./cards/statsCard"),
+  ...require("./cards/achievementsListCard"),
 };
