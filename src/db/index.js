@@ -217,6 +217,51 @@ await pool.query(`
     );
   `);
 
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS user_stats (
+      guild_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      messages BIGINT NOT NULL DEFAULT 0,
+      xp_earned_today BIGINT NOT NULL DEFAULT 0,
+      xp_earned_week BIGINT NOT NULL DEFAULT 0,
+      commands_used BIGINT NOT NULL DEFAULT 0,
+      levels_gained INT NOT NULL DEFAULT 0,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (guild_id, user_id)
+    );
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS achievement_unlocks (
+      guild_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      achievement_id TEXT NOT NULL,
+      unlocked_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (guild_id, user_id, achievement_id)
+    );
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS card_backgrounds (
+      guild_id TEXT NOT NULL,
+      card_type TEXT NOT NULL,
+      background_url TEXT NOT NULL,
+      updated_by TEXT,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (guild_id, card_type)
+    );
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS prefix_settings (
+      guild_id TEXT PRIMARY KEY,
+      prefix TEXT NOT NULL DEFAULT '.',
+      updated_by TEXT,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+
 }
 
 module.exports = { initDb };

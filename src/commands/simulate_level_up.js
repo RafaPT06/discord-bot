@@ -8,6 +8,7 @@ const {
   getMemberEmbedColor,
 } = require("../services/leveling");
 const { createLevelCardBuffer } = require("../utils/levelCard");
+const { getCardBackground } = require("../services/config");
 
 function totalXpAtStartOfLevel(level) {
   let total = 0;
@@ -64,10 +65,12 @@ module.exports = {
         avatarUrl: user.displayAvatarURL({ extension: "png", size: 256 }),
         rank: rank || 1,
         level: previewLevel,
+        previousLevel: oldLevel,
         currentXp: progress.current,
         neededXp: progress.needed,
         totalXp,
         accentColor: getMemberEmbedColor(member),
+        backgroundUrl: await getCardBackground(interaction.guildId, "level"),
         title: `Level up! ${oldLevel} → ${previewLevel}`,
       });
 

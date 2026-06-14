@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, InteractionContextType } = require('discord.js');
+const { SlashCommandBuilder, InteractionContextType } = require("discord.js");
 const { runTextAi } = require('../services/textAi');
 module.exports = { data: new SlashCommandBuilder().setName('translate').setDescription('Translate text.')
     .setContexts(

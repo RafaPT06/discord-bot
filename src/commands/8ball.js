@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, InteractionContextType } = require('discord.js');
+const { SlashCommandBuilder, InteractionContextType } = require("discord.js");
 const answers = ['Yes.', 'No.', 'Maybe.', 'Probably.', 'Probably not.', 'Ask again later.', 'Definitely.', 'I doubt it.'];
 module.exports = { data: new SlashCommandBuilder().setName('8ball').setDescription('Ask the magic 8-ball.')
     .setContexts(

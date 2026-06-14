@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder, InteractionContextType } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, InteractionContextType } = require("discord.js");
 const { request } = require('undici');
 async function getJson(url){ const res=await request(url); const text=await res.body.text(); if(res.statusCode<200||res.statusCode>=300) throw new Error(`Roblox API ${res.statusCode}: ${text.slice(0,200)}`); return JSON.parse(text); }
 module.exports = { data: new SlashCommandBuilder().setName('roblox_game').setDescription('Show Roblox game stats by universe ID.')
