@@ -42,7 +42,7 @@ function buildFunText() {
     "• `/panel` — control panel (Manage Server / Owner)",
     "",
     "Use the buttons below to view Admin/Owner pages.",
-  ].join("\\n");
+  ].join("\n");
 }
 
 function buildAdminText() {
