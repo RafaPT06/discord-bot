@@ -32,7 +32,7 @@ async function editImageWithOpenAI({ imageUrl, prompt, size = "1024x1024" }) {
   if (!imageUrl) throw new Error("Missing image URL.");
   if (!prompt) throw new Error("Missing edit prompt.");
 
-  const model = process.env.OPENAI_IMAGE_MODEL || "gpt-image-1-mini";
+  const model = process.env.OPENAI_IMAGE_MODEL || "gpt-image-1";
   const { blob, filename } = await downloadDiscordImage(imageUrl);
 
   const form = new FormData();
