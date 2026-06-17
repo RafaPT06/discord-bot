@@ -36,9 +36,14 @@ async function editImageWithOpenAI({ imageUrl, prompt, size = "1024x1024" }) {
   const { blob, filename } = await downloadDiscordImage(imageUrl);
 
   const form = new FormData();
-  form.append("model", model);
-  form.append("image[]", blob, filename);
-  form.append("prompt", prompt);
+form.append("model", model);
+form.append("image[]", blob, filename);
+
+  const preserveInstruction ="This is an image editing task, not a full image generation task. Preserve the original image as much as possible. Only apply the user's requested changes. Do not change the person's face, identity, body shape, pose, clothing, shoes, socks, accessories, car wrap, license plate text, existing text, camera angle, composition, or background unless the user explicitly asks for it.";
+  
+  const finalPrompt = `${preserveInstruction}\n\nUser requested edit: ${prompt}`;
+  
+  form.append("prompt", finalPrompt);
   form.append("size", size);
   form.append("n", "1");
   form.append("output_format", "png");
