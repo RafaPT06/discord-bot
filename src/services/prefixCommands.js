@@ -14,10 +14,6 @@ const PREFIX_SUPPORTED = new Map([
   ["wyr", { command: "would_you_rather", dm: true, usage: "wyr" }],
   ["fact", { command: "fact", dm: true, usage: "fact" }],
   ["trivia", { command: "trivia", dm: true, usage: "trivia" }],
-  ["summarize", { command: "summarize", dm: true, usage: "summarize <text>", strings: ["text"] }],
-  ["improve", { command: "improve", dm: true, usage: "improve <text>", strings: ["text"], optionalStrings: { tone: "natural" } }],
-  ["explain", { command: "explain", dm: true, usage: "explain <text>", strings: ["text"] }],
-  ["translate", { command: "translate", dm: true, usage: "translate <language> <text>", custom: "translate" }],
   ["profile", { command: "profile", dm: false, usage: "profile [@user]", userOption: "user", defaultUser: true }],
   ["stats", { command: "stats", dm: false, usage: "stats [@user]", userOption: "user", defaultUser: true }],
   ["achievements", { command: "achievements", dm: false, usage: "achievements [@user]", userOption: "user", defaultUser: true }],
@@ -155,12 +151,6 @@ function makePrefixInteraction(message, commandName, values) {
 
 async function buildValues(message, info, args, rest) {
   const values = {};
-
-  if (info.custom === "translate") {
-    values.to = args.shift() || "English";
-    values.text = args.join(" ").trim();
-    return values;
-  }
 
   if (info.custom === "quote") {
     const sub = (args.shift() || "random").toLowerCase();

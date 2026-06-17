@@ -12,10 +12,6 @@ const PUBLIC_COMMANDS = new Set([
   "poll",
   "quote",
   "suggest",
-  "summarize",
-  "improve",
-  "translate",
-  "explain",
   "8ball",
   "would_you_rather",
   "fact",
@@ -30,7 +26,6 @@ const MANAGE_GUILD_COMMANDS = new Set([
   // Panel / setup
   "panel",
   "setup_channels",
-  "ai",
 
   // Channels / settings
   "set_deploy_channel",
@@ -81,6 +76,7 @@ const MANAGE_GUILD_COMMANDS = new Set([
 
 // Owner-only by default (unless overridden via /perm_set)
 const OWNER_COMMANDS = new Set([
+  "edit_image",
   "maintenance",
   "presence",
   "roblox_status",
