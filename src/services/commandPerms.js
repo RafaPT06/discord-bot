@@ -1,4 +1,5 @@
 const { pool } = require("../db/pool");
+const { isUserAllowedForEditImage } = require("./editImageAccess");
 
 // Always allowed to everyone (Guild + DMs)
 const PUBLIC_COMMANDS = new Set([
@@ -66,6 +67,7 @@ const MANAGE_GUILD_COMMANDS = new Set([
   "perm_list",
   "perm_clear",
   "permissions_check",
+  "edit_image_access",
   "starboard",
 
   // Tests (still restricted)
@@ -138,6 +140,14 @@ async function explainCommandPermission(interaction, commandName, targetMember =
   if (targetIsOwner) {
     reasons.push("Bot owner bypass applies.");
     return result(true, "owner");
+  }
+
+  if (commandName === "edit_image") {
+    const allowedForImageEdit = await isUserAllowedForEditImage(interaction.guildId, targetId);
+    reasons.push(allowedForImageEdit
+      ? "Allowed by the /edit_image access list."
+      : "Not listed in the /edit_image access list.");
+    return result(allowedForImageEdit, allowedForImageEdit ? "edit_image_user" : "edit_image_denied");
   }
 
   const { rows } = await pool.query(

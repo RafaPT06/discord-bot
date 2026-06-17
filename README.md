@@ -36,6 +36,7 @@ These require **Manage Server** by default (or a custom `/perm_set` override):
 Owner-only by default (can be overridden with `/perm_set` if you want):
 
 - `/edit_image <image> <prompt>` — edit an uploaded image with OpenAI
+- `/edit_image_access add|remove|list` — control who can use `/edit_image`
 - `/maintenance <on|off|status>`
 - `/roblox_status`
 - Simulation: `/simulate_deploy` `/simulate_error` `/simulate_backup` `/simulate_roblox` `/simulate_feed`
@@ -68,7 +69,7 @@ Required:
 Optional:
 - `ROBLOX_USERNAME`
 - `OPENAI_API_KEY` — required only for `/edit_image`
-- `OPENAI_IMAGE_MODEL` — defaults to `gpt-image-1-mini`
+- `OPENAI_IMAGE_MODEL` — defaults to `gpt-image-1`
 
 ## Notes
 
