@@ -44,7 +44,7 @@ function startBotApi(client) {
   }
 
   app.get('/', (_req, res) => {
-    res.json({ ok: true, service: 'Ruffles Bot API' });
+    res.json({ ok: true, service: `${client.user?.username || 'Discord Bot'} API` });
   });
 
   app.get('/api/health', (_req, res) => {
@@ -64,6 +64,8 @@ function startBotApi(client) {
       botName: client.user?.username || 'Ruffles Bot',
       botTag: client.user?.tag || null,
       avatarUrl: client.user?.displayAvatarURL?.({ size: 128 }) || null,
+      botId: client.user?.id || null,
+      inviteUrl: client.user?.id ? `https://discord.com/oauth2/authorize?client_id=${client.user.id}&permissions=8&scope=bot%20applications.commands` : null,
       ping,
       servers: guildCount,
       users: userCount,
