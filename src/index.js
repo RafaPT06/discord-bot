@@ -14,6 +14,7 @@ const { sendFeed } = require("./services/feed");
 const { checkCooldown } = require("./services/cooldowns");
 const { fieldsEmbed, errorEmbed } = require("./utils/embeds");
 const { startPresenceRotation } = require("./services/presenceManager");
+const { startBotApi } = require("./web/api");
 
 const { handleStarboardReaction } = require("./services/starboard");
 const { handleLevelMessage } = require("./services/leveling");
@@ -50,6 +51,7 @@ client.once(Events.ClientReady, async () => {
   startBackupScheduler(client);
   await sendDeployNotices(client);
   startPresenceRotation(client);
+  startBotApi(client);
   console.log(" DB init + services started");
 });
 
