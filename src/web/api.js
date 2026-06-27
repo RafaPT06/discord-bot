@@ -136,6 +136,23 @@ function startBotApi(client) {
     });
   });
 
+
+  app.get('/api/guilds', requireToken, (_req, res) => {
+    const guilds = client.guilds.cache.map((guild) => ({
+      id: guild.id,
+      name: guild.name,
+      icon: guild.icon || null,
+      memberCount: guild.memberCount || 0,
+    }));
+
+    res.json({
+      ok: true,
+      guilds,
+      total: guilds.length,
+      updatedAt: new Date().toISOString(),
+    });
+  });
+
   app.get('/api/stats', requireToken, (_req, res) => {
     const guildCount = client.guilds.cache.size;
     const commandCount = client.commands?.size || 0;
