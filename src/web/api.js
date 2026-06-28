@@ -1,4 +1,5 @@
 const express = require('express');
+const { listEditImageAccessUsers, addEditImageAccessUser, removeEditImageAccessUser } = require('../services/editImageAccess');
 
 let started = false;
 const startedAt = Date.now();
@@ -96,10 +97,12 @@ function startBotApi(client) {
   const port = Number(process.env.PORT || process.env.BOT_API_PORT || 3001);
   const apiToken = process.env.BOT_API_TOKEN || null;
 
+  app.use(express.json());
+
   app.use((req, res, next) => {
     res.setHeader('Access-Control-Allow-Origin', process.env.WEBSITE_ORIGIN || '*');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
     if (req.method === 'OPTIONS') return res.sendStatus(204);
     return next();
   });
@@ -151,6 +154,75 @@ function startBotApi(client) {
       total: guilds.length,
       updatedAt: new Date().toISOString(),
     });
+  });
+
+  app.get('/api/guilds/:guildId/image-access', requireToken, async (req, res) => {
+    try {
+      const guild = client.guilds.cache.get(req.params.guildId);
+      if (!guild) return res.status(404).json({ ok: false, error: 'Guild not found.' });
+
+      const rows = await listEditImageAccessUsers(req.params.guildId);
+      const users = await Promise.all(rows.map(async (row) => {
+        let username = null;
+        let displayName = null;
+        try {
+          const member = await guild.members.fetch(row.user_id);
+          username = member.user?.tag || member.user?.username || null;
+          displayName = member.displayName || username;
+        } catch {
+          try {
+            const user = await client.users.fetch(row.user_id);
+            username = user.tag || user.username || null;
+            displayName = username;
+          } catch {}
+        }
+        return {
+          userId: row.user_id,
+          username,
+          displayName,
+          addedBy: row.added_by,
+          createdAt: row.created_at,
+        };
+      }));
+
+      res.json({ ok: true, guildId: req.params.guildId, users, total: users.length, updatedAt: new Date().toISOString() });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: err.message || 'Could not load image access.' });
+    }
+  });
+
+  app.post('/api/guilds/:guildId/image-access', requireToken, async (req, res) => {
+    try {
+      const guild = client.guilds.cache.get(req.params.guildId);
+      if (!guild) return res.status(404).json({ ok: false, error: 'Guild not found.' });
+
+      const userId = String(req.body?.userId || '').trim();
+      if (!/^\d{15,25}$/.test(userId)) {
+        return res.status(400).json({ ok: false, error: 'Invalid Discord user ID.' });
+      }
+
+      await addEditImageAccessUser(req.params.guildId, userId, req.body?.addedBy || null);
+      res.json({ ok: true, guildId: req.params.guildId, userId, updatedAt: new Date().toISOString() });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: err.message || 'Could not add image access user.' });
+    }
+  });
+
+  app.delete('/api/guilds/:guildId/image-access/:userId', requireToken, async (req, res) => {
+    try {
+      const guild = client.guilds.cache.get(req.params.guildId);
+      if (!guild) return res.status(404).json({ ok: false, error: 'Guild not found.' });
+
+      const userId = String(req.params.userId || '').trim();
+      if (!/^\d{15,25}$/.test(userId)) {
+        return res.status(400).json({ ok: false, error: 'Invalid Discord user ID.' });
+      }
+
+      const removed = await removeEditImageAccessUser(req.params.guildId, userId);
+      res.json({ ok: true, guildId: req.params.guildId, userId, removed, updatedAt: new Date().toISOString() });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: err.message || 'Could not remove image access user.' });
+    }
   });
 
   app.get('/api/stats', requireToken, (_req, res) => {

@@ -2,7 +2,7 @@ const { pool } = require('../db/pool');
 
 async function ensureEditImageAccessTable() {
   await pool.query(`
-    CREATE TABLE IF NOT EXISTS edit_image_allowed_users (
+    CREATE TABLE IF NOT EXISTS edit_image_access_users (
       guild_id TEXT NOT NULL,
       user_id TEXT NOT NULL,
       added_by TEXT,
@@ -12,53 +12,53 @@ async function ensureEditImageAccessTable() {
   `);
 }
 
-async function addAllowedUser(guildId, userId, addedBy) {
-  await ensureEditImageAccessTable();
-  await pool.query(
-    `INSERT INTO edit_image_allowed_users (guild_id, user_id, added_by)
-     VALUES ($1, $2, $3)
-     ON CONFLICT (guild_id, user_id)
-     DO UPDATE SET added_by=EXCLUDED.added_by`,
-    [guildId, userId, addedBy]
-  );
-}
-
-async function removeAllowedUser(guildId, userId) {
-  await ensureEditImageAccessTable();
-  const { rowCount } = await pool.query(
-    `DELETE FROM edit_image_allowed_users WHERE guild_id=$1 AND user_id=$2`,
-    [guildId, userId]
-  );
-  return rowCount > 0;
-}
-
-async function listAllowedUsers(guildId) {
+async function listEditImageAccessUsers(guildId) {
   await ensureEditImageAccessTable();
   const { rows } = await pool.query(
-    `SELECT user_id, added_by, created_at
-     FROM edit_image_allowed_users
-     WHERE guild_id=$1
-     ORDER BY created_at ASC`,
+    `SELECT guild_id, user_id, added_by, created_at
+     FROM edit_image_access_users
+     WHERE guild_id = $1
+     ORDER BY created_at DESC`,
     [guildId]
   );
   return rows;
 }
 
-async function isUserAllowedForEditImage(guildId, userId) {
-  if (!guildId || !userId) return false;
-  if (userId === process.env.OWNER_ID) return true;
+async function addEditImageAccessUser(guildId, userId, addedBy = null) {
   await ensureEditImageAccessTable();
-  const { rowCount } = await pool.query(
-    `SELECT 1 FROM edit_image_allowed_users WHERE guild_id=$1 AND user_id=$2 LIMIT 1`,
+  const { rows } = await pool.query(
+    `INSERT INTO edit_image_access_users (guild_id, user_id, added_by)
+     VALUES ($1, $2, $3)
+     ON CONFLICT (guild_id, user_id)
+     DO UPDATE SET added_by = EXCLUDED.added_by
+     RETURNING guild_id, user_id, added_by, created_at`,
+    [guildId, userId, addedBy]
+  );
+  return rows[0];
+}
+
+async function removeEditImageAccessUser(guildId, userId) {
+  await ensureEditImageAccessTable();
+  const result = await pool.query(
+    `DELETE FROM edit_image_access_users WHERE guild_id = $1 AND user_id = $2`,
     [guildId, userId]
   );
-  return rowCount > 0;
+  return result.rowCount > 0;
+}
+
+async function isUserAllowedForEditImage(guildId, userId) {
+  await ensureEditImageAccessTable();
+  const { rows } = await pool.query(
+    `SELECT 1 FROM edit_image_access_users WHERE guild_id = $1 AND user_id = $2 LIMIT 1`,
+    [guildId, userId]
+  );
+  return rows.length > 0;
 }
 
 module.exports = {
   ensureEditImageAccessTable,
-  addAllowedUser,
-  removeAllowedUser,
-  listAllowedUsers,
+  listEditImageAccessUsers,
+  addEditImageAccessUser,
+  removeEditImageAccessUser,
   isUserAllowedForEditImage,
 };
