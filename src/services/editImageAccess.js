@@ -55,10 +55,26 @@ async function isUserAllowedForEditImage(guildId, userId) {
   return rows.length > 0;
 }
 
+async function listAllowedUsers(guildId) {
+  return listEditImageAccessUsers(guildId);
+}
+
+async function addAllowedUser(guildId, userId, addedBy = null) {
+  return addEditImageAccessUser(guildId, userId, addedBy);
+}
+
+async function removeAllowedUser(guildId, userId) {
+  return removeEditImageAccessUser(guildId, userId);
+}
+
 module.exports = {
   ensureEditImageAccessTable,
   listEditImageAccessUsers,
   addEditImageAccessUser,
   removeEditImageAccessUser,
   isUserAllowedForEditImage,
+  // Backwards-compatible names used by /edit_image_access.
+  listAllowedUsers,
+  addAllowedUser,
+  removeAllowedUser,
 };

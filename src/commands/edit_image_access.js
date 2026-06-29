@@ -61,7 +61,7 @@ module.exports = {
     const rows = await listAllowedUsers(interaction.guildId);
     if (!rows.length) {
       return interaction.reply({
-        content: `No extra users are allowed yet. Bot owner can always use \`/edit_image\`.`,
+        content: 'No users are allowed yet. Add trusted users with `/edit_image_access add` or from the Meowz dashboard.',
         ephemeral: true,
       });
     }
