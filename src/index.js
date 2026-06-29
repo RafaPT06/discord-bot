@@ -14,7 +14,8 @@ const { sendFeed } = require("./services/feed");
 const { checkCooldown } = require("./services/cooldowns");
 const { fieldsEmbed, errorEmbed } = require("./utils/embeds");
 const { startPresenceRotation } = require("./services/presenceManager");
-const { startBotApi } = require("./web/api");
+const { onMessage: aiOnMessage, periodicIdleCheck: aiIdleCheck } = require("./services/aiMonitor");
+const { startDailySentenceDm } = require("./services/dailySentenceDm");
 
 const { handleStarboardReaction } = require("./services/starboard");
 const { handleLevelMessage } = require("./services/leveling");
@@ -51,7 +52,8 @@ client.once(Events.ClientReady, async () => {
   startBackupScheduler(client);
   await sendDeployNotices(client);
   startPresenceRotation(client);
-  startBotApi(client);
+  startDailySentenceDm(client);
+  setInterval(() => aiIdleCheck(client), 60_000);
   console.log(" DB init + services started");
 });
 
@@ -215,6 +217,7 @@ client.on(Events.MessageCreate, async (message) => {
     console.error("Prefix command error:", err);
   }
 
+  aiOnMessage(client, message);
 
   try {
     await handleLevelMessage(client, message);
