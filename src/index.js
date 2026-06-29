@@ -14,7 +14,6 @@ const { sendFeed } = require("./services/feed");
 const { checkCooldown } = require("./services/cooldowns");
 const { fieldsEmbed, errorEmbed } = require("./utils/embeds");
 const { startPresenceRotation } = require("./services/presenceManager");
-const { onMessage: aiOnMessage, periodicIdleCheck: aiIdleCheck } = require("./services/aiMonitor");
 const { startDailySentenceDm } = require("./services/dailySentenceDm");
 
 const { handleStarboardReaction } = require("./services/starboard");
@@ -53,7 +52,6 @@ client.once(Events.ClientReady, async () => {
   await sendDeployNotices(client);
   startPresenceRotation(client);
   startDailySentenceDm(client);
-  setInterval(() => aiIdleCheck(client), 60_000);
   console.log(" DB init + services started");
 });
 
@@ -208,7 +206,6 @@ if (interaction.isButton()) {
 });
 
 
-// AI Monitor: observe message activity (feed-only alerts)
 client.on(Events.MessageCreate, async (message) => {
   try {
     const handledPrefix = await handlePrefixMessage(client, message);
@@ -216,8 +213,6 @@ client.on(Events.MessageCreate, async (message) => {
   } catch (err) {
     console.error("Prefix command error:", err);
   }
-
-  aiOnMessage(client, message);
 
   try {
     await handleLevelMessage(client, message);
