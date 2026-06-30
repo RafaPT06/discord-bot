@@ -15,6 +15,7 @@ const { checkCooldown } = require("./services/cooldowns");
 const { fieldsEmbed, errorEmbed } = require("./utils/embeds");
 const { startPresenceRotation } = require("./services/presenceManager");
 const { startDailySentenceDm } = require("./services/dailySentenceDm");
+const { startBotApi } = require("./web/api");
 
 const { handleStarboardReaction } = require("./services/starboard");
 const { handleLevelMessage } = require("./services/leveling");
@@ -52,6 +53,7 @@ client.once(Events.ClientReady, async () => {
   await sendDeployNotices(client);
   startPresenceRotation(client);
   startDailySentenceDm(client);
+  startBotApi(client);
   console.log(" DB init + services started");
 });
 
