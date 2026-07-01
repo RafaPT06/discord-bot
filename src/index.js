@@ -51,6 +51,7 @@ client.once(Events.ClientReady, async () => {
   startRobloxAlerts(client);
   startBackupScheduler(client);
   await sendDeployNotices(client);
+  startBotApi(client);
   startPresenceRotation(client);
   startDailySentenceDm(client);
   console.log(" DB init + services started");
