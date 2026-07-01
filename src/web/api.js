@@ -1,4 +1,5 @@
 const express = require('express');
+const { PermissionFlagsBits } = require('discord.js');
 const { listEditImageAccessUsers, addEditImageAccessUser, removeEditImageAccessUser } = require('../services/editImageAccess');
 
 let started = false;
@@ -89,6 +90,73 @@ function getCommands(client) {
 }
 
 
+
+async function resolveAccessUser(client, guild, userId, source, fallbackLabel = null) {
+  let username = null;
+  let displayName = fallbackLabel || null;
+  let avatarUrl = null;
+
+  try {
+    const member = await guild.members.fetch(userId);
+    username = member.user?.tag || member.user?.username || null;
+    displayName = member.displayName || username || displayName;
+    avatarUrl = member.user?.displayAvatarURL?.({ size: 64 }) || null;
+  } catch {
+    try {
+      const user = await client.users.fetch(userId);
+      username = user.tag || user.username || null;
+      displayName = username || displayName;
+      avatarUrl = user.displayAvatarURL?.({ size: 64 }) || null;
+    } catch {}
+  }
+
+  return {
+    userId,
+    username,
+    displayName: displayName || userId,
+    avatarUrl,
+    source,
+    removable: false,
+  };
+}
+
+async function listDefaultImageAccessUsers(client, guild) {
+  const users = [];
+  const seen = new Set();
+  const ownerId = process.env.OWNER_ID;
+
+  if (ownerId) {
+    const owner = await resolveAccessUser(client, guild, ownerId, 'bot_owner', 'Bot owner');
+    users.push(owner);
+    seen.add(ownerId);
+  }
+
+  try {
+    await guild.members.fetch();
+  } catch {
+    // If the bot cannot fetch all members, fall back to the member cache.
+  }
+
+  const managers = guild.members.cache
+    .filter((member) => {
+      if (member.user?.bot) return false;
+      if (seen.has(member.id)) return false;
+      return member.permissions?.has(PermissionFlagsBits.ManageGuild);
+    })
+    .map((member) => ({
+      userId: member.id,
+      username: member.user?.tag || member.user?.username || null,
+      displayName: member.displayName || member.user?.username || member.id,
+      avatarUrl: member.user?.displayAvatarURL?.({ size: 64 }) || null,
+      source: 'manage_server',
+      removable: false,
+    }))
+    .sort((a, b) => String(a.displayName).localeCompare(String(b.displayName)));
+
+  users.push(...managers);
+  return users;
+}
+
 function startBotApi(client) {
   if (started) return;
   started = true;
@@ -161,31 +229,50 @@ function startBotApi(client) {
       const guild = client.guilds.cache.get(req.params.guildId);
       if (!guild) return res.status(404).json({ ok: false, error: 'Guild not found.' });
 
+      const defaultUsers = await listDefaultImageAccessUsers(client, guild);
+      const defaultIds = new Set(defaultUsers.map((user) => user.userId));
       const rows = await listEditImageAccessUsers(req.params.guildId);
-      const users = await Promise.all(rows.map(async (row) => {
-        let username = null;
-        let displayName = null;
-        try {
-          const member = await guild.members.fetch(row.user_id);
-          username = member.user?.tag || member.user?.username || null;
-          displayName = member.displayName || username;
-        } catch {
+      const users = await Promise.all(rows
+        .filter((row) => !defaultIds.has(row.user_id))
+        .map(async (row) => {
+          let username = null;
+          let displayName = null;
+          let avatarUrl = null;
           try {
-            const user = await client.users.fetch(row.user_id);
-            username = user.tag || user.username || null;
-            displayName = username;
-          } catch {}
-        }
-        return {
-          userId: row.user_id,
-          username,
-          displayName,
-          addedBy: row.added_by,
-          createdAt: row.created_at,
-        };
-      }));
+            const member = await guild.members.fetch(row.user_id);
+            username = member.user?.tag || member.user?.username || null;
+            displayName = member.displayName || username;
+            avatarUrl = member.user?.displayAvatarURL?.({ size: 64 }) || null;
+          } catch {
+            try {
+              const user = await client.users.fetch(row.user_id);
+              username = user.tag || user.username || null;
+              displayName = username;
+              avatarUrl = user.displayAvatarURL?.({ size: 64 }) || null;
+            } catch {}
+          }
+          return {
+            userId: row.user_id,
+            username,
+            displayName,
+            avatarUrl,
+            addedBy: row.added_by,
+            createdAt: row.created_at,
+            source: 'manual',
+            removable: true,
+          };
+        }));
 
-      res.json({ ok: true, guildId: req.params.guildId, users, total: users.length, updatedAt: new Date().toISOString() });
+      res.json({
+        ok: true,
+        guildId: req.params.guildId,
+        defaultUsers,
+        users,
+        total: users.length + defaultUsers.length,
+        manualTotal: users.length,
+        defaultTotal: defaultUsers.length,
+        updatedAt: new Date().toISOString(),
+      });
     } catch (err) {
       res.status(500).json({ ok: false, error: err.message || 'Could not load image access.' });
     }
