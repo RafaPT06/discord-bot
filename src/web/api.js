@@ -120,10 +120,20 @@ async function resolveAccessUser(client, guild, userId, source, fallbackLabel = 
   };
 }
 
+function getBotOwnerId(client) {
+  const envOwner = process.env.OWNER_ID || process.env.BOT_OWNER_ID;
+  if (envOwner) return envOwner;
+  const appOwner = client.application?.owner;
+  if (!appOwner) return null;
+  if (appOwner.id) return appOwner.id;
+  if (appOwner.user?.id) return appOwner.user.id;
+  return null;
+}
+
 async function listDefaultImageAccessUsers(client, guild) {
   const users = [];
   const seen = new Set();
-  const ownerId = process.env.OWNER_ID;
+  const ownerId = getBotOwnerId(client);
 
   if (ownerId) {
     const owner = await resolveAccessUser(client, guild, ownerId, 'bot_owner', 'Bot owner');
@@ -286,6 +296,18 @@ function startBotApi(client) {
       const userId = String(req.body?.userId || '').trim();
       if (!/^\d{15,25}$/.test(userId)) {
         return res.status(400).json({ ok: false, error: 'Invalid Discord user ID.' });
+      }
+
+      const defaultUsers = await listDefaultImageAccessUsers(client, guild);
+      if (defaultUsers.some((user) => user.userId === userId)) {
+        return res.json({
+          ok: true,
+          guildId: req.params.guildId,
+          userId,
+          defaultAccess: true,
+          message: 'This user already has default access.',
+          updatedAt: new Date().toISOString(),
+        });
       }
 
       await addEditImageAccessUser(req.params.guildId, userId, req.body?.addedBy || null);
