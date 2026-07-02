@@ -218,6 +218,15 @@ function startBotApi(client) {
   });
 
 
+  app.get('/api/owner', requireToken, async (_req, res) => {
+    try {
+      const ownerId = getBotOwnerId(client);
+      res.json({ ok: true, ownerId, updatedAt: new Date().toISOString() });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: err.message || 'Could not resolve bot owner.' });
+    }
+  });
+
   app.get('/api/guilds', requireToken, (_req, res) => {
     const guilds = client.guilds.cache.map((guild) => ({
       id: guild.id,
