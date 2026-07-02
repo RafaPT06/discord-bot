@@ -2,6 +2,8 @@ const express = require('express');
 const { PermissionFlagsBits } = require('discord.js');
 const { listEditImageAccessUsers, addEditImageAccessUser, removeEditImageAccessUser } = require('../services/editImageAccess');
 const { getLevelSettings, updateLevelSettings } = require('../services/leveling');
+const { getWelcomeSettings, updateWelcomeSettings } = require('../services/welcome');
+const { getLogSettings, updateLogSettings, getModerationSettings, updateModerationSettings } = require('../services/serverSettings');
 
 let started = false;
 const startedAt = Date.now();
@@ -387,6 +389,147 @@ function startBotApi(client) {
       });
     } catch (err) {
       res.status(err.statusCode || 500).json({ ok: false, error: err.message || 'Could not save leveling settings.' });
+    }
+  });
+
+
+  app.get('/api/guilds/:guildId/welcome', requireToken, async (req, res) => {
+    try {
+      const guild = client.guilds.cache.get(req.params.guildId);
+      if (!guild) return res.status(404).json({ ok: false, error: 'Guild not found.' });
+      const settings = await getWelcomeSettings(req.params.guildId);
+      res.json({
+        ok: true,
+        guildId: req.params.guildId,
+        settings: {
+          welcomeEnabled: settings.welcome_enabled !== false,
+          goodbyeEnabled: settings.goodbye_enabled !== false,
+          welcomeChannelId: settings.welcome_channel_id || null,
+          goodbyeChannelId: settings.goodbye_channel_id || null,
+          welcomeMessage: settings.welcome_message || '',
+          goodbyeMessage: settings.goodbye_message || '',
+          updatedAt: settings.updated_at || null,
+        },
+        updatedAt: new Date().toISOString(),
+      });
+    } catch (err) {
+      res.status(err.statusCode || 500).json({ ok: false, error: err.message || 'Could not load welcome settings.' });
+    }
+  });
+
+  app.put('/api/guilds/:guildId/welcome', requireToken, async (req, res) => {
+    try {
+      const guild = client.guilds.cache.get(req.params.guildId);
+      if (!guild) return res.status(404).json({ ok: false, error: 'Guild not found.' });
+      const settings = await updateWelcomeSettings(req.params.guildId, req.body || {});
+      res.json({
+        ok: true,
+        guildId: req.params.guildId,
+        settings: {
+          welcomeEnabled: settings.welcome_enabled !== false,
+          goodbyeEnabled: settings.goodbye_enabled !== false,
+          welcomeChannelId: settings.welcome_channel_id || null,
+          goodbyeChannelId: settings.goodbye_channel_id || null,
+          welcomeMessage: settings.welcome_message || '',
+          goodbyeMessage: settings.goodbye_message || '',
+          updatedAt: settings.updated_at || null,
+        },
+        updatedAt: new Date().toISOString(),
+      });
+    } catch (err) {
+      res.status(err.statusCode || 500).json({ ok: false, error: err.message || 'Could not save welcome settings.' });
+    }
+  });
+
+  app.get('/api/guilds/:guildId/logs', requireToken, async (req, res) => {
+    try {
+      const guild = client.guilds.cache.get(req.params.guildId);
+      if (!guild) return res.status(404).json({ ok: false, error: 'Guild not found.' });
+      const settings = await getLogSettings(req.params.guildId);
+      res.json({
+        ok: true,
+        guildId: req.params.guildId,
+        settings: {
+          enabled: settings.enabled === true,
+          channelId: settings.channel_id || null,
+          messageEvents: settings.message_events !== false,
+          memberEvents: settings.member_events !== false,
+          moderationEvents: settings.moderation_events !== false,
+          updatedAt: settings.updated_at || null,
+        },
+        updatedAt: new Date().toISOString(),
+      });
+    } catch (err) {
+      res.status(err.statusCode || 500).json({ ok: false, error: err.message || 'Could not load log settings.' });
+    }
+  });
+
+  app.put('/api/guilds/:guildId/logs', requireToken, async (req, res) => {
+    try {
+      const guild = client.guilds.cache.get(req.params.guildId);
+      if (!guild) return res.status(404).json({ ok: false, error: 'Guild not found.' });
+      const settings = await updateLogSettings(req.params.guildId, req.body || {});
+      res.json({
+        ok: true,
+        guildId: req.params.guildId,
+        settings: {
+          enabled: settings.enabled === true,
+          channelId: settings.channel_id || null,
+          messageEvents: settings.message_events !== false,
+          memberEvents: settings.member_events !== false,
+          moderationEvents: settings.moderation_events !== false,
+          updatedAt: settings.updated_at || null,
+        },
+        updatedAt: new Date().toISOString(),
+      });
+    } catch (err) {
+      res.status(err.statusCode || 500).json({ ok: false, error: err.message || 'Could not save log settings.' });
+    }
+  });
+
+  app.get('/api/guilds/:guildId/moderation', requireToken, async (req, res) => {
+    try {
+      const guild = client.guilds.cache.get(req.params.guildId);
+      if (!guild) return res.status(404).json({ ok: false, error: 'Guild not found.' });
+      const settings = await getModerationSettings(req.params.guildId);
+      res.json({
+        ok: true,
+        guildId: req.params.guildId,
+        settings: {
+          enabled: settings.enabled === true,
+          warningsEnabled: settings.warnings_enabled !== false,
+          automodEnabled: settings.automod_enabled === true,
+          modLogChannelId: settings.mod_log_channel_id || null,
+          blockedWords: settings.blocked_words || '',
+          updatedAt: settings.updated_at || null,
+        },
+        updatedAt: new Date().toISOString(),
+      });
+    } catch (err) {
+      res.status(err.statusCode || 500).json({ ok: false, error: err.message || 'Could not load moderation settings.' });
+    }
+  });
+
+  app.put('/api/guilds/:guildId/moderation', requireToken, async (req, res) => {
+    try {
+      const guild = client.guilds.cache.get(req.params.guildId);
+      if (!guild) return res.status(404).json({ ok: false, error: 'Guild not found.' });
+      const settings = await updateModerationSettings(req.params.guildId, req.body || {});
+      res.json({
+        ok: true,
+        guildId: req.params.guildId,
+        settings: {
+          enabled: settings.enabled === true,
+          warningsEnabled: settings.warnings_enabled !== false,
+          automodEnabled: settings.automod_enabled === true,
+          modLogChannelId: settings.mod_log_channel_id || null,
+          blockedWords: settings.blocked_words || '',
+          updatedAt: settings.updated_at || null,
+        },
+        updatedAt: new Date().toISOString(),
+      });
+    } catch (err) {
+      res.status(err.statusCode || 500).json({ ok: false, error: err.message || 'Could not save moderation settings.' });
     }
   });
 

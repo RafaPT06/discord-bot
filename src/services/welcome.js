@@ -11,6 +11,8 @@ async function ensureWelcomeTables() {
       goodbye_channel_id TEXT,
       welcome_enabled BOOLEAN NOT NULL DEFAULT TRUE,
       goodbye_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+      welcome_message TEXT,
+      goodbye_message TEXT,
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
   `);
@@ -25,7 +27,62 @@ async function getWelcomeSettings(guildId) {
     goodbye_channel_id: null,
     welcome_enabled: true,
     goodbye_enabled: true,
+    welcome_message: '',
+    goodbye_message: '',
   };
+}
+
+
+function normalizeChannelId(value, label = "channel ID") {
+  if (value === undefined) return undefined;
+  if (value === null || value === "") return null;
+  const clean = String(value).trim();
+  if (!clean) return null;
+  if (!/^\d{15,25}$/.test(clean)) {
+    const err = new Error(`Invalid ${label}.`);
+    err.statusCode = 400;
+    throw err;
+  }
+  return clean;
+}
+
+async function updateWelcomeSettings(guildId, settings = {}) {
+  await ensureWelcomeTables();
+  await pool.query(`ALTER TABLE welcome_settings ADD COLUMN IF NOT EXISTS welcome_message TEXT;`);
+  await pool.query(`ALTER TABLE welcome_settings ADD COLUMN IF NOT EXISTS goodbye_message TEXT;`);
+
+  const current = await getWelcomeSettings(guildId);
+  const welcomeChannelId = settings.welcomeChannelId !== undefined
+    ? normalizeChannelId(settings.welcomeChannelId, "welcome channel ID")
+    : current.welcome_channel_id;
+  const goodbyeChannelId = settings.goodbyeChannelId !== undefined
+    ? normalizeChannelId(settings.goodbyeChannelId, "leave channel ID")
+    : current.goodbye_channel_id;
+
+  const welcomeEnabled = typeof settings.welcomeEnabled === "boolean" ? settings.welcomeEnabled : current.welcome_enabled !== false;
+  const goodbyeEnabled = typeof settings.goodbyeEnabled === "boolean" ? settings.goodbyeEnabled : current.goodbye_enabled !== false;
+  const welcomeMessage = settings.welcomeMessage !== undefined
+    ? String(settings.welcomeMessage || "").trim().slice(0, 1000)
+    : (current.welcome_message || "");
+  const goodbyeMessage = settings.goodbyeMessage !== undefined
+    ? String(settings.goodbyeMessage || "").trim().slice(0, 1000)
+    : (current.goodbye_message || "");
+
+  const res = await pool.query(
+    `INSERT INTO welcome_settings (guild_id, welcome_channel_id, goodbye_channel_id, welcome_enabled, goodbye_enabled, welcome_message, goodbye_message, updated_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+     ON CONFLICT (guild_id) DO UPDATE SET
+       welcome_channel_id=EXCLUDED.welcome_channel_id,
+       goodbye_channel_id=EXCLUDED.goodbye_channel_id,
+       welcome_enabled=EXCLUDED.welcome_enabled,
+       goodbye_enabled=EXCLUDED.goodbye_enabled,
+       welcome_message=EXCLUDED.welcome_message,
+       goodbye_message=EXCLUDED.goodbye_message,
+       updated_at=NOW()
+     RETURNING *`,
+    [guildId, welcomeChannelId, goodbyeChannelId, welcomeEnabled, goodbyeEnabled, welcomeMessage, goodbyeMessage]
+  );
+  return res.rows[0] || getWelcomeSettings(guildId);
 }
 
 async function setWelcomeChannel(guildId, channelId) {
@@ -130,6 +187,7 @@ async function handleMemberLeave(member) {
 module.exports = {
   ensureWelcomeTables,
   getWelcomeSettings,
+  updateWelcomeSettings,
   setWelcomeChannel,
   setGoodbyeChannel,
   resetWelcomeChannel,
