@@ -91,6 +91,44 @@ async function getLevelSettings(guildId) {
   return { guild_id: guildId, channel_id: null, enabled: true, xp_min: 15, xp_max: 25, cooldown_seconds: 60 };
 }
 
+async function updateLevelSettings(guildId, settings = {}) {
+  await ensureLevelTables();
+
+  const current = await getLevelSettings(guildId);
+  const enabled = typeof settings.enabled === "boolean" ? settings.enabled : current.enabled !== false;
+  const channelId = settings.channelId === "" || settings.channelId === null
+    ? null
+    : (settings.channelId !== undefined ? String(settings.channelId).trim() : current.channel_id);
+
+  const xpPerMessageRaw = settings.xpPerMessage ?? settings.xp_min ?? current.xp_min ?? 15;
+  const xpPerMessage = Math.max(1, Math.min(500, Math.floor(Number(xpPerMessageRaw) || 15)));
+
+  const cooldownRaw = settings.cooldownSeconds ?? settings.cooldown_seconds ?? current.cooldown_seconds ?? 60;
+  const cooldownSeconds = Math.max(5, Math.min(3600, Math.floor(Number(cooldownRaw) || 60)));
+
+  if (channelId && !/^\d{15,25}$/.test(channelId)) {
+    const err = new Error("Invalid level-up channel ID.");
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const res = await pool.query(
+    `INSERT INTO level_settings (guild_id, channel_id, enabled, xp_min, xp_max, cooldown_seconds, updated_at)
+     VALUES ($1, $2, $3, $4, $4, $5, NOW())
+     ON CONFLICT (guild_id) DO UPDATE SET
+       channel_id=EXCLUDED.channel_id,
+       enabled=EXCLUDED.enabled,
+       xp_min=EXCLUDED.xp_min,
+       xp_max=EXCLUDED.xp_max,
+       cooldown_seconds=EXCLUDED.cooldown_seconds,
+       updated_at=NOW()
+     RETURNING *`,
+    [guildId, channelId, enabled, xpPerMessage, cooldownSeconds]
+  );
+
+  return res.rows[0] || await getLevelSettings(guildId);
+}
+
 async function ensureLevelRewardRoles(guild) {
   await ensureLevelTables();
   const me = guild.members.me;
@@ -324,6 +362,7 @@ module.exports = {
   ensureLevelTables,
   upsertLevelChannel,
   getLevelSettings,
+  updateLevelSettings,
   ensureLevelRewardRoles,
   handleLevelMessage,
   getUserLevel,

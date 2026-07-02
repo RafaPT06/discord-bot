@@ -1,6 +1,7 @@
 const express = require('express');
 const { PermissionFlagsBits } = require('discord.js');
 const { listEditImageAccessUsers, addEditImageAccessUser, removeEditImageAccessUser } = require('../services/editImageAccess');
+const { getLevelSettings, updateLevelSettings } = require('../services/leveling');
 
 let started = false;
 const startedAt = Date.now();
@@ -218,6 +219,7 @@ function startBotApi(client) {
   });
 
 
+
   app.get('/api/owner', requireToken, async (_req, res) => {
     try {
       const ownerId = getBotOwnerId(client);
@@ -340,6 +342,51 @@ function startBotApi(client) {
       res.json({ ok: true, guildId: req.params.guildId, userId, removed, updatedAt: new Date().toISOString() });
     } catch (err) {
       res.status(500).json({ ok: false, error: err.message || 'Could not remove image access user.' });
+    }
+  });
+
+
+  app.get('/api/guilds/:guildId/leveling', requireToken, async (req, res) => {
+    try {
+      const guild = client.guilds.cache.get(req.params.guildId);
+      if (!guild) return res.status(404).json({ ok: false, error: 'Guild not found.' });
+      const settings = await getLevelSettings(req.params.guildId);
+      res.json({
+        ok: true,
+        guildId: req.params.guildId,
+        settings: {
+          enabled: settings.enabled !== false,
+          channelId: settings.channel_id || null,
+          xpPerMessage: Number(settings.xp_min || 15),
+          cooldownSeconds: Number(settings.cooldown_seconds || 60),
+          updatedAt: settings.updated_at || null,
+        },
+        updatedAt: new Date().toISOString(),
+      });
+    } catch (err) {
+      res.status(err.statusCode || 500).json({ ok: false, error: err.message || 'Could not load leveling settings.' });
+    }
+  });
+
+  app.put('/api/guilds/:guildId/leveling', requireToken, async (req, res) => {
+    try {
+      const guild = client.guilds.cache.get(req.params.guildId);
+      if (!guild) return res.status(404).json({ ok: false, error: 'Guild not found.' });
+      const settings = await updateLevelSettings(req.params.guildId, req.body || {});
+      res.json({
+        ok: true,
+        guildId: req.params.guildId,
+        settings: {
+          enabled: settings.enabled !== false,
+          channelId: settings.channel_id || null,
+          xpPerMessage: Number(settings.xp_min || 15),
+          cooldownSeconds: Number(settings.cooldown_seconds || 60),
+          updatedAt: settings.updated_at || null,
+        },
+        updatedAt: new Date().toISOString(),
+      });
+    } catch (err) {
+      res.status(err.statusCode || 500).json({ ok: false, error: err.message || 'Could not save leveling settings.' });
     }
   });
 
