@@ -1,9 +1,10 @@
 const express = require('express');
 const { ChannelType, PermissionFlagsBits } = require('discord.js');
 const { listEditImageAccessUsers, addEditImageAccessUser, removeEditImageAccessUser } = require('../services/editImageAccess');
-const { getLevelSettings, updateLevelSettings, listLevelRewardRoles, setLevelRewardRole, deleteLevelRewardRole } = require('../services/leveling');
+const { getLevelSettings, updateLevelSettings } = require('../services/leveling');
 const { getWelcomeSettings, updateWelcomeSettings } = require('../services/welcome');
 const { getLogSettings, updateLogSettings, getModerationSettings, updateModerationSettings } = require('../services/serverSettings');
+const { listModerationBypassUsers, addModerationBypassUser, removeModerationBypassUser } = require('../services/moderationAccess');
 
 let started = false;
 const startedAt = Date.now();
@@ -171,6 +172,91 @@ async function listDefaultImageAccessUsers(client, guild) {
 }
 
 
+async function listDefaultDashboardAccessUsers(client, guild) {
+  return listDefaultImageAccessUsers(client, guild);
+}
+
+async function resolveManualAccessRows(client, guild, rows) {
+  return Promise.all(rows.map(async (row) => {
+    let username = null;
+    let displayName = null;
+    let avatarUrl = null;
+    try {
+      const member = await guild.members.fetch(row.user_id);
+      username = member.user?.tag || member.user?.username || null;
+      displayName = member.displayName || username;
+      avatarUrl = member.user?.displayAvatarURL?.({ size: 64 }) || null;
+    } catch {
+      try {
+        const user = await client.users.fetch(row.user_id);
+        username = user.tag || user.username || null;
+        displayName = username;
+        avatarUrl = user.displayAvatarURL?.({ size: 64 }) || null;
+      } catch {}
+    }
+    return {
+      userId: row.user_id,
+      username,
+      displayName: displayName || username || row.user_id,
+      avatarUrl,
+      addedBy: row.added_by,
+      createdAt: row.created_at,
+      source: 'manual',
+      removable: true,
+    };
+  }));
+}
+
+async function searchGuildUsers(client, guild, query, limit = 10) {
+  const raw = String(query || '').trim();
+  if (!raw) return [];
+  const numeric = /^\d{15,25}$/.test(raw);
+  const seen = new Set();
+  const results = [];
+
+  function addMember(member) {
+    if (!member?.user || member.user.bot || seen.has(member.id)) return;
+    seen.add(member.id);
+    results.push({
+      userId: member.id,
+      username: member.user.tag || member.user.username || null,
+      displayName: member.displayName || member.user.username || member.id,
+      avatarUrl: member.user.displayAvatarURL?.({ size: 64 }) || null,
+    });
+  }
+
+  if (numeric) {
+    try { addMember(await guild.members.fetch(raw)); } catch {}
+    if (!seen.has(raw)) {
+      try {
+        const user = await client.users.fetch(raw);
+        if (!user.bot) results.push({ userId: user.id, username: user.tag || user.username || null, displayName: user.username || user.id, avatarUrl: user.displayAvatarURL?.({ size: 64 }) || null });
+      } catch {}
+    }
+  }
+
+  try {
+    const fetched = await guild.members.search({ query: raw, limit: Math.min(Math.max(Number(limit) || 10, 1), 25) });
+    fetched.forEach(addMember);
+  } catch {
+    try { await guild.members.fetch(); } catch {}
+    const lower = raw.toLowerCase();
+    guild.members.cache
+      .filter((member) => !member.user?.bot && (
+        member.user?.username?.toLowerCase().includes(lower) ||
+        member.user?.tag?.toLowerCase().includes(lower) ||
+        member.displayName?.toLowerCase().includes(lower) ||
+        member.id === raw
+      ))
+      .sort((a, b) => String(a.displayName || a.user?.username || '').localeCompare(String(b.displayName || b.user?.username || '')))
+      .slice(0, Math.min(Math.max(Number(limit) || 10, 1), 25))
+      .forEach(addMember);
+  }
+
+  return results.slice(0, Math.min(Math.max(Number(limit) || 10, 1), 25));
+}
+
+
 function normalizeGuildChannel(channel) {
   if (!channel) return null;
 
@@ -218,26 +304,6 @@ async function getDashboardChannels(guild) {
       if (a.position !== b.position) return a.position - b.position;
       return String(a.name).localeCompare(String(b.name));
     });
-}
-
-function normalizeGuildRole(role, guild) {
-  if (!role || role.id === guild.id) return null;
-  return {
-    id: role.id,
-    name: role.name,
-    color: role.hexColor || null,
-    position: Number.isFinite(role.position) ? role.position : 0,
-    managed: Boolean(role.managed),
-    editable: Boolean(role.editable) && !role.managed,
-  };
-}
-
-async function getDashboardRoles(guild) {
-  try { await guild.roles.fetch(); } catch {}
-  return guild.roles.cache
-    .map((role) => normalizeGuildRole(role, guild))
-    .filter(Boolean)
-    .sort((a, b) => (b.position - a.position) || a.name.localeCompare(b.name));
 }
 
 function startBotApi(client) {
@@ -337,51 +403,6 @@ function startBotApi(client) {
     }
   });
 
-
-  app.get('/api/guilds/:guildId/roles', requireToken, async (req, res) => {
-    try {
-      const guild = client.guilds.cache.get(req.params.guildId);
-      if (!guild) return res.status(404).json({ ok: false, error: 'Guild not found.' });
-      const roles = await getDashboardRoles(guild);
-      res.json({ ok: true, guildId: req.params.guildId, roles, total: roles.length, updatedAt: new Date().toISOString() });
-    } catch (err) {
-      res.status(500).json({ ok: false, error: err.message || 'Could not load guild roles.' });
-    }
-  });
-
-  app.get('/api/guilds/:guildId/level-rewards', requireToken, async (req, res) => {
-    try {
-      const guild = client.guilds.cache.get(req.params.guildId);
-      if (!guild) return res.status(404).json({ ok: false, error: 'Guild not found.' });
-      const rewards = await listLevelRewardRoles(guild);
-      res.json({ ok: true, guildId: req.params.guildId, rewards, total: rewards.length, updatedAt: new Date().toISOString() });
-    } catch (err) {
-      res.status(err.statusCode || 500).json({ ok: false, error: err.message || 'Could not load level rewards.' });
-    }
-  });
-
-  app.post('/api/guilds/:guildId/level-rewards', requireToken, async (req, res) => {
-    try {
-      const guild = client.guilds.cache.get(req.params.guildId);
-      if (!guild) return res.status(404).json({ ok: false, error: 'Guild not found.' });
-      const reward = await setLevelRewardRole(guild, req.body?.level, req.body?.roleId);
-      res.json({ ok: true, guildId: req.params.guildId, reward, rewards: await listLevelRewardRoles(guild), updatedAt: new Date().toISOString() });
-    } catch (err) {
-      res.status(err.statusCode || 500).json({ ok: false, error: err.message || 'Could not save level reward.' });
-    }
-  });
-
-  app.delete('/api/guilds/:guildId/level-rewards/:level', requireToken, async (req, res) => {
-    try {
-      const guild = client.guilds.cache.get(req.params.guildId);
-      if (!guild) return res.status(404).json({ ok: false, error: 'Guild not found.' });
-      const removed = await deleteLevelRewardRole(req.params.guildId, req.params.level);
-      res.json({ ok: true, guildId: req.params.guildId, removed, rewards: await listLevelRewardRoles(guild), updatedAt: new Date().toISOString() });
-    } catch (err) {
-      res.status(err.statusCode || 500).json({ ok: false, error: err.message || 'Could not delete level reward.' });
-    }
-  });
-
   app.get('/api/guilds/:guildId/image-access', requireToken, async (req, res) => {
     try {
       const guild = client.guilds.cache.get(req.params.guildId);
@@ -390,36 +411,7 @@ function startBotApi(client) {
       const defaultUsers = await listDefaultImageAccessUsers(client, guild);
       const defaultIds = new Set(defaultUsers.map((user) => user.userId));
       const rows = await listEditImageAccessUsers(req.params.guildId);
-      const users = await Promise.all(rows
-        .filter((row) => !defaultIds.has(row.user_id))
-        .map(async (row) => {
-          let username = null;
-          let displayName = null;
-          let avatarUrl = null;
-          try {
-            const member = await guild.members.fetch(row.user_id);
-            username = member.user?.tag || member.user?.username || null;
-            displayName = member.displayName || username;
-            avatarUrl = member.user?.displayAvatarURL?.({ size: 64 }) || null;
-          } catch {
-            try {
-              const user = await client.users.fetch(row.user_id);
-              username = user.tag || user.username || null;
-              displayName = username;
-              avatarUrl = user.displayAvatarURL?.({ size: 64 }) || null;
-            } catch {}
-          }
-          return {
-            userId: row.user_id,
-            username,
-            displayName,
-            avatarUrl,
-            addedBy: row.added_by,
-            createdAt: row.created_at,
-            source: 'manual',
-            removable: true,
-          };
-        }));
+      const users = await resolveManualAccessRows(client, guild, rows.filter((row) => !defaultIds.has(row.user_id)));
 
       res.json({
         ok: true,
@@ -496,7 +488,6 @@ function startBotApi(client) {
           channelId: settings.channel_id || null,
           xpPerMessage: Number(settings.xp_min || 15),
           cooldownSeconds: Number(settings.cooldown_seconds || 60),
-          stackRoles: settings.stack_roles !== false,
           updatedAt: settings.updated_at || null,
         },
         updatedAt: new Date().toISOString(),
@@ -519,7 +510,6 @@ function startBotApi(client) {
           channelId: settings.channel_id || null,
           xpPerMessage: Number(settings.xp_min || 15),
           cooldownSeconds: Number(settings.cooldown_seconds || 60),
-          stackRoles: settings.stack_roles !== false,
           updatedAt: settings.updated_at || null,
         },
         updatedAt: new Date().toISOString(),
@@ -592,7 +582,6 @@ function startBotApi(client) {
           messageEvents: settings.message_events !== false,
           memberEvents: settings.member_events !== false,
           moderationEvents: settings.moderation_events !== false,
-          voiceEvents: settings.voice_events === true,
           updatedAt: settings.updated_at || null,
         },
         updatedAt: new Date().toISOString(),
@@ -616,7 +605,6 @@ function startBotApi(client) {
           messageEvents: settings.message_events !== false,
           memberEvents: settings.member_events !== false,
           moderationEvents: settings.moderation_events !== false,
-          voiceEvents: settings.voice_events === true,
           updatedAt: settings.updated_at || null,
         },
         updatedAt: new Date().toISOString(),
@@ -640,9 +628,6 @@ function startBotApi(client) {
           automodEnabled: settings.automod_enabled === true,
           modLogChannelId: settings.mod_log_channel_id || null,
           blockedWords: settings.blocked_words || '',
-          antiSpam: settings.anti_spam === true,
-          linkFilter: settings.link_filter === true,
-          inviteFilter: settings.invite_filter === true,
           updatedAt: settings.updated_at || null,
         },
         updatedAt: new Date().toISOString(),
@@ -666,15 +651,78 @@ function startBotApi(client) {
           automodEnabled: settings.automod_enabled === true,
           modLogChannelId: settings.mod_log_channel_id || null,
           blockedWords: settings.blocked_words || '',
-          antiSpam: settings.anti_spam === true,
-          linkFilter: settings.link_filter === true,
-          inviteFilter: settings.invite_filter === true,
           updatedAt: settings.updated_at || null,
         },
         updatedAt: new Date().toISOString(),
       });
     } catch (err) {
       res.status(err.statusCode || 500).json({ ok: false, error: err.message || 'Could not save moderation settings.' });
+    }
+  });
+
+
+
+  app.get('/api/guilds/:guildId/users/search', requireToken, async (req, res) => {
+    try {
+      const guild = client.guilds.cache.get(req.params.guildId);
+      if (!guild) return res.status(404).json({ ok: false, error: 'Guild not found.' });
+      const users = await searchGuildUsers(client, guild, req.query.q || req.query.query || '', req.query.limit || 10);
+      res.json({ ok: true, guildId: req.params.guildId, users, total: users.length, updatedAt: new Date().toISOString() });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: err.message || 'Could not search guild users.' });
+    }
+  });
+
+  app.get('/api/guilds/:guildId/moderation-access', requireToken, async (req, res) => {
+    try {
+      const guild = client.guilds.cache.get(req.params.guildId);
+      if (!guild) return res.status(404).json({ ok: false, error: 'Guild not found.' });
+      const defaultUsers = await listDefaultDashboardAccessUsers(client, guild);
+      const defaultIds = new Set(defaultUsers.map((user) => user.userId));
+      const rows = await listModerationBypassUsers(req.params.guildId);
+      const users = await resolveManualAccessRows(client, guild, rows.filter((row) => !defaultIds.has(row.user_id)));
+      res.json({
+        ok: true,
+        guildId: req.params.guildId,
+        defaultUsers,
+        users,
+        total: users.length + defaultUsers.length,
+        manualTotal: users.length,
+        defaultTotal: defaultUsers.length,
+        updatedAt: new Date().toISOString(),
+      });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: err.message || 'Could not load moderation access.' });
+    }
+  });
+
+  app.post('/api/guilds/:guildId/moderation-access', requireToken, async (req, res) => {
+    try {
+      const guild = client.guilds.cache.get(req.params.guildId);
+      if (!guild) return res.status(404).json({ ok: false, error: 'Guild not found.' });
+      const userId = String(req.body?.userId || '').trim();
+      if (!/^\d{15,25}$/.test(userId)) return res.status(400).json({ ok: false, error: 'Invalid Discord user ID.' });
+      const defaultUsers = await listDefaultDashboardAccessUsers(client, guild);
+      if (defaultUsers.some((user) => user.userId === userId)) {
+        return res.json({ ok: true, guildId: req.params.guildId, userId, defaultAccess: true, message: 'This user already has default moderation bypass.', updatedAt: new Date().toISOString() });
+      }
+      await addModerationBypassUser(req.params.guildId, userId, req.body?.addedBy || null);
+      res.json({ ok: true, guildId: req.params.guildId, userId, updatedAt: new Date().toISOString() });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: err.message || 'Could not add moderation bypass user.' });
+    }
+  });
+
+  app.delete('/api/guilds/:guildId/moderation-access/:userId', requireToken, async (req, res) => {
+    try {
+      const guild = client.guilds.cache.get(req.params.guildId);
+      if (!guild) return res.status(404).json({ ok: false, error: 'Guild not found.' });
+      const userId = String(req.params.userId || '').trim();
+      if (!/^\d{15,25}$/.test(userId)) return res.status(400).json({ ok: false, error: 'Invalid Discord user ID.' });
+      const removed = await removeModerationBypassUser(req.params.guildId, userId);
+      res.json({ ok: true, guildId: req.params.guildId, userId, removed, updatedAt: new Date().toISOString() });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: err.message || 'Could not remove moderation bypass user.' });
     }
   });
 

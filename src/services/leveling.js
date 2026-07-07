@@ -45,11 +45,9 @@ async function ensureLevelTables() {
       xp_min INT NOT NULL DEFAULT 15,
       xp_max INT NOT NULL DEFAULT 25,
       cooldown_seconds INT NOT NULL DEFAULT 60,
-      stack_roles BOOLEAN NOT NULL DEFAULT TRUE,
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
   `);
-  await pool.query(`ALTER TABLE level_settings ADD COLUMN IF NOT EXISTS stack_roles BOOLEAN NOT NULL DEFAULT TRUE;`);
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS user_levels (
@@ -90,7 +88,7 @@ async function getLevelSettings(guildId) {
   await ensureLevelTables();
   const res = await pool.query(`SELECT * FROM level_settings WHERE guild_id=$1`, [guildId]);
   if (res.rows[0]) return res.rows[0];
-  return { guild_id: guildId, channel_id: null, enabled: true, xp_min: 15, xp_max: 25, cooldown_seconds: 60, stack_roles: true };
+  return { guild_id: guildId, channel_id: null, enabled: true, xp_min: 15, xp_max: 25, cooldown_seconds: 60 };
 }
 
 async function updateLevelSettings(guildId, settings = {}) {
@@ -107,7 +105,6 @@ async function updateLevelSettings(guildId, settings = {}) {
 
   const cooldownRaw = settings.cooldownSeconds ?? settings.cooldown_seconds ?? current.cooldown_seconds ?? 60;
   const cooldownSeconds = Math.max(5, Math.min(3600, Math.floor(Number(cooldownRaw) || 60)));
-  const stackRoles = typeof settings.stackRoles === "boolean" ? settings.stackRoles : current.stack_roles !== false;
 
   if (channelId && !/^\d{15,25}$/.test(channelId)) {
     const err = new Error("Invalid level-up channel ID.");
@@ -116,18 +113,17 @@ async function updateLevelSettings(guildId, settings = {}) {
   }
 
   const res = await pool.query(
-    `INSERT INTO level_settings (guild_id, channel_id, enabled, xp_min, xp_max, cooldown_seconds, stack_roles, updated_at)
-     VALUES ($1, $2, $3, $4, $4, $5, $6, NOW())
+    `INSERT INTO level_settings (guild_id, channel_id, enabled, xp_min, xp_max, cooldown_seconds, updated_at)
+     VALUES ($1, $2, $3, $4, $4, $5, NOW())
      ON CONFLICT (guild_id) DO UPDATE SET
        channel_id=EXCLUDED.channel_id,
        enabled=EXCLUDED.enabled,
        xp_min=EXCLUDED.xp_min,
        xp_max=EXCLUDED.xp_max,
        cooldown_seconds=EXCLUDED.cooldown_seconds,
-       stack_roles=EXCLUDED.stack_roles,
        updated_at=NOW()
      RETURNING *`,
-    [guildId, channelId, enabled, xpPerMessage, cooldownSeconds, stackRoles]
+    [guildId, channelId, enabled, xpPerMessage, cooldownSeconds]
   );
 
   return res.rows[0] || await getLevelSettings(guildId);
@@ -170,26 +166,12 @@ async function ensureLevelRewardRoles(guild) {
 }
 
 async function assignLevelRoles(member, level) {
-  await ensureLevelTables();
-  const settings = await getLevelSettings(member.guild.id);
   const rewards = await pool.query(
     `SELECT level, role_id FROM level_role_rewards WHERE guild_id=$1 AND level <= $2 ORDER BY level ASC`,
     [member.guild.id, level]
   );
   const added = [];
-  const rows = rewards.rows;
-  const targetRows = settings.stack_roles === false ? rows.slice(-1) : rows;
-  const targetIds = new Set(targetRows.map((row) => row.role_id));
-
-  if (settings.stack_roles === false) {
-    for (const row of rows.slice(0, -1)) {
-      const role = member.guild.roles.cache.get(row.role_id);
-      if (!role || !member.roles.cache.has(role.id)) continue;
-      try { await member.roles.remove(role, `Replacing older level reward after reaching level ${level}`); } catch {}
-    }
-  }
-
-  for (const row of targetRows) {
+  for (const row of rewards.rows) {
     const role = member.guild.roles.cache.get(row.role_id);
     if (!role || member.roles.cache.has(role.id)) continue;
     try {
@@ -198,61 +180,6 @@ async function assignLevelRoles(member, level) {
     } catch {}
   }
   return added;
-}
-
-async function listLevelRewardRoles(guild) {
-  await ensureLevelTables();
-  await guild.roles.fetch().catch(() => {});
-  const res = await pool.query(
-    `SELECT level, role_id FROM level_role_rewards WHERE guild_id=$1 ORDER BY level ASC`,
-    [guild.id]
-  );
-  return res.rows.map((row) => {
-    const role = guild.roles.cache.get(row.role_id);
-    return {
-      level: Number(row.level),
-      roleId: row.role_id,
-      roleName: role?.name || `Deleted role (${row.role_id})`,
-      exists: Boolean(role),
-    };
-  });
-}
-
-async function setLevelRewardRole(guild, level, roleId) {
-  await ensureLevelTables();
-  await guild.roles.fetch().catch(() => {});
-  const cleanLevel = Math.max(1, Math.min(1000, Math.floor(Number(level) || 0)));
-  if (!cleanLevel) {
-    const err = new Error('Invalid reward level.');
-    err.statusCode = 400;
-    throw err;
-  }
-  const cleanRoleId = String(roleId || '').trim();
-  if (!/^\d{15,25}$/.test(cleanRoleId)) {
-    const err = new Error('Invalid role ID.');
-    err.statusCode = 400;
-    throw err;
-  }
-  const role = guild.roles.cache.get(cleanRoleId);
-  if (!role || role.managed || role.id === guild.id) {
-    const err = new Error('Select a valid editable Discord role.');
-    err.statusCode = 400;
-    throw err;
-  }
-  await pool.query(
-    `INSERT INTO level_role_rewards (guild_id, level, role_id)
-     VALUES ($1, $2, $3)
-     ON CONFLICT (guild_id, level) DO UPDATE SET role_id=EXCLUDED.role_id`,
-    [guild.id, cleanLevel, cleanRoleId]
-  );
-  return { level: cleanLevel, roleId: role.id, roleName: role.name, exists: true };
-}
-
-async function deleteLevelRewardRole(guildId, level) {
-  await ensureLevelTables();
-  const cleanLevel = Math.max(1, Math.min(1000, Math.floor(Number(level) || 0)));
-  const res = await pool.query(`DELETE FROM level_role_rewards WHERE guild_id=$1 AND level=$2`, [guildId, cleanLevel]);
-  return res.rowCount > 0;
 }
 
 function getMemberEmbedColor(member) {
@@ -437,9 +364,6 @@ module.exports = {
   getLevelSettings,
   updateLevelSettings,
   ensureLevelRewardRoles,
-  listLevelRewardRoles,
-  setLevelRewardRole,
-  deleteLevelRewardRole,
   handleLevelMessage,
   getUserLevel,
   getUserRank,

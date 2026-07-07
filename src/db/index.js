@@ -227,6 +227,16 @@ await pool.query(`
     );
   `);
 
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS moderation_bypass_users (
+      guild_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      added_by TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (guild_id, user_id)
+    );
+  `);
+
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS user_stats (

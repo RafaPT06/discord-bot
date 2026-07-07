@@ -96,10 +96,3 @@ Overview includes Quick Actions buttons (restricted) for Maintenance toggle, Bac
 
 
 ### Made by Rafa
-
-## Dashboard API update — 2026-07-07
-
-- Added guild role and level reward API endpoints for the website dashboard.
-- Expanded leveling settings with stack-role behavior so the dashboard toggle is used by the bot.
-- Added API-backed log and moderation settings for dashboard controls.
-- Added dashboard event handlers for message logs, member logs, voice logs and basic moderation automation.

@@ -1,6 +1,7 @@
 const { SlashCommandBuilder, AttachmentBuilder, EmbedBuilder } = require("discord.js");
 const { editImageWithOpenAI } = require("../services/imageAi");
 const { isUserAllowedForEditImage } = require("../services/editImageAccess");
+const { canManageSettings } = require("../utils/perms");
 
 const MAX_IMAGE_BYTES = 20 * 1024 * 1024;
 
@@ -35,7 +36,7 @@ module.exports = {
       return interaction.reply({ content: "This command can only be used in a server.", ephemeral: true });
     }
 
-    const canUse = await isUserAllowedForEditImage(interaction.guildId, interaction.user.id);
+    const canUse = canManageSettings(interaction) || await isUserAllowedForEditImage(interaction.guildId, interaction.user.id);
     if (!canUse) {
       return interaction.reply({
         content: "You are not allowed to use `/edit_image` in this server. Ask someone with Manage Server to add you from the Meowz dashboard.",
