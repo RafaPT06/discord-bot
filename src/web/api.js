@@ -1,5 +1,5 @@
 const express = require('express');
-const { PermissionFlagsBits } = require('discord.js');
+const { ChannelType, PermissionFlagsBits } = require('discord.js');
 const { listEditImageAccessUsers, addEditImageAccessUser, removeEditImageAccessUser } = require('../services/editImageAccess');
 const { getLevelSettings, updateLevelSettings } = require('../services/leveling');
 const { getWelcomeSettings, updateWelcomeSettings } = require('../services/welcome');
@@ -170,6 +170,56 @@ async function listDefaultImageAccessUsers(client, guild) {
   return users;
 }
 
+
+function normalizeGuildChannel(channel) {
+  if (!channel) return null;
+
+  const typeLabels = {
+    [ChannelType.GuildText]: 'text',
+    [ChannelType.GuildAnnouncement]: 'announcement',
+    [ChannelType.GuildForum]: 'forum',
+    [ChannelType.GuildVoice]: 'voice',
+    [ChannelType.GuildStageVoice]: 'stage',
+    [ChannelType.GuildCategory]: 'category',
+  };
+
+  return {
+    id: channel.id,
+    name: channel.name,
+    type: channel.type,
+    typeName: typeLabels[channel.type] || String(channel.type),
+    parentId: channel.parentId || null,
+    parentName: channel.parent?.name || null,
+    position: Number.isFinite(channel.rawPosition) ? channel.rawPosition : (Number.isFinite(channel.position) ? channel.position : 0),
+    manageable: Boolean(channel.manageable),
+  };
+}
+
+async function getDashboardChannels(guild) {
+  try {
+    await guild.channels.fetch();
+  } catch {
+    // The cache is still useful if Discord cannot be fetched at this moment.
+  }
+
+  const allowedTypes = new Set([
+    ChannelType.GuildText,
+    ChannelType.GuildAnnouncement,
+    ChannelType.GuildForum,
+  ]);
+
+  return guild.channels.cache
+    .filter((channel) => allowedTypes.has(channel.type))
+    .map(normalizeGuildChannel)
+    .filter(Boolean)
+    .sort((a, b) => {
+      const parentCompare = String(a.parentName || '').localeCompare(String(b.parentName || ''));
+      if (parentCompare) return parentCompare;
+      if (a.position !== b.position) return a.position - b.position;
+      return String(a.name).localeCompare(String(b.name));
+    });
+}
+
 function startBotApi(client) {
   if (started) return;
   started = true;
@@ -245,6 +295,26 @@ function startBotApi(client) {
       total: guilds.length,
       updatedAt: new Date().toISOString(),
     });
+  });
+
+
+  app.get('/api/guilds/:guildId/channels', requireToken, async (req, res) => {
+    try {
+      const guild = client.guilds.cache.get(req.params.guildId);
+      if (!guild) return res.status(404).json({ ok: false, error: 'Guild not found.' });
+
+      const channels = await getDashboardChannels(guild);
+
+      res.json({
+        ok: true,
+        guildId: req.params.guildId,
+        channels,
+        total: channels.length,
+        updatedAt: new Date().toISOString(),
+      });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: err.message || 'Could not load guild channels.' });
+    }
   });
 
   app.get('/api/guilds/:guildId/image-access', requireToken, async (req, res) => {
