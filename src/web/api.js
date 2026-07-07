@@ -1,7 +1,7 @@
 const express = require('express');
 const { ChannelType, PermissionFlagsBits } = require('discord.js');
 const { listEditImageAccessUsers, addEditImageAccessUser, removeEditImageAccessUser } = require('../services/editImageAccess');
-const { getLevelSettings, updateLevelSettings } = require('../services/leveling');
+const { getLevelSettings, updateLevelSettings, listLevelRewardRoles, setLevelRewardRole, deleteLevelRewardRole } = require('../services/leveling');
 const { getWelcomeSettings, updateWelcomeSettings } = require('../services/welcome');
 const { getLogSettings, updateLogSettings, getModerationSettings, updateModerationSettings } = require('../services/serverSettings');
 
@@ -220,6 +220,26 @@ async function getDashboardChannels(guild) {
     });
 }
 
+function normalizeGuildRole(role, guild) {
+  if (!role || role.id === guild.id) return null;
+  return {
+    id: role.id,
+    name: role.name,
+    color: role.hexColor || null,
+    position: Number.isFinite(role.position) ? role.position : 0,
+    managed: Boolean(role.managed),
+    editable: Boolean(role.editable) && !role.managed,
+  };
+}
+
+async function getDashboardRoles(guild) {
+  try { await guild.roles.fetch(); } catch {}
+  return guild.roles.cache
+    .map((role) => normalizeGuildRole(role, guild))
+    .filter(Boolean)
+    .sort((a, b) => (b.position - a.position) || a.name.localeCompare(b.name));
+}
+
 function startBotApi(client) {
   if (started) return;
   started = true;
@@ -314,6 +334,51 @@ function startBotApi(client) {
       });
     } catch (err) {
       res.status(500).json({ ok: false, error: err.message || 'Could not load guild channels.' });
+    }
+  });
+
+
+  app.get('/api/guilds/:guildId/roles', requireToken, async (req, res) => {
+    try {
+      const guild = client.guilds.cache.get(req.params.guildId);
+      if (!guild) return res.status(404).json({ ok: false, error: 'Guild not found.' });
+      const roles = await getDashboardRoles(guild);
+      res.json({ ok: true, guildId: req.params.guildId, roles, total: roles.length, updatedAt: new Date().toISOString() });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: err.message || 'Could not load guild roles.' });
+    }
+  });
+
+  app.get('/api/guilds/:guildId/level-rewards', requireToken, async (req, res) => {
+    try {
+      const guild = client.guilds.cache.get(req.params.guildId);
+      if (!guild) return res.status(404).json({ ok: false, error: 'Guild not found.' });
+      const rewards = await listLevelRewardRoles(guild);
+      res.json({ ok: true, guildId: req.params.guildId, rewards, total: rewards.length, updatedAt: new Date().toISOString() });
+    } catch (err) {
+      res.status(err.statusCode || 500).json({ ok: false, error: err.message || 'Could not load level rewards.' });
+    }
+  });
+
+  app.post('/api/guilds/:guildId/level-rewards', requireToken, async (req, res) => {
+    try {
+      const guild = client.guilds.cache.get(req.params.guildId);
+      if (!guild) return res.status(404).json({ ok: false, error: 'Guild not found.' });
+      const reward = await setLevelRewardRole(guild, req.body?.level, req.body?.roleId);
+      res.json({ ok: true, guildId: req.params.guildId, reward, rewards: await listLevelRewardRoles(guild), updatedAt: new Date().toISOString() });
+    } catch (err) {
+      res.status(err.statusCode || 500).json({ ok: false, error: err.message || 'Could not save level reward.' });
+    }
+  });
+
+  app.delete('/api/guilds/:guildId/level-rewards/:level', requireToken, async (req, res) => {
+    try {
+      const guild = client.guilds.cache.get(req.params.guildId);
+      if (!guild) return res.status(404).json({ ok: false, error: 'Guild not found.' });
+      const removed = await deleteLevelRewardRole(req.params.guildId, req.params.level);
+      res.json({ ok: true, guildId: req.params.guildId, removed, rewards: await listLevelRewardRoles(guild), updatedAt: new Date().toISOString() });
+    } catch (err) {
+      res.status(err.statusCode || 500).json({ ok: false, error: err.message || 'Could not delete level reward.' });
     }
   });
 
@@ -431,6 +496,7 @@ function startBotApi(client) {
           channelId: settings.channel_id || null,
           xpPerMessage: Number(settings.xp_min || 15),
           cooldownSeconds: Number(settings.cooldown_seconds || 60),
+          stackRoles: settings.stack_roles !== false,
           updatedAt: settings.updated_at || null,
         },
         updatedAt: new Date().toISOString(),
@@ -453,6 +519,7 @@ function startBotApi(client) {
           channelId: settings.channel_id || null,
           xpPerMessage: Number(settings.xp_min || 15),
           cooldownSeconds: Number(settings.cooldown_seconds || 60),
+          stackRoles: settings.stack_roles !== false,
           updatedAt: settings.updated_at || null,
         },
         updatedAt: new Date().toISOString(),
@@ -525,6 +592,7 @@ function startBotApi(client) {
           messageEvents: settings.message_events !== false,
           memberEvents: settings.member_events !== false,
           moderationEvents: settings.moderation_events !== false,
+          voiceEvents: settings.voice_events === true,
           updatedAt: settings.updated_at || null,
         },
         updatedAt: new Date().toISOString(),
@@ -548,6 +616,7 @@ function startBotApi(client) {
           messageEvents: settings.message_events !== false,
           memberEvents: settings.member_events !== false,
           moderationEvents: settings.moderation_events !== false,
+          voiceEvents: settings.voice_events === true,
           updatedAt: settings.updated_at || null,
         },
         updatedAt: new Date().toISOString(),
@@ -571,6 +640,9 @@ function startBotApi(client) {
           automodEnabled: settings.automod_enabled === true,
           modLogChannelId: settings.mod_log_channel_id || null,
           blockedWords: settings.blocked_words || '',
+          antiSpam: settings.anti_spam === true,
+          linkFilter: settings.link_filter === true,
+          inviteFilter: settings.invite_filter === true,
           updatedAt: settings.updated_at || null,
         },
         updatedAt: new Date().toISOString(),
@@ -594,6 +666,9 @@ function startBotApi(client) {
           automodEnabled: settings.automod_enabled === true,
           modLogChannelId: settings.mod_log_channel_id || null,
           blockedWords: settings.blocked_words || '',
+          antiSpam: settings.anti_spam === true,
+          linkFilter: settings.link_filter === true,
+          inviteFilter: settings.invite_filter === true,
           updatedAt: settings.updated_at || null,
         },
         updatedAt: new Date().toISOString(),
