@@ -353,6 +353,53 @@ async function getLeaderboard(guildId, limit = 10) {
   return res.rows;
 }
 
+async function listLevelRewards(guildId) {
+  await ensureLevelTables();
+  const res = await pool.query(
+    `SELECT level, role_id, created_at FROM level_role_rewards WHERE guild_id=$1 ORDER BY level ASC`,
+    [guildId]
+  );
+  return res.rows.map((row) => ({
+    level: Number(row.level),
+    roleId: row.role_id,
+    createdAt: row.created_at,
+  }));
+}
+
+async function setLevelReward(guildId, level, roleId) {
+  await ensureLevelTables();
+  const safeLevel = Math.max(1, Math.min(1000, Math.floor(Number(level) || 0)));
+  if (!safeLevel) {
+    const err = new Error('Invalid reward level.');
+    err.statusCode = 400;
+    throw err;
+  }
+  if (!/^\d{15,25}$/.test(String(roleId || ''))) {
+    const err = new Error('Invalid role ID.');
+    err.statusCode = 400;
+    throw err;
+  }
+  const res = await pool.query(
+    `INSERT INTO level_role_rewards (guild_id, level, role_id)
+     VALUES ($1, $2, $3)
+     ON CONFLICT (guild_id, level) DO UPDATE SET role_id=EXCLUDED.role_id
+     RETURNING level, role_id, created_at`,
+    [guildId, safeLevel, String(roleId)]
+  );
+  const row = res.rows[0];
+  return { level: Number(row.level), roleId: row.role_id, createdAt: row.created_at };
+}
+
+async function deleteLevelReward(guildId, level) {
+  await ensureLevelTables();
+  const safeLevel = Math.max(1, Math.min(1000, Math.floor(Number(level) || 0)));
+  const res = await pool.query(
+    `DELETE FROM level_role_rewards WHERE guild_id=$1 AND level=$2`,
+    [guildId, safeLevel]
+  );
+  return res.rowCount > 0;
+}
+
 module.exports = {
   LEVEL_ROLE_STEPS,
   xpNeededForNextLevel,
@@ -364,6 +411,9 @@ module.exports = {
   getLevelSettings,
   updateLevelSettings,
   ensureLevelRewardRoles,
+  listLevelRewards,
+  setLevelReward,
+  deleteLevelReward,
   handleLevelMessage,
   getUserLevel,
   getUserRank,

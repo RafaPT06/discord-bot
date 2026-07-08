@@ -1,7 +1,7 @@
 const express = require('express');
 const { ChannelType, PermissionFlagsBits } = require('discord.js');
 const { listEditImageAccessUsers, addEditImageAccessUser, removeEditImageAccessUser } = require('../services/editImageAccess');
-const { getLevelSettings, updateLevelSettings } = require('../services/leveling');
+const { getLevelSettings, updateLevelSettings, listLevelRewards, setLevelReward, deleteLevelReward } = require('../services/leveling');
 const { getWelcomeSettings, updateWelcomeSettings } = require('../services/welcome');
 const { getLogSettings, updateLogSettings, getModerationSettings, updateModerationSettings } = require('../services/serverSettings');
 const { listModerationBypassUsers, addModerationBypassUser, removeModerationBypassUser } = require('../services/moderationAccess');
@@ -257,6 +257,33 @@ async function searchGuildUsers(client, guild, query, limit = 10) {
 }
 
 
+function normalizeGuildRole(guild, role) {
+  const me = guild.members.me;
+  const editable = Boolean(
+    role &&
+    !role.managed &&
+    role.id !== guild.id &&
+    me?.permissions?.has(PermissionFlagsBits.ManageRoles) &&
+    role.comparePositionTo(me.roles.highest) < 0
+  );
+  return {
+    id: role.id,
+    name: role.name,
+    color: role.hexColor || null,
+    position: role.position || 0,
+    managed: Boolean(role.managed),
+    editable,
+  };
+}
+
+async function getDashboardRoles(guild) {
+  try { await guild.roles.fetch(); } catch {}
+  return guild.roles.cache
+    .filter((role) => role.id !== guild.id && !role.managed)
+    .map((role) => normalizeGuildRole(guild, role))
+    .sort((a, b) => b.position - a.position || String(a.name).localeCompare(String(b.name)));
+}
+
 function normalizeGuildChannel(channel) {
   if (!channel) return null;
 
@@ -400,6 +427,60 @@ function startBotApi(client) {
       });
     } catch (err) {
       res.status(500).json({ ok: false, error: err.message || 'Could not load guild channels.' });
+    }
+  });
+
+
+  app.get('/api/guilds/:guildId/roles', requireToken, async (req, res) => {
+    try {
+      const guild = client.guilds.cache.get(req.params.guildId);
+      if (!guild) return res.status(404).json({ ok: false, error: 'Guild not found.' });
+      const roles = await getDashboardRoles(guild);
+      res.json({ ok: true, guildId: req.params.guildId, roles, total: roles.length, updatedAt: new Date().toISOString() });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: err.message || 'Could not load guild roles.' });
+    }
+  });
+
+  app.get('/api/guilds/:guildId/level-rewards', requireToken, async (req, res) => {
+    try {
+      const guild = client.guilds.cache.get(req.params.guildId);
+      if (!guild) return res.status(404).json({ ok: false, error: 'Guild not found.' });
+      const roles = await getDashboardRoles(guild);
+      const byId = new Map(roles.map((role) => [role.id, role]));
+      const rewards = (await listLevelRewards(req.params.guildId)).map((reward) => {
+        const role = byId.get(reward.roleId);
+        return { ...reward, roleName: role?.name || reward.roleId, roleEditable: Boolean(role?.editable) };
+      });
+      res.json({ ok: true, guildId: req.params.guildId, rewards, total: rewards.length, updatedAt: new Date().toISOString() });
+    } catch (err) {
+      res.status(err.statusCode || 500).json({ ok: false, error: err.message || 'Could not load level rewards.' });
+    }
+  });
+
+  app.post('/api/guilds/:guildId/level-rewards', requireToken, async (req, res) => {
+    try {
+      const guild = client.guilds.cache.get(req.params.guildId);
+      if (!guild) return res.status(404).json({ ok: false, error: 'Guild not found.' });
+      const roles = await getDashboardRoles(guild);
+      const role = roles.find((item) => item.id === String(req.body?.roleId || ''));
+      if (!role) return res.status(400).json({ ok: false, error: 'Role not found in this guild.' });
+      if (!role.editable) return res.status(400).json({ ok: false, error: 'This role is not editable by the bot.' });
+      const reward = await setLevelReward(req.params.guildId, req.body?.level, role.id);
+      res.json({ ok: true, guildId: req.params.guildId, reward: { ...reward, roleName: role.name, roleEditable: role.editable }, updatedAt: new Date().toISOString() });
+    } catch (err) {
+      res.status(err.statusCode || 500).json({ ok: false, error: err.message || 'Could not save level reward.' });
+    }
+  });
+
+  app.delete('/api/guilds/:guildId/level-rewards/:level', requireToken, async (req, res) => {
+    try {
+      const guild = client.guilds.cache.get(req.params.guildId);
+      if (!guild) return res.status(404).json({ ok: false, error: 'Guild not found.' });
+      const removed = await deleteLevelReward(req.params.guildId, req.params.level);
+      res.json({ ok: true, guildId: req.params.guildId, level: Number(req.params.level), removed, updatedAt: new Date().toISOString() });
+    } catch (err) {
+      res.status(err.statusCode || 500).json({ ok: false, error: err.message || 'Could not delete level reward.' });
     }
   });
 
