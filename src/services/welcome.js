@@ -3,6 +3,9 @@ const { pool } = require("../db/pool");
 const { createMemberEventCardBuffer } = require("../utils/levelCard");
 const { getCardBackground } = require("./config");
 
+const CARD_STYLE = "Custom Card (Modern)";
+const TEXT_STYLE = "Text only";
+
 async function ensureWelcomeTables() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS welcome_settings (
@@ -13,8 +16,19 @@ async function ensureWelcomeTables() {
       goodbye_enabled BOOLEAN NOT NULL DEFAULT TRUE,
       welcome_message TEXT,
       goodbye_message TEXT,
+      welcome_style TEXT NOT NULL DEFAULT '${CARD_STYLE}',
+      goodbye_style TEXT NOT NULL DEFAULT '${TEXT_STYLE}',
+      show_member BOOLEAN NOT NULL DEFAULT TRUE,
+      show_avatar BOOLEAN NOT NULL DEFAULT TRUE,
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
+
+    ALTER TABLE welcome_settings ADD COLUMN IF NOT EXISTS welcome_message TEXT;
+    ALTER TABLE welcome_settings ADD COLUMN IF NOT EXISTS goodbye_message TEXT;
+    ALTER TABLE welcome_settings ADD COLUMN IF NOT EXISTS welcome_style TEXT NOT NULL DEFAULT '${CARD_STYLE}';
+    ALTER TABLE welcome_settings ADD COLUMN IF NOT EXISTS goodbye_style TEXT NOT NULL DEFAULT '${TEXT_STYLE}';
+    ALTER TABLE welcome_settings ADD COLUMN IF NOT EXISTS show_member BOOLEAN NOT NULL DEFAULT TRUE;
+    ALTER TABLE welcome_settings ADD COLUMN IF NOT EXISTS show_avatar BOOLEAN NOT NULL DEFAULT TRUE;
   `);
 }
 
@@ -27,11 +41,14 @@ async function getWelcomeSettings(guildId) {
     goodbye_channel_id: null,
     welcome_enabled: true,
     goodbye_enabled: true,
-    welcome_message: '',
-    goodbye_message: '',
+    welcome_message: "",
+    goodbye_message: "",
+    welcome_style: CARD_STYLE,
+    goodbye_style: TEXT_STYLE,
+    show_member: true,
+    show_avatar: true,
   };
 }
-
 
 function normalizeChannelId(value, label = "channel ID") {
   if (value === undefined) return undefined;
@@ -46,11 +63,18 @@ function normalizeChannelId(value, label = "channel ID") {
   return clean;
 }
 
+function normalizeMessageStyle(value, fallback = CARD_STYLE) {
+  const clean = String(value ?? "").trim().toLowerCase();
+  if (!clean) return fallback;
+  if (clean === "text only" || clean === "text") return TEXT_STYLE;
+  if (clean === "custom card (modern)" || clean === "card" || clean === "custom card") return CARD_STYLE;
+  const err = new Error("Invalid welcome or goodbye message style.");
+  err.statusCode = 400;
+  throw err;
+}
+
 async function updateWelcomeSettings(guildId, settings = {}) {
   await ensureWelcomeTables();
-  await pool.query(`ALTER TABLE welcome_settings ADD COLUMN IF NOT EXISTS welcome_message TEXT;`);
-  await pool.query(`ALTER TABLE welcome_settings ADD COLUMN IF NOT EXISTS goodbye_message TEXT;`);
-
   const current = await getWelcomeSettings(guildId);
   const welcomeChannelId = settings.welcomeChannelId !== undefined
     ? normalizeChannelId(settings.welcomeChannelId, "welcome channel ID")
@@ -67,10 +91,21 @@ async function updateWelcomeSettings(guildId, settings = {}) {
   const goodbyeMessage = settings.goodbyeMessage !== undefined
     ? String(settings.goodbyeMessage || "").trim().slice(0, 1000)
     : (current.goodbye_message || "");
+  const welcomeStyle = settings.welcomeStyle !== undefined
+    ? normalizeMessageStyle(settings.welcomeStyle, CARD_STYLE)
+    : normalizeMessageStyle(current.welcome_style, CARD_STYLE);
+  const goodbyeStyle = settings.goodbyeStyle !== undefined
+    ? normalizeMessageStyle(settings.goodbyeStyle, TEXT_STYLE)
+    : normalizeMessageStyle(current.goodbye_style, TEXT_STYLE);
+  const showMember = typeof settings.showMember === "boolean" ? settings.showMember : current.show_member !== false;
+  const showAvatar = typeof settings.showAvatar === "boolean" ? settings.showAvatar : current.show_avatar !== false;
 
   const res = await pool.query(
-    `INSERT INTO welcome_settings (guild_id, welcome_channel_id, goodbye_channel_id, welcome_enabled, goodbye_enabled, welcome_message, goodbye_message, updated_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+    `INSERT INTO welcome_settings (
+       guild_id, welcome_channel_id, goodbye_channel_id, welcome_enabled, goodbye_enabled,
+       welcome_message, goodbye_message, welcome_style, goodbye_style, show_member, show_avatar, updated_at
+     )
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW())
      ON CONFLICT (guild_id) DO UPDATE SET
        welcome_channel_id=EXCLUDED.welcome_channel_id,
        goodbye_channel_id=EXCLUDED.goodbye_channel_id,
@@ -78,9 +113,13 @@ async function updateWelcomeSettings(guildId, settings = {}) {
        goodbye_enabled=EXCLUDED.goodbye_enabled,
        welcome_message=EXCLUDED.welcome_message,
        goodbye_message=EXCLUDED.goodbye_message,
+       welcome_style=EXCLUDED.welcome_style,
+       goodbye_style=EXCLUDED.goodbye_style,
+       show_member=EXCLUDED.show_member,
+       show_avatar=EXCLUDED.show_avatar,
        updated_at=NOW()
      RETURNING *`,
-    [guildId, welcomeChannelId, goodbyeChannelId, welcomeEnabled, goodbyeEnabled, welcomeMessage, goodbyeMessage]
+    [guildId, welcomeChannelId, goodbyeChannelId, welcomeEnabled, goodbyeEnabled, welcomeMessage, goodbyeMessage, welcomeStyle, goodbyeStyle, showMember, showAvatar]
   );
   return res.rows[0] || getWelcomeSettings(guildId);
 }
@@ -165,6 +204,8 @@ async function buildMemberEventAttachment({ member, type, settings = null }) {
     accentColor: member.displayColor || member.guild?.members?.me?.displayColor || 0x7c3aed,
     backgroundUrl,
     messageTemplate: isGoodbye ? settings?.goodbye_message : settings?.welcome_message,
+    showMember: settings?.show_member !== false,
+    showAvatar: settings?.show_avatar !== false,
   });
 
   return new AttachmentBuilder(image, {
@@ -187,15 +228,23 @@ async function sendMemberEvent(member, type, overrideChannelId = null, simulated
   const channel = await member.guild.channels.fetch(channelId).catch(() => null);
   if (!channel?.isTextBased?.()) return false;
 
-  const attachment = await buildMemberEventAttachment({ member, type, settings });
   const configuredMessage = renderConfiguredMemberMessage(
     isGoodbye ? settings.goodbye_message : settings.welcome_message,
     member,
     type
   );
   const content = `${configuredMessage}${simulated ? " *(simulation)*" : ""}`;
+  const style = normalizeMessageStyle(
+    isGoodbye ? settings.goodbye_style : settings.welcome_style,
+    isGoodbye ? TEXT_STYLE : CARD_STYLE
+  );
+  const messagePayload = { content };
 
-  await channel.send({ content, files: [attachment] });
+  if (style === CARD_STYLE) {
+    messagePayload.files = [await buildMemberEventAttachment({ member, type, settings })];
+  }
+
+  await channel.send(messagePayload);
   return true;
 }
 
