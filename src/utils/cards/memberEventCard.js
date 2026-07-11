@@ -1,7 +1,7 @@
 const { createCanvas } = require("canvas");
 const { hexFromColor, imageFromUrl, drawDefaultBackground, drawAccentShapes, roundRect, drawCircularImage, drawAvatarFallback } = require("./cardBase");
 const { drawPixelText, fitPixelText } = require("./pixelText");
-const { drawUnicodeText } = require("./unicodeText");
+const { drawPixelEmojiText } = require("./unicodeText");
 
 function renderMemberEventTemplate(messageTemplate, {
   type = "welcome",
@@ -139,33 +139,27 @@ async function createMemberEventCardBuffer({
     }
   }
 
-  await drawUnicodeText(ctx, headlineText, 600, 382, {
+  await drawPixelEmojiText(ctx, headlineText, 600, 395, {
     maxWidth: 760,
-    startSize: 54,
-    minSize: 28,
+    startSize: 6,
+    minSize: 3,
     align: "center",
-    weight: 800,
-    uppercase: true,
   });
 
-  await drawUnicodeText(ctx, subText, 600, 456, {
+  await drawPixelEmojiText(ctx, subText, 600, 465, {
     maxWidth: 500,
-    startSize: 30,
-    minSize: 20,
+    startSize: 4,
+    minSize: 3,
     align: "center",
-    weight: 700,
-    alpha: 0.78,
-    uppercase: true,
+    alpha: 0.75,
   });
 
-  await drawUnicodeText(ctx, guildText, 600, 510, {
+  await drawPixelEmojiText(ctx, guildText, 600, 525, {
     maxWidth: 760,
-    startSize: 46,
-    minSize: 24,
+    startSize: 5,
+    minSize: 3,
     align: "center",
-    weight: 800,
-    alpha: 0.92,
-    uppercase: true,
+    alpha: 0.9,
   });
 
   return canvas.toBuffer("image/png");
