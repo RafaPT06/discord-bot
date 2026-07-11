@@ -1,6 +1,7 @@
 const { createCanvas } = require("canvas");
 const { hexFromColor, imageFromUrl, drawDefaultBackground, drawAccentShapes, roundRect, drawCircularImage, drawAvatarFallback } = require("./cardBase");
 const { drawPixelText, fitPixelText } = require("./pixelText");
+const { drawUnicodeText } = require("./unicodeText");
 
 function renderMemberEventTemplate(messageTemplate, {
   type = "welcome",
@@ -138,13 +139,34 @@ async function createMemberEventCardBuffer({
     }
   }
 
-  const headlineSize = fitPixelText(headlineText, 760, 6, 3);
-  drawPixelText(ctx, headlineText, 600, 395, headlineSize, "#ffffff", "center");
+  await drawUnicodeText(ctx, headlineText, 600, 382, {
+    maxWidth: 760,
+    startSize: 54,
+    minSize: 28,
+    align: "center",
+    weight: 800,
+    uppercase: true,
+  });
 
-  drawPixelText(ctx, subText, 600, 465, fitPixelText(subText, 500, 4, 3), "#ffffff", "center", 0.75);
+  await drawUnicodeText(ctx, subText, 600, 456, {
+    maxWidth: 500,
+    startSize: 30,
+    minSize: 20,
+    align: "center",
+    weight: 700,
+    alpha: 0.78,
+    uppercase: true,
+  });
 
-  const guildSize = fitPixelText(guildText, 760, 5, 3);
-  drawPixelText(ctx, guildText, 600, 525, guildSize, "#ffffff", "center", 0.9);
+  await drawUnicodeText(ctx, guildText, 600, 510, {
+    maxWidth: 760,
+    startSize: 46,
+    minSize: 24,
+    align: "center",
+    weight: 800,
+    alpha: 0.92,
+    uppercase: true,
+  });
 
   return canvas.toBuffer("image/png");
 }
