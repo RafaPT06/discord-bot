@@ -1,0 +1,270 @@
+name: Apply Unicode card text fix
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/add-unicode-card-text.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Add Unicode-aware card text
+        shell: bash
+        run: |
+          cat > src/utils/cards/unicodeText.js <<'EOF'
+          const { imageFromUrl } = require("./cardBase");
+
+          const DEFAULT_FONT_FAMILY = '"DejaVu Sans","Liberation Sans","Noto Sans",Arial,sans-serif';
+          const TWEMOJI_BASE_URL = "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72";
+          const emojiImageCache = new Map();
+          const emojiPattern = /[\p{Extended_Pictographic}\p{Regional_Indicator}\u20e3]/u;
+
+          function splitGraphemes(value) {
+            const text = String(value || "");
+            if (typeof Intl?.Segmenter === "function") {
+              const segmenter = new Intl.Segmenter(undefined, { granularity: "grapheme" });
+              return Array.from(segmenter.segment(text), (entry) => entry.segment);
+            }
+            return Array.from(text);
+          }
+
+          function isEmojiGrapheme(value) {
+            return emojiPattern.test(String(value || ""));
+          }
+
+          function emojiAssetName(value) {
+            return Array.from(String(value || ""))
+              .map((char) => char.codePointAt(0))
+              .filter((codePoint) => codePoint !== 0xfe0f)
+              .map((codePoint) => codePoint.toString(16))
+              .join("-");
+          }
+
+          async function getEmojiImage(value) {
+            const asset = emojiAssetName(value);
+            if (!asset) return null;
+            if (!emojiImageCache.has(asset)) {
+              const promise = imageFromUrl(`${TWEMOJI_BASE_URL}/${asset}.png`).catch(() => null);
+              emojiImageCache.set(asset, promise);
+            }
+            return emojiImageCache.get(asset);
+          }
+
+          function setFont(ctx, size, weight, family) {
+            ctx.font = `${weight} ${Math.max(1, Math.round(size))}px ${family || DEFAULT_FONT_FAMILY}`;
+          }
+
+          function measureUnicodeText(ctx, text, size, options = {}) {
+            const {
+              weight = 700,
+              family = DEFAULT_FONT_FAMILY,
+              emojiScale = 1.02,
+              letterSpacing = 0,
+            } = options;
+            const graphemes = splitGraphemes(text);
+            setFont(ctx, size, weight, family);
+            let width = 0;
+            for (const grapheme of graphemes) {
+              width += isEmojiGrapheme(grapheme)
+                ? size * emojiScale
+                : ctx.measureText(grapheme).width;
+              width += letterSpacing;
+            }
+            return Math.max(0, width - (graphemes.length ? letterSpacing : 0));
+          }
+
+          function fitUnicodeText(ctx, text, maxWidth, startSize, minSize = 18, options = {}) {
+            let size = Math.max(minSize, startSize);
+            while (size > minSize && measureUnicodeText(ctx, text, size, options) > maxWidth) {
+              size -= 1;
+            }
+            return size;
+          }
+
+          async function drawUnicodeText(ctx, text, x, y, options = {}) {
+            const {
+              maxWidth = Number.POSITIVE_INFINITY,
+              startSize = 42,
+              minSize = 18,
+              color = "#ffffff",
+              align = "left",
+              alpha = 1,
+              weight = 700,
+              family = DEFAULT_FONT_FAMILY,
+              emojiScale = 1.02,
+              letterSpacing = 0,
+              uppercase = false,
+            } = options;
+            const value = uppercase ? String(text || "").toUpperCase() : String(text || "");
+            const size = fitUnicodeText(ctx, value, maxWidth, startSize, minSize, {
+              weight,
+              family,
+              emojiScale,
+              letterSpacing,
+            });
+            const graphemes = splitGraphemes(value);
+            const width = measureUnicodeText(ctx, value, size, {
+              weight,
+              family,
+              emojiScale,
+              letterSpacing,
+            });
+            let cursor = x;
+            if (align === "center") cursor -= width / 2;
+            if (align === "right") cursor -= width;
+
+            ctx.save();
+            ctx.globalAlpha = alpha;
+            ctx.fillStyle = color;
+            ctx.textAlign = "left";
+            ctx.textBaseline = "top";
+            setFont(ctx, size, weight, family);
+
+            for (const grapheme of graphemes) {
+              const emoji = isEmojiGrapheme(grapheme);
+              const graphemeWidth = emoji
+                ? size * emojiScale
+                : ctx.measureText(grapheme).width;
+
+              if (emoji) {
+                const image = await getEmojiImage(grapheme);
+                if (image) {
+                  const emojiSize = size * emojiScale;
+                  ctx.drawImage(image, cursor, y - size * 0.04, emojiSize, emojiSize);
+                } else {
+                  ctx.fillText(grapheme, cursor, y);
+                }
+              } else {
+                ctx.fillText(grapheme, cursor, y);
+              }
+
+              cursor += graphemeWidth + letterSpacing;
+            }
+
+            ctx.restore();
+            return { width, size };
+          }
+
+          module.exports = {
+            DEFAULT_FONT_FAMILY,
+            splitGraphemes,
+            measureUnicodeText,
+            fitUnicodeText,
+            drawUnicodeText,
+          };
+          EOF
+
+          python - <<'PY'
+          from pathlib import Path
+
+          member_path = Path('src/utils/cards/memberEventCard.js')
+          member = member_path.read_text(encoding='utf-8')
+          import_marker = 'const { drawPixelText, fitPixelText } = require("./pixelText");\n'
+          import_line = import_marker + 'const { drawUnicodeText } = require("./unicodeText");\n'
+          if 'require("./unicodeText")' not in member:
+              if import_marker not in member:
+                  raise SystemExit('memberEventCard pixelText import was not found.')
+              member = member.replace(import_marker, import_line, 1)
+
+          old_member_block = '''  const headlineSize = fitPixelText(headlineText, 760, 6, 3);
+          drawPixelText(ctx, headlineText, 600, 395, headlineSize, "#ffffff", "center");
+
+          drawPixelText(ctx, subText, 600, 465, fitPixelText(subText, 500, 4, 3), "#ffffff", "center", 0.75);
+
+          const guildSize = fitPixelText(guildText, 760, 5, 3);
+          drawPixelText(ctx, guildText, 600, 525, guildSize, "#ffffff", "center", 0.9);
+          '''
+          new_member_block = '''  await drawUnicodeText(ctx, headlineText, 600, 382, {
+            maxWidth: 760,
+            startSize: 54,
+            minSize: 28,
+            align: "center",
+            weight: 800,
+            uppercase: true,
+          });
+
+          await drawUnicodeText(ctx, subText, 600, 456, {
+            maxWidth: 500,
+            startSize: 30,
+            minSize: 20,
+            align: "center",
+            weight: 700,
+            alpha: 0.78,
+            uppercase: true,
+          });
+
+          await drawUnicodeText(ctx, guildText, 600, 510, {
+            maxWidth: 760,
+            startSize: 46,
+            minSize: 24,
+            align: "center",
+            weight: 800,
+            alpha: 0.92,
+            uppercase: true,
+          });
+          '''
+          if new_member_block not in member:
+              if old_member_block not in member:
+                  raise SystemExit('memberEventCard dynamic text block was not found.')
+              member = member.replace(old_member_block, new_member_block, 1)
+          member_path.write_text(member, encoding='utf-8')
+
+          level_path = Path('src/utils/cards/levelCard.js')
+          level = level_path.read_text(encoding='utf-8')
+          level_import = 'const { drawPixelText, fitPixelText, measurePixelText } = require("./pixelText");\n'
+          level_import_new = level_import + 'const { drawUnicodeText } = require("./unicodeText");\n'
+          if 'require("./unicodeText")' not in level:
+              if level_import not in level:
+                  raise SystemExit('levelCard pixelText import was not found.')
+              level = level.replace(level_import, level_import_new, 1)
+
+          old_level_block = '''  const nameSize = fitPixelText(safeName, 430, 6, 4);
+          drawPixelText(ctx, safeName, 365, 178, nameSize, "#ffffff", "left");
+
+          if (discriminator && discriminator !== "0") {
+            const nameWidth = measurePixelText(safeName, nameSize);
+            drawPixelText(ctx, `#${discriminator}`, 365 + nameWidth + 14, 184, 4, "#ffffff", "left", 0.4);
+          }
+          '''
+          new_level_block = '''  const renderedName = await drawUnicodeText(ctx, safeName, 365, 166, {
+            maxWidth: 430,
+            startSize: 46,
+            minSize: 26,
+            align: "left",
+            weight: 800,
+            uppercase: true,
+          });
+
+          if (discriminator && discriminator !== "0") {
+            drawPixelText(ctx, `#${discriminator}`, 365 + renderedName.width + 14, 184, 4, "#ffffff", "left", 0.4);
+          }
+          '''
+          if new_level_block not in level:
+              if old_level_block not in level:
+                  raise SystemExit('levelCard name block was not found.')
+              level = level.replace(old_level_block, new_level_block, 1)
+          level_path.write_text(level, encoding='utf-8')
+          PY
+
+          node --check src/utils/cards/unicodeText.js
+          node --check src/utils/cards/memberEventCard.js
+          node --check src/utils/cards/levelCard.js
+          rm .github/workflows/add-unicode-card-text.yml
+
+      - name: Commit fixes
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/utils/cards/unicodeText.js src/utils/cards/memberEventCard.js src/utils/cards/levelCard.js .github/workflows/add-unicode-card-text.yml
+          git commit -m "Add Unicode and emoji card text rendering"
+          git push origin HEAD:main
