@@ -1,6 +1,6 @@
 const { imageFromUrl } = require("./cardBase");
+const { normalizeText, measurePixelText, drawPixelText } = require("./pixelText");
 
-const DEFAULT_FONT_FAMILY = '"DejaVu Sans","Liberation Sans","Noto Sans",Arial,sans-serif';
 const TWEMOJI_BASE_URL = "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72";
 const emojiImageCache = new Map();
 const emojiPattern = /[\p{Extended_Pictographic}\p{Regional_Indicator}\u20e3]/u;
@@ -16,6 +16,24 @@ function splitGraphemes(value) {
 
 function isEmojiGrapheme(value) {
   return emojiPattern.test(String(value || ""));
+}
+
+function splitPixelEmojiRuns(value) {
+  const runs = [];
+  let textRun = "";
+
+  for (const grapheme of splitGraphemes(value)) {
+    if (isEmojiGrapheme(grapheme)) {
+      if (textRun) runs.push({ type: "text", value: textRun });
+      runs.push({ type: "emoji", value: grapheme });
+      textRun = "";
+    } else {
+      textRun += grapheme;
+    }
+  }
+
+  if (textRun) runs.push({ type: "text", value: textRun });
+  return runs;
 }
 
 function emojiAssetName(value) {
@@ -36,105 +54,79 @@ async function getEmojiImage(value) {
   return emojiImageCache.get(asset);
 }
 
-function setFont(ctx, size, weight, family) {
-  ctx.font = `${weight} ${Math.max(1, Math.round(size))}px ${family || DEFAULT_FONT_FAMILY}`;
+function normalizedRun(value) {
+  return normalizeText(String(value || " "));
 }
 
-function measureUnicodeText(ctx, text, size, options = {}) {
-  const {
-    weight = 700,
-    family = DEFAULT_FONT_FAMILY,
-    emojiScale = 1.02,
-    letterSpacing = 0,
-  } = options;
-  const graphemes = splitGraphemes(text);
-  setFont(ctx, size, weight, family);
+function measurePixelEmojiText(value, size) {
+  const runs = splitPixelEmojiRuns(value);
   let width = 0;
-  for (const grapheme of graphemes) {
-    width += isEmojiGrapheme(grapheme)
-      ? size * emojiScale
-      : ctx.measureText(grapheme).width;
-    width += letterSpacing;
+
+  for (const run of runs) {
+    if (run.type === "emoji") {
+      width += 7 * size;
+    } else {
+      width += measurePixelText(normalizedRun(run.value), size);
+    }
+    width += size;
   }
-  return Math.max(0, width - (graphemes.length ? letterSpacing : 0));
+
+  return Math.max(0, width - (runs.length ? size : 0));
 }
 
-function fitUnicodeText(ctx, text, maxWidth, startSize, minSize = 18, options = {}) {
-  let size = Math.max(minSize, startSize);
-  while (size > minSize && measureUnicodeText(ctx, text, size, options) > maxWidth) {
+function fitPixelEmojiText(value, maxWidth, startSize, minSize = 3) {
+  let size = startSize;
+  while (size > minSize && measurePixelEmojiText(value, size) > maxWidth) {
     size -= 1;
   }
   return size;
 }
 
-async function drawUnicodeText(ctx, text, x, y, options = {}) {
+async function drawPixelEmojiText(ctx, value, x, y, options = {}) {
   const {
     maxWidth = Number.POSITIVE_INFINITY,
-    startSize = 42,
-    minSize = 18,
+    startSize = 5,
+    minSize = 3,
     color = "#ffffff",
     align = "left",
     alpha = 1,
-    weight = 700,
-    family = DEFAULT_FONT_FAMILY,
-    emojiScale = 1.02,
-    letterSpacing = 0,
-    uppercase = false,
   } = options;
-  const value = uppercase ? String(text || "").toUpperCase() : String(text || "");
-  const size = fitUnicodeText(ctx, value, maxWidth, startSize, minSize, {
-    weight,
-    family,
-    emojiScale,
-    letterSpacing,
-  });
-  const graphemes = splitGraphemes(value);
-  const width = measureUnicodeText(ctx, value, size, {
-    weight,
-    family,
-    emojiScale,
-    letterSpacing,
-  });
+
+  const text = String(value || "UNKNOWN");
+  const size = fitPixelEmojiText(text, maxWidth, startSize, minSize);
+  const runs = splitPixelEmojiRuns(text);
+  const width = measurePixelEmojiText(text, size);
   let cursor = x;
+
   if (align === "center") cursor -= width / 2;
   if (align === "right") cursor -= width;
 
-  ctx.save();
-  ctx.globalAlpha = alpha;
-  ctx.fillStyle = color;
-  ctx.textAlign = "left";
-  ctx.textBaseline = "top";
-  setFont(ctx, size, weight, family);
-
-  for (const grapheme of graphemes) {
-    const emoji = isEmojiGrapheme(grapheme);
-    const graphemeWidth = emoji
-      ? size * emojiScale
-      : ctx.measureText(grapheme).width;
-
-    if (emoji) {
-      const image = await getEmojiImage(grapheme);
+  for (const run of runs) {
+    if (run.type === "emoji") {
+      const image = await getEmojiImage(run.value);
+      const emojiSize = 7 * size;
       if (image) {
-        const emojiSize = size * emojiScale;
-        ctx.drawImage(image, cursor, y - size * 0.04, emojiSize, emojiSize);
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.drawImage(image, cursor, y, emojiSize, emojiSize);
+        ctx.restore();
       } else {
-        ctx.fillText(grapheme, cursor, y);
+        drawPixelText(ctx, "?", cursor, y, size, color, "left", alpha);
       }
+      cursor += emojiSize + size;
     } else {
-      ctx.fillText(grapheme, cursor, y);
+      const normalized = normalizedRun(run.value);
+      drawPixelText(ctx, normalized, cursor, y, size, color, "left", alpha);
+      cursor += measurePixelText(normalized, size) + size;
     }
-
-    cursor += graphemeWidth + letterSpacing;
   }
 
-  ctx.restore();
   return { width, size };
 }
 
 module.exports = {
-  DEFAULT_FONT_FAMILY,
   splitGraphemes,
-  measureUnicodeText,
-  fitUnicodeText,
-  drawUnicodeText,
+  measurePixelEmojiText,
+  fitPixelEmojiText,
+  drawPixelEmojiText,
 };
