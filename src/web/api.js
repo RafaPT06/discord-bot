@@ -5,6 +5,7 @@ const { getLevelSettings, updateLevelSettings, listLevelRewards, setLevelReward,
 const { getWelcomeSettings, updateWelcomeSettings } = require('../services/welcome');
 const { getLogSettings, updateLogSettings, getModerationSettings, updateModerationSettings } = require('../services/serverSettings');
 const { listModerationBypassUsers, addModerationBypassUser, removeModerationBypassUser } = require('../services/moderationAccess');
+const { createMemberEventCardBuffer, createLevelCardBuffer } = require('../utils/levelCard');
 
 let started = false;
 const startedAt = Date.now();
@@ -18,6 +19,30 @@ function formatUptime(ms) {
   if (days > 0) return `${days}d ${hours}h ${minutes}m`;
   if (hours > 0) return `${hours}h ${minutes}m`;
   return `${minutes}m`;
+}
+
+function safeDiscordImageUrl(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return null;
+  try {
+    const url = new URL(raw);
+    if (url.protocol !== "https:") return null;
+    if (!["cdn.discordapp.com", "media.discordapp.net"].includes(url.hostname)) return null;
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
+function safePreviewText(value, fallback, max = 500) {
+  const text = String(value ?? fallback ?? "").trim();
+  return text.slice(0, max) || String(fallback || "");
+}
+
+function safePreviewNumber(value, fallback, min = 0, max = 1_000_000_000) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.max(min, Math.min(max, n));
 }
 
 function getApproxUsers(client) {
@@ -368,6 +393,54 @@ function startBotApi(client) {
     res.json({ ok: true, online: client.isReady(), updatedAt: new Date().toISOString() });
   });
 
+
+  app.post('/api/previews/:kind', requireToken, async (req, res) => {
+    try {
+      const kind = String(req.params.kind || '').toLowerCase();
+      const payload = req.body && typeof req.body === 'object' ? req.body : {};
+      const displayName = safePreviewText(payload.displayName || payload.userName || payload.username, 'Rafa', 80);
+      const avatarUrl = safeDiscordImageUrl(payload.avatarUrl);
+      let image;
+
+      if (kind === 'welcome' || kind === 'goodbye') {
+        image = await createMemberEventCardBuffer({
+          type: kind,
+          username: displayName,
+          displayName,
+          avatarUrl,
+          memberNumber: safePreviewNumber(payload.memberNumber ?? payload.memberCount, 11, 0, 10_000_000),
+          guildName: safePreviewText(payload.guildName || payload.serverName, 'PERSONAL', 100),
+          accentColor: safePreviewNumber(payload.accentColor, 0x7c3aed, 0, 0xffffff),
+          messageTemplate: safePreviewText(payload.messageTemplate || payload.message, '', 1000),
+          showMember: payload.showMember !== false,
+          showAvatar: payload.showAvatar !== false,
+        });
+      } else if (kind === 'level-up') {
+        const previousLevel = safePreviewNumber(payload.previousLevel ?? payload.level, 10, 0, 1_000_000);
+        const level = safePreviewNumber(payload.nextLevel, previousLevel + 1, previousLevel, 1_000_001);
+        image = await createLevelCardBuffer({
+          username: displayName,
+          displayName,
+          avatarUrl,
+          level,
+          previousLevel,
+          currentXp: safePreviewNumber(payload.currentXp, 480, 0),
+          neededXp: safePreviewNumber(payload.neededXp ?? payload.requiredXp, 999, 1),
+          totalXp: safePreviewNumber(payload.totalXp, 10_720, 0),
+          accentColor: safePreviewNumber(payload.accentColor, 0x7c3aed, 0, 0xffffff),
+          title: 'LEVEL UP!',
+        });
+      } else {
+        return res.status(400).json({ ok: false, error: 'Unsupported preview type.' });
+      }
+
+      res.setHeader('Content-Type', 'image/png');
+      res.setHeader('Cache-Control', 'private, no-store, max-age=0');
+      return res.send(image);
+    } catch (err) {
+      return res.status(err.statusCode || 500).json({ ok: false, error: err.message || 'Could not render preview.' });
+    }
+  });
 
   app.get('/api/commands', requireToken, (_req, res) => {
     const commands = getCommands(client);

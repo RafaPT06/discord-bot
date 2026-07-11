@@ -133,7 +133,26 @@ function memberNumberFor(guild) {
   return guild?.memberCount || null;
 }
 
-async function buildMemberEventAttachment({ member, type }) {
+function renderConfiguredMemberMessage(template, member, type) {
+  const isGoodbye = type === "goodbye";
+  const fallback = isGoodbye
+    ? `${member.user?.tag || member.user?.username || "Someone"} left the server.`
+    : `Welcome ${member} to **${member.guild?.name || "the server"}**!`;
+  const raw = String(template || "").trim();
+  if (!raw) return fallback;
+
+  const userValue = isGoodbye
+    ? (member.user?.tag || member.user?.username || `<@${member.id}>`)
+    : `<@${member.id}>`;
+
+  return raw
+    .replaceAll("{user}", userValue)
+    .replaceAll("{server}", String(member.guild?.name || "the server"))
+    .replaceAll("{memberCount}", String(member.guild?.memberCount || ""))
+    .slice(0, 1900);
+}
+
+async function buildMemberEventAttachment({ member, type, settings = null }) {
   const isGoodbye = type === "goodbye";
   const backgroundUrl = await getCardBackground(member.guild.id, isGoodbye ? "goodbye" : "welcome").catch(() => null);
   const image = await createMemberEventCardBuffer({
@@ -145,6 +164,7 @@ async function buildMemberEventAttachment({ member, type }) {
     guildName: member.guild?.name,
     accentColor: member.displayColor || member.guild?.members?.me?.displayColor || 0x7c3aed,
     backgroundUrl,
+    messageTemplate: isGoodbye ? settings?.goodbye_message : settings?.welcome_message,
   });
 
   return new AttachmentBuilder(image, {
@@ -167,10 +187,13 @@ async function sendMemberEvent(member, type, overrideChannelId = null, simulated
   const channel = await member.guild.channels.fetch(channelId).catch(() => null);
   if (!channel?.isTextBased?.()) return false;
 
-  const attachment = await buildMemberEventAttachment({ member, type });
-  const content = isGoodbye
-    ? `${member.user?.tag || member.user?.username || "Someone"} left the server.${simulated ? " *(simulation)*" : ""}`
-    : `Welcome ${member} to **${member.guild.name}**!${simulated ? " *(simulation)*" : ""}`;
+  const attachment = await buildMemberEventAttachment({ member, type, settings });
+  const configuredMessage = renderConfiguredMemberMessage(
+    isGoodbye ? settings.goodbye_message : settings.welcome_message,
+    member,
+    type
+  );
+  const content = `${configuredMessage}${simulated ? " *(simulation)*" : ""}`;
 
   await channel.send({ content, files: [attachment] });
   return true;
