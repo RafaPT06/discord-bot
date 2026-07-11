@@ -1,6 +1,7 @@
 const { createCanvas } = require("canvas");
 const { WIDTH, HEIGHT, hexFromColor, shortNumber, imageFromUrl, drawDefaultBackground, drawAccentShapes, roundRect, drawCircularImage, drawAvatarFallback, drawProgressBar } = require("./cardBase");
-const { drawPixelText, fitPixelText, measurePixelText } = require("./pixelText");
+const { drawPixelText, fitPixelText } = require("./pixelText");
+const { drawUnicodeText } = require("./unicodeText");
 
 async function createLevelCardBuffer({
   username,
@@ -66,12 +67,17 @@ async function createLevelCardBuffer({
     drawPixelText(ctx, "LEVEL UP!", 365, 95, 5, "#ffffff", "left");
   }
 
-  const nameSize = fitPixelText(safeName, 430, 6, 4);
-  drawPixelText(ctx, safeName, 365, 178, nameSize, "#ffffff", "left");
+  const renderedName = await drawUnicodeText(ctx, safeName, 365, 166, {
+    maxWidth: 430,
+    startSize: 46,
+    minSize: 26,
+    align: "left",
+    weight: 800,
+    uppercase: true,
+  });
 
   if (discriminator && discriminator !== "0") {
-    const nameWidth = measurePixelText(safeName, nameSize);
-    drawPixelText(ctx, `#${discriminator}`, 365 + nameWidth + 14, 184, 4, "#ffffff", "left", 0.4);
+    drawPixelText(ctx, `#${discriminator}`, 365 + renderedName.width + 14, 184, 4, "#ffffff", "left", 0.4);
   }
 
   if (isLevelUpCard) {
