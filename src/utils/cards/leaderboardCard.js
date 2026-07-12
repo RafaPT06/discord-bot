@@ -1,5 +1,6 @@
 const { createCanvas } = require("canvas");
-const { hexFromColor, shortNumber, imageFromUrl, roundRect, drawCircularImage } = require("./cardBase");
+const { shortNumber, imageFromUrl, roundRect, drawCircularImage } = require("./cardBase");
+const { BRAND_COLORS, colorHex } = require("../brandColors");
 const { drawPixelText, fitPixelText } = require("./pixelText");
 
 async function createLeaderboardCardBuffer({
@@ -8,7 +9,7 @@ async function createLeaderboardCardBuffer({
   accentColor = 0x7c3aed,
   backgroundUrl,
 }) {
-  const accent = hexFromColor(accentColor);
+  const accent = colorHex(BRAND_COLORS.primary);
   const width = 1200;
   const height = 900;
   const canvas = createCanvas(width, height);
@@ -25,17 +26,17 @@ async function createLeaderboardCardBuffer({
       ctx.fillRect(0, 0, width, height);
     } catch {
       const gradient = ctx.createLinearGradient(0, 0, width, height);
-      gradient.addColorStop(0, "#050505");
-      gradient.addColorStop(0.55, "#151515");
-      gradient.addColorStop(1, "#050505");
+      gradient.addColorStop(0, "#080511");
+      gradient.addColorStop(0.55, "#170d2b");
+      gradient.addColorStop(1, "#050308");
       ctx.fillStyle = gradient;
       ctx.fillRect(0, 0, width, height);
     }
   } else {
     const gradient = ctx.createLinearGradient(0, 0, width, height);
-    gradient.addColorStop(0, "#050505");
-    gradient.addColorStop(0.55, "#151515");
-    gradient.addColorStop(1, "#050505");
+    gradient.addColorStop(0, "#080511");
+    gradient.addColorStop(0.55, "#170d2b");
+    gradient.addColorStop(1, "#050308");
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, width, height);
   }

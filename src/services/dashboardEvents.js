@@ -1,6 +1,7 @@
 const { EmbedBuilder, PermissionFlagsBits } = require('discord.js');
 const { getLogSettings, getModerationSettings } = require('./serverSettings');
 const { isUserModerationBypassed } = require('./moderationAccess');
+const { BRAND_COLORS } = require('../utils/brandColors');
 
 const recentMessages = new Map();
 
@@ -18,7 +19,7 @@ async function sendToConfiguredChannel(guild, channelId, embed) {
   return true;
 }
 
-async function sendLog(guild, kind, title, fields = [], color = 0x5865f2) {
+async function sendLog(guild, kind, title, fields = [], color = BRAND_COLORS.info) {
   const settings = await getLogSettings(guild.id).catch(() => null);
   if (!settings?.enabled || !settings.channel_id) return false;
   if (kind === 'message' && settings.message_events === false) return false;
@@ -33,7 +34,7 @@ async function sendLog(guild, kind, title, fields = [], color = 0x5865f2) {
   return sendToConfiguredChannel(guild, settings.channel_id, embed);
 }
 
-async function sendModerationLog(guild, title, fields = [], color = 0xed4245) {
+async function sendModerationLog(guild, title, fields = [], color = BRAND_COLORS.danger) {
   const settings = await getModerationSettings(guild.id).catch(() => null);
   const channelId = settings?.mod_log_channel_id;
   if (!channelId) return false;
@@ -51,7 +52,7 @@ async function handleLoggedMessageDelete(message) {
     { name: 'Author', value: message.author ? `${message.author.tag || message.author.username} (${message.author.id})` : 'Unknown', inline: false },
     { name: 'Channel', value: `${message.channel}`, inline: true },
     { name: 'Content', value: trim(message.content), inline: false },
-  ], 0xfee75c);
+  ], BRAND_COLORS.warning);
 }
 
 async function handleLoggedMessageUpdate(oldMessage, newMessage) {
@@ -65,7 +66,7 @@ async function handleLoggedMessageUpdate(oldMessage, newMessage) {
     { name: 'Channel', value: `${message.channel}`, inline: true },
     { name: 'Before', value: trim(before, 450), inline: false },
     { name: 'After', value: trim(after, 450), inline: false },
-  ], 0x3498db);
+  ], BRAND_COLORS.info);
 }
 
 async function handleLoggedMemberJoin(member) {
@@ -73,7 +74,7 @@ async function handleLoggedMemberJoin(member) {
   await sendLog(member.guild, 'member', 'Member joined', [
     { name: 'Member', value: `${member.user?.tag || member.user?.username || member.id} (${member.id})`, inline: false },
     { name: 'Members', value: String(member.guild.memberCount || 'Unknown'), inline: true },
-  ], 0x57f287);
+  ], BRAND_COLORS.member);
 }
 
 async function handleLoggedMemberLeave(member) {
@@ -81,7 +82,7 @@ async function handleLoggedMemberLeave(member) {
   await sendLog(member.guild, 'member', 'Member left', [
     { name: 'Member', value: `${member.user?.tag || member.user?.username || member.id} (${member.id})`, inline: false },
     { name: 'Members', value: String(member.guild.memberCount || 'Unknown'), inline: true },
-  ], 0xed4245);
+  ], BRAND_COLORS.danger);
 }
 
 async function handleLoggedGuildBan(ban) {
@@ -89,7 +90,7 @@ async function handleLoggedGuildBan(ban) {
   await sendLog(ban.guild, 'moderation', 'Member banned', [
     { name: 'User', value: `${ban.user.tag || ban.user.username} (${ban.user.id})`, inline: false },
     { name: 'Reason', value: ban.reason || 'No reason provided.', inline: false },
-  ], 0xed4245);
+  ], BRAND_COLORS.danger);
 }
 
 async function handleLoggedVoiceState(oldState, newState) {
@@ -102,7 +103,7 @@ async function handleLoggedVoiceState(oldState, newState) {
     { name: 'Member', value: `${member?.user?.tag || member?.id || 'Unknown'}`, inline: false },
     { name: 'From', value: oldState.channel ? `${oldState.channel}` : 'None', inline: true },
     { name: 'To', value: newState.channel ? `${newState.channel}` : 'None', inline: true },
-  ], 0x9b59b6);
+  ], BRAND_COLORS.voice);
 }
 
 function hasDiscordInvite(content) {
@@ -162,7 +163,7 @@ async function handleModerationMessage(message) {
     { name: 'Reason', value: reason, inline: true },
     { name: 'User', value: `${message.author.tag || message.author.username} (${message.author.id})`, inline: false },
     { name: 'Channel', value: `${message.channel}`, inline: true },
-  ], 0xed4245);
+  ], BRAND_COLORS.danger);
   return true;
 }
 

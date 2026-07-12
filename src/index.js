@@ -1,4 +1,6 @@
 const { Client, GatewayIntentBits, Partials, Events, Collection } = require("discord.js");
+const { installEmbedTheme } = require("./utils/embedTheme");
+installEmbedTheme();
 const fs = require("fs");
 const path = require("path");
 

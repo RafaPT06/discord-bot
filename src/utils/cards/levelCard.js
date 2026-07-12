@@ -1,5 +1,6 @@
 const { createCanvas } = require("canvas");
-const { WIDTH, HEIGHT, hexFromColor, shortNumber, imageFromUrl, drawDefaultBackground, drawAccentShapes, roundRect, drawCircularImage, drawAvatarFallback, drawProgressBar } = require("./cardBase");
+const { WIDTH, HEIGHT, shortNumber, imageFromUrl, drawDefaultBackground, drawAccentShapes, roundRect, drawCircularImage, drawAvatarFallback, drawProgressBar } = require("./cardBase");
+const { BRAND_COLORS, colorHex } = require("../brandColors");
 const { drawPixelText, fitPixelText } = require("./pixelText");
 const { drawPixelEmojiText } = require("./unicodeText");
 
@@ -18,7 +19,8 @@ async function createLevelCardBuffer({
   backgroundUrl,
   title,
 }) {
-  const accent = hexFromColor(accentColor);
+  const accent = colorHex(BRAND_COLORS.leveling);
+  const accentLight = colorHex(BRAND_COLORS.primaryLight);
 
   const safeName = String(displayName || username || "Unknown");
   const safeRank = rank || "-";
@@ -64,7 +66,7 @@ async function createLevelCardBuffer({
   }
 
   if (isLevelUpCard) {
-    drawPixelText(ctx, "LEVEL UP!", 365, 95, 5, "#ffffff", "left");
+    drawPixelText(ctx, "LEVEL UP!", 365, 95, 5, accentLight, "left");
   }
 
   const renderedName = await drawPixelEmojiText(ctx, safeName, 365, 178, {
@@ -119,7 +121,7 @@ async function createLevelCardBuffer({
     "right"
   );
 
-  drawProgressBar(ctx, 365, 250, 720, 54, percent, "#ffffff");
+  drawProgressBar(ctx, 365, 250, 720, 54, percent, accentLight);
 
   drawPixelText(
     ctx,

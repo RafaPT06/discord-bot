@@ -1,5 +1,6 @@
 const { EmbedBuilder } = require("discord.js");
 const { pool } = require("../db/pool");
+const { BRAND_COLORS } = require("../utils/brandColors");
 
 const recent = new Map();
 let globalLastSent = 0;
@@ -43,6 +44,7 @@ async function sendAlert(client, title, description, stack) {
 
     const embed = new EmbedBuilder()
       .setTitle(` ${title}`)
+      .setColor(BRAND_COLORS.danger)
       .setDescription(redact(description).slice(0, 2000))
       .setTimestamp(new Date());
 

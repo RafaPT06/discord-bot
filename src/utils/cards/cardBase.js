@@ -124,9 +124,9 @@ function seededRandom(seed) {
 function drawDefaultBackground(ctx, accent, width = WIDTH, height = HEIGHT, seed = null) {
   const gradient = ctx.createLinearGradient(0, 0, width, height);
 
-  gradient.addColorStop(0, "#050505");
-  gradient.addColorStop(0.55, "#111111");
-  gradient.addColorStop(1, "#030303");
+  gradient.addColorStop(0, "#080511");
+  gradient.addColorStop(0.55, "#170d2b");
+  gradient.addColorStop(1, "#050308");
 
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, width, height);

@@ -1,11 +1,12 @@
 const { createCanvas } = require("canvas");
-const { hexFromColor, imageFromUrl, drawDefaultBackground, drawAccentShapes, roundRect, drawCircularImage, drawAvatarFallback } = require("./cardBase");
+const { imageFromUrl, drawDefaultBackground, drawAccentShapes, roundRect, drawCircularImage, drawAvatarFallback } = require("./cardBase");
+const { BRAND_COLORS, colorHex } = require("../brandColors");
 const { drawPixelText, fitPixelText } = require("./pixelText");
 
 async function createAchievementCardBuffer({ username, displayName, avatarUrl, achievementName, description, accentColor = 0xfbbf24, backgroundUrl }) {
   const width = 1200;
   const height = 520;
-  const accent = hexFromColor(accentColor);
+  const accent = colorHex(BRAND_COLORS.achievement);
   const safeName = String(displayName || username || "Unknown");
   const safeAchievement = String(achievementName || "Achievement");
   const safeDescription = String(description || "Unlocked");

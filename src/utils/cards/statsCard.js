@@ -11,6 +11,7 @@ const {
   drawProgressBar,
 } = require("./cardBase");
 const { drawPixelText, fitPixelText } = require("./pixelText");
+const { BRAND_COLORS, colorHex } = require("../brandColors");
 
 function statBox(ctx, x, y, w, h, label, value, accent) {
   roundRect(ctx, x, y, w, h, 14);
@@ -42,7 +43,7 @@ async function createStatsCardBuffer({
 }) {
   const width = 1200;
   const height = 650;
-  const accent = hexFromColor(accentColor);
+  const accent = colorHex(BRAND_COLORS.primary);
   const safeName = String(displayName || username || "Unknown");
   const percent = Math.floor((Number(currentXp || 0) / Math.max(1, Number(neededXp || 1))) * 100);
 

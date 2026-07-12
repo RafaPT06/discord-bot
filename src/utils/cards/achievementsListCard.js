@@ -9,6 +9,7 @@ const {
   drawAvatarFallback,
 } = require("./cardBase");
 const { drawPixelText, fitPixelText } = require("./pixelText");
+const { BRAND_COLORS, colorHex } = require("../brandColors");
 
 async function createAchievementsListCardBuffer({
   username,
@@ -20,7 +21,7 @@ async function createAchievementsListCardBuffer({
 }) {
   const width = 1200;
   const height = 650;
-  const accent = hexFromColor(accentColor);
+  const accent = colorHex(BRAND_COLORS.achievement);
   const safeName = String(displayName || username || "Unknown");
   const list = Array.isArray(achievements) ? achievements.slice(0, 8) : [];
 

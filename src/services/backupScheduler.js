@@ -1,5 +1,6 @@
 const { AttachmentBuilder, EmbedBuilder } = require("discord.js");
 const { pool } = require("../db/pool");
+const { BRAND_COLORS } = require("../utils/brandColors");
 const { dumpAllTables } = require("./backupDump");
 
 async function ensureTables() {
@@ -51,6 +52,7 @@ async function listEnabledBackupChannels() {
 function buildBackupEmbed(filename, tablesCount) {
   return new EmbedBuilder()
     .setTitle("Database Backup")
+    .setColor(BRAND_COLORS.backup)
     .setDescription(
       [
         `File: **${filename}**`,

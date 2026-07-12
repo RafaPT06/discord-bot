@@ -4,6 +4,7 @@ const { pool } = require("../db/pool");
 const { incrementMessages, addXpStats, getUserStats } = require("./userStats");
 const { checkAchievementUnlocks } = require("./achievements");
 const { getCardBackground } = require("./config");
+const { BRAND_COLORS } = require("../utils/brandColors");
 
 const LEVEL_ROLE_STEPS = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50];
 
@@ -202,9 +203,8 @@ async function assignLevelRoles(member, level, stackRoles = true) {
   return added;
 }
 
-function getMemberEmbedColor(member) {
-  const color = member?.displayColor || 0;
-  return color && color !== 0 ? color : 0x5865f2;
+function getMemberEmbedColor() {
+  return BRAND_COLORS.leveling;
 }
 
 function formatCompactLevel(level) {

@@ -2,6 +2,7 @@ const { AttachmentBuilder } = require("discord.js");
 const { pool } = require("../db/pool");
 const { createMemberEventCardBuffer } = require("../utils/levelCard");
 const { getCardBackground } = require("./config");
+const { BRAND_COLORS } = require("../utils/brandColors");
 
 const CARD_STYLE = "Custom Card (Modern)";
 const TEXT_STYLE = "Text only";
@@ -201,7 +202,7 @@ async function buildMemberEventAttachment({ member, type, settings = null }) {
     avatarUrl: member.user?.displayAvatarURL({ extension: "png", size: 256, forceStatic: true }),
     memberNumber: memberNumberFor(member.guild),
     guildName: member.guild?.name,
-    accentColor: member.displayColor || member.guild?.members?.me?.displayColor || 0x7c3aed,
+    accentColor: isGoodbye ? BRAND_COLORS.goodbye : BRAND_COLORS.welcome,
     backgroundUrl,
     messageTemplate: isGoodbye ? settings?.goodbye_message : settings?.welcome_message,
     showMember: settings?.show_member !== false,

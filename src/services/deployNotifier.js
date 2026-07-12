@@ -1,5 +1,6 @@
 const { pool } = require("../db/pool");
 const { EmbedBuilder } = require("discord.js");
+const { BRAND_COLORS } = require("../utils/brandColors");
 
 function sha() {
   return process.env.RAILWAY_GIT_COMMIT_SHA || process.env.GITHUB_SHA || "";
@@ -33,10 +34,10 @@ function nowTs() {
   return Math.floor(Date.now() / 1000);
 }
 
-function embedColor() {
+function embedColor(type = "deploy") {
+  if (type === "restart") return BRAND_COLORS.restart;
   const env = String(envName()).toLowerCase();
-  if (env.includes("prod")) return 0x2ecc71; // green
-  return 0xf39c12; // orange
+  return env.includes("prod") ? BRAND_COLORS.deploy : BRAND_COLORS.primaryLight;
 }
 
 function repoInfo() {
@@ -112,7 +113,7 @@ function buildDeployEmbed(type = "deploy") {
 
   const embed = new EmbedBuilder()
     .setTitle(title)
-    .setColor(embedColor())
+    .setColor(embedColor(type))
     .addFields(
       { name: "Environment", value: envName(), inline: true },
       { name: "Branch", value: branch(), inline: true },

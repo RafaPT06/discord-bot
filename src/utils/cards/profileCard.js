@@ -1,5 +1,6 @@
 const { createCanvas } = require("canvas");
-const { hexFromColor, shortNumber, imageFromUrl, drawDefaultBackground, drawAccentShapes, roundRect, drawCircularImage, drawAvatarFallback, drawProgressBar } = require("./cardBase");
+const { shortNumber, imageFromUrl, drawDefaultBackground, drawAccentShapes, roundRect, drawCircularImage, drawAvatarFallback, drawProgressBar } = require("./cardBase");
+const { BRAND_COLORS, colorHex } = require("../brandColors");
 const { drawPixelText, fitPixelText } = require("./pixelText");
 
 async function createProfileCardBuffer({
@@ -24,7 +25,8 @@ async function createProfileCardBuffer({
 }) {
   const PROFILE_WIDTH = 1200;
   const PROFILE_HEIGHT = 650;
-  const accent = hexFromColor(accentColor);
+  const accent = colorHex(BRAND_COLORS.primary);
+  const accentLight = colorHex(BRAND_COLORS.primaryLight);
 
   const safeName = String(displayName || username || "Unknown");
   const safeRank = rank || "-";
@@ -111,7 +113,7 @@ async function createProfileCardBuffer({
   drawPixelText(ctx, String(safePrestige), 1145, 320, 3, "#ffffff", "right");
 
   drawPixelText(ctx, `${shortNumber(safeCurrentXp)}/${shortNumber(safeNeededXp)} XP`, 1085, 360, 5, "#ffffff", "right");
-  drawProgressBar(ctx, 450, 400, 635, 46, percent, "#ffffff");
+  drawProgressBar(ctx, 450, 400, 635, 46, percent, accentLight);
 
   drawPixelText(ctx, `TOTAL: ${shortNumber(safeTotalXp)} XP`, 768, 475, 4, "#ffffff", "center", 0.92);
 

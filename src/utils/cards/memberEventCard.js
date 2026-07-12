@@ -10,6 +10,7 @@ const {
   drawAvatarFallback,
 } = require("./cardBase");
 const { drawPixelText, fitPixelText } = require("./pixelText");
+const { BRAND_COLORS, colorHex } = require("../brandColors");
 
 const FONT_FAMILY = "Meowz Sans";
 const FONT_CANDIDATES = [
@@ -112,8 +113,8 @@ function drawCenteredText(ctx, value, x, y, maxWidth, startSize, options = {}) {
 function drawGoodbyeAtmosphere(ctx, width, height) {
   ctx.save();
   const glow = ctx.createRadialGradient(width / 2, 190, 0, width / 2, 190, 430);
-  glow.addColorStop(0, "rgba(244,114,182,0.18)");
-  glow.addColorStop(0.48, "rgba(139,92,246,0.08)");
+  glow.addColorStop(0, "rgba(168,85,247,0.22)");
+  glow.addColorStop(0.48, "rgba(139,92,246,0.12)");
   glow.addColorStop(1, "rgba(0,0,0,0)");
   ctx.fillStyle = glow;
   ctx.fillRect(54, 44, width - 108, height - 88);
@@ -127,9 +128,9 @@ function drawGoodbyeBadge(ctx, centerX, y) {
 
   ctx.save();
   roundRect(ctx, x, y, width, height, height / 2);
-  ctx.fillStyle = "rgba(244,114,182,0.13)";
+  ctx.fillStyle = "rgba(139,92,246,0.16)";
   ctx.fill();
-  ctx.strokeStyle = "rgba(244,114,182,0.58)";
+  ctx.strokeStyle = "rgba(192,132,252,0.62)";
   ctx.lineWidth = 2;
   ctx.stroke();
   ctx.restore();
@@ -137,7 +138,7 @@ function drawGoodbyeBadge(ctx, centerX, y) {
   drawCenteredText(ctx, "GOODBYE", centerX, y + height / 2, width - 28, 23, {
     minSize: 18,
     weight: 800,
-    color: "#f9a8d4",
+    color: "#d8b4fe",
   });
 }
 
@@ -148,9 +149,9 @@ function drawMemberBadge(ctx, centerX, y, text) {
 
   ctx.save();
   roundRect(ctx, x, y, width, height, height / 2);
-  ctx.fillStyle = "rgba(255,255,255,0.055)";
+  ctx.fillStyle = "rgba(139,92,246,0.10)";
   ctx.fill();
-  ctx.strokeStyle = "rgba(255,255,255,0.12)";
+  ctx.strokeStyle = "rgba(192,132,252,0.24)";
   ctx.lineWidth = 2;
   ctx.stroke();
   ctx.restore();
@@ -159,7 +160,7 @@ function drawMemberBadge(ctx, centerX, y, text) {
     minSize: 17,
     weight: 600,
     alpha: 0.78,
-    color: "#ececf4",
+    color: "#ede9fe",
   });
 }
 
@@ -185,7 +186,7 @@ async function createMemberEventCardBuffer({
   displayName,
   avatarUrl,
   memberNumber,
-  accentColor = 0x7c3aed,
+  accentColor = BRAND_COLORS.welcome,
   backgroundUrl,
   showMember = true,
   showAvatar = true,
@@ -193,8 +194,7 @@ async function createMemberEventCardBuffer({
   const width = 1200;
   const height = 560;
   const isGoodbye = String(type).toLowerCase() === "goodbye";
-  const accent = hexFromColor(accentColor);
-  const eventAccent = isGoodbye ? "#f472b6" : accent;
+  const eventAccent = colorHex(isGoodbye ? BRAND_COLORS.goodbye : BRAND_COLORS.welcome);
   const { nameText, memberText } = renderMemberEventTemplate(null, {
     type,
     displayName,
@@ -202,7 +202,7 @@ async function createMemberEventCardBuffer({
     memberNumber,
   });
 
-  const backgroundSeed = `${type}:${nameText}:${memberNumber || 0}:${accent}`;
+  const backgroundSeed = `${type}:${nameText}:${memberNumber || 0}:${eventAccent}`;
   const canvas = createCanvas(width, height);
   const ctx = canvas.getContext("2d");
 
@@ -227,7 +227,7 @@ async function createMemberEventCardBuffer({
   roundRect(ctx, 54, 44, width - 108, height - 88, 30);
   ctx.fillStyle = isGoodbye ? "rgba(10,8,18,0.80)" : "rgba(8,10,17,0.76)";
   ctx.fill();
-  ctx.strokeStyle = isGoodbye ? "rgba(244,114,182,0.16)" : "rgba(255,255,255,0.08)";
+  ctx.strokeStyle = isGoodbye ? "rgba(168,85,247,0.22)" : "rgba(255,255,255,0.08)";
   ctx.lineWidth = 2;
   ctx.stroke();
 
@@ -249,7 +249,7 @@ async function createMemberEventCardBuffer({
     ctx.save();
     ctx.beginPath();
     ctx.arc(width / 2, avatarY + avatarSize / 2, avatarSize / 2 + 8, 0, Math.PI * 2);
-    ctx.strokeStyle = isGoodbye ? "rgba(249,168,212,0.92)" : "rgba(255,255,255,0.88)";
+    ctx.strokeStyle = isGoodbye ? "rgba(216,180,254,0.94)" : "rgba(196,181,253,0.90)";
     ctx.lineWidth = 6;
     ctx.stroke();
     ctx.restore();
@@ -262,7 +262,7 @@ async function createMemberEventCardBuffer({
       minSize: 20,
       weight: 600,
       alpha: 0.72,
-      color: "#f5d8e8",
+      color: "#e9d5ff",
     });
 
     if (showMember !== false && memberNumber) {
@@ -276,7 +276,7 @@ async function createMemberEventCardBuffer({
         minSize: 21,
         weight: 600,
         alpha: 0.72,
-        color: "#e7e7ef",
+        color: "#ddd6fe",
       });
     }
   }
