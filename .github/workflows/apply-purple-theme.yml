@@ -1,0 +1,43 @@
+name: Apply Meowz purple theme
+
+on:
+  push:
+    branches:
+      - theme/purple-embeds
+
+permissions:
+  contents: write
+
+jobs:
+  apply-theme:
+    if: ${{ github.actor != 'github-actions[bot]' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out theme branch
+        uses: actions/checkout@v4
+        with:
+          ref: theme/purple-embeds
+          fetch-depth: 0
+
+      - name: Apply theme changes
+        run: node scripts/apply-purple-theme.js
+
+      - name: Validate JavaScript syntax
+        shell: bash
+        run: |
+          while IFS= read -r -d '' file; do
+            node --check "$file"
+          done < <(find src -name '*.js' -print0)
+
+      - name: Commit generated changes
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src
+          if git diff --cached --quiet; then
+            echo "No generated changes to commit."
+            exit 0
+          fi
+          git commit -m "Unify embeds and cards with Meowz purple theme"
+          git push origin HEAD:theme/purple-embeds
