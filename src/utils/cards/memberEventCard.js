@@ -1,4 +1,5 @@
-const { createCanvas } = require("canvas");
+const { createCanvas, registerFont } = require("canvas");
+const { existsSync } = require("node:fs");
 const {
   hexFromColor,
   imageFromUrl,
@@ -8,13 +9,70 @@ const {
   drawCircularImage,
   drawAvatarFallback,
 } = require("./cardBase");
-const FONT_STACK = '"DejaVu Sans", "Liberation Sans", Arial, sans-serif';
+const { drawPixelText, fitPixelText } = require("./pixelText");
+
+const FONT_FAMILY = "Meowz Sans";
+const FONT_CANDIDATES = [
+  { path: "/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf", weight: "normal" },
+  { path: "/usr/share/fonts/truetype/noto/NotoSans-Bold.ttf", weight: "bold" },
+  { path: "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", weight: "normal" },
+  { path: "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", weight: "bold" },
+  { path: "/usr/share/fonts/truetype/liberation2/LiberationSans-Regular.ttf", weight: "normal" },
+  { path: "/usr/share/fonts/truetype/liberation2/LiberationSans-Bold.ttf", weight: "bold" },
+];
+
+function registerCardFonts() {
+  let registered = false;
+  const seenWeights = new Set();
+
+  for (const candidate of FONT_CANDIDATES) {
+    if (seenWeights.has(candidate.weight) || !existsSync(candidate.path)) continue;
+    try {
+      registerFont(candidate.path, { family: FONT_FAMILY, weight: candidate.weight });
+      seenWeights.add(candidate.weight);
+      registered = true;
+    } catch {
+      // The pixel fallback below keeps cards readable even if font registration fails.
+    }
+  }
+
+  return registered;
+}
+
+const HAS_REGISTERED_FONT = registerCardFonts();
+const FONT_STACK = HAS_REGISTERED_FONT
+  ? `"${FONT_FAMILY}"`
+  : '"DejaVu Sans", "Liberation Sans", Arial, sans-serif';
+
+function cleanProfileText(value, fallback = "Unknown") {
+  const normalized = String(value || fallback)
+    .normalize("NFKC")
+    .replace(/[\u200B-\u200D\uFEFF]/g, "")
+    .replace(/\p{Extended_Pictographic}/gu, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  return normalized || fallback;
+}
+
+function pixelFallbackText(value, fallback = "UNKNOWN") {
+  const normalized = cleanProfileText(value, fallback)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^\x20-\x7E]/g, "")
+    .trim();
+  return normalized || fallback;
+}
+
+function canvasWeight(weight) {
+  return Number(weight) >= 700 ? "bold" : "normal";
+}
 
 function fitCanvasFont(ctx, value, maxWidth, startSize, minSize = 24, weight = 800) {
-  const text = String(value || "Unknown");
+  const text = cleanProfileText(value);
   let size = startSize;
+  const resolvedWeight = canvasWeight(weight);
   while (size > minSize) {
-    ctx.font = `${weight} ${size}px ${FONT_STACK}`;
+    ctx.font = `${resolvedWeight} ${size}px ${FONT_STACK}`;
     if (ctx.measureText(text).width <= maxWidth) break;
     size -= 2;
   }
@@ -22,13 +80,28 @@ function fitCanvasFont(ctx, value, maxWidth, startSize, minSize = 24, weight = 8
 }
 
 function drawCenteredText(ctx, value, x, y, maxWidth, startSize, options = {}) {
-  const text = String(value || "Unknown");
+  const text = cleanProfileText(value);
   const weight = Number(options.weight || 800);
+  const color = options.color || "#ffffff";
+  const alpha = Number(options.alpha ?? 1);
+
+  if (!HAS_REGISTERED_FONT) {
+    const fallback = pixelFallbackText(text);
+    const pixelSize = fitPixelText(
+      fallback,
+      maxWidth,
+      Math.max(3, Math.round(startSize / 8)),
+      Math.max(2, Math.round(Number(options.minSize || 24) / 10))
+    );
+    drawPixelText(ctx, fallback, x, y - (7 * pixelSize) / 2, pixelSize, color, "center", alpha);
+    return pixelSize * 7;
+  }
+
   const size = fitCanvasFont(ctx, text, maxWidth, startSize, Number(options.minSize || 24), weight);
   ctx.save();
-  ctx.font = `${weight} ${size}px ${FONT_STACK}`;
-  ctx.fillStyle = options.color || "#ffffff";
-  ctx.globalAlpha = Number(options.alpha ?? 1);
+  ctx.font = `${canvasWeight(weight)} ${size}px ${FONT_STACK}`;
+  ctx.fillStyle = color;
+  ctx.globalAlpha = alpha;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.fillText(text, x, y);
@@ -43,12 +116,12 @@ function renderMemberEventTemplate(_messageTemplate, {
   memberNumber,
 } = {}) {
   const isGoodbye = String(type).toLowerCase() === "goodbye";
-  const safeName = String(displayName || username || "Unknown");
+  const safeName = cleanProfileText(displayName || username || "Unknown");
   return {
     nameText: safeName,
     memberText: memberNumber
       ? (isGoodbye ? `MEMBER #${memberNumber}` : `YOU ARE MEMBER #${memberNumber}`)
-      : '',
+      : (isGoodbye ? "THANKS FOR BEING HERE" : "WELCOME TO THE SERVER"),
   };
 }
 
@@ -109,7 +182,7 @@ async function createMemberEventCardBuffer({
       const avatar = await imageFromUrl(avatarUrl);
       drawCircularImage(ctx, avatar, avatarX, avatarY, avatarSize);
     } catch {
-      drawAvatarFallback(ctx, avatarX, avatarY, avatarSize);
+      drawAvatarFallback(ctx, avatarX, avatarY, avatarSize, nameText);
     }
     ctx.save();
     ctx.beginPath();
@@ -121,12 +194,12 @@ async function createMemberEventCardBuffer({
   }
 
   const nameY = showAvatar === false ? 300 : 410;
-  drawCenteredText(ctx, nameText, width / 2, nameY, 850, 66, { minSize: 30, weight: 850 });
+  drawCenteredText(ctx, nameText, width / 2, nameY, 850, 66, { minSize: 30, weight: 800 });
   if (showMember !== false && memberText) {
     drawCenteredText(ctx, memberText, width / 2, nameY + 66, 760, 28, {
       minSize: 20,
-      weight: 650,
-      alpha: 0.66,
+      weight: 600,
+      alpha: 0.72,
       color: "#e7e7ef",
     });
   }
