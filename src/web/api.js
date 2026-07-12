@@ -6,6 +6,7 @@ const { getWelcomeSettings, updateWelcomeSettings } = require('../services/welco
 const { getLogSettings, updateLogSettings, getModerationSettings, updateModerationSettings } = require('../services/serverSettings');
 const { listModerationBypassUsers, addModerationBypassUser, removeModerationBypassUser } = require('../services/moderationAccess');
 const { createMemberEventCardBuffer, createLevelCardBuffer } = require('../utils/levelCard');
+const { runDashboardSimulation } = require('../services/dashboardSimulations');
 
 let started = false;
 const startedAt = Date.now();
@@ -642,6 +643,7 @@ function startBotApi(client) {
           channelId: settings.channel_id || null,
           xpPerMessage: Number(settings.xp_min || 15),
           cooldownSeconds: Number(settings.cooldown_seconds || 60),
+          stackRoles: settings.stack_roles !== false,
           updatedAt: settings.updated_at || null,
         },
         updatedAt: new Date().toISOString(),
@@ -664,6 +666,7 @@ function startBotApi(client) {
           channelId: settings.channel_id || null,
           xpPerMessage: Number(settings.xp_min || 15),
           cooldownSeconds: Number(settings.cooldown_seconds || 60),
+          stackRoles: settings.stack_roles !== false,
           updatedAt: settings.updated_at || null,
         },
         updatedAt: new Date().toISOString(),
@@ -744,6 +747,7 @@ function startBotApi(client) {
           messageEvents: settings.message_events !== false,
           memberEvents: settings.member_events !== false,
           moderationEvents: settings.moderation_events !== false,
+          voiceEvents: settings.voice_events === true,
           updatedAt: settings.updated_at || null,
         },
         updatedAt: new Date().toISOString(),
@@ -767,6 +771,7 @@ function startBotApi(client) {
           messageEvents: settings.message_events !== false,
           memberEvents: settings.member_events !== false,
           moderationEvents: settings.moderation_events !== false,
+          voiceEvents: settings.voice_events === true,
           updatedAt: settings.updated_at || null,
         },
         updatedAt: new Date().toISOString(),
@@ -790,6 +795,9 @@ function startBotApi(client) {
           automodEnabled: settings.automod_enabled === true,
           modLogChannelId: settings.mod_log_channel_id || null,
           blockedWords: settings.blocked_words || '',
+          antiSpam: settings.anti_spam === true,
+          linkFilter: settings.link_filter === true,
+          inviteFilter: settings.invite_filter === true,
           updatedAt: settings.updated_at || null,
         },
         updatedAt: new Date().toISOString(),
@@ -813,6 +821,9 @@ function startBotApi(client) {
           automodEnabled: settings.automod_enabled === true,
           modLogChannelId: settings.mod_log_channel_id || null,
           blockedWords: settings.blocked_words || '',
+          antiSpam: settings.anti_spam === true,
+          linkFilter: settings.link_filter === true,
+          inviteFilter: settings.invite_filter === true,
           updatedAt: settings.updated_at || null,
         },
         updatedAt: new Date().toISOString(),
@@ -822,6 +833,20 @@ function startBotApi(client) {
     }
   });
 
+
+
+  app.post('/api/guilds/:guildId/simulations/:event', requireToken, async (req, res) => {
+    try {
+      const guild = client.guilds.cache.get(req.params.guildId);
+      if (!guild) return res.status(404).json({ ok: false, error: 'Guild not found.' });
+      const data = await runDashboardSimulation(client, guild, req.params.event, {
+        userId: req.body?.userId,
+      });
+      return res.json(data);
+    } catch (err) {
+      return res.status(err.statusCode || 500).json({ ok: false, error: err.message || 'Could not run dashboard simulation.' });
+    }
+  });
 
 
   app.get('/api/guilds/:guildId/users/search', requireToken, async (req, res) => {

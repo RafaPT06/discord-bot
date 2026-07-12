@@ -20,6 +20,15 @@ const { handleStarboardReaction } = require("./services/starboard");
 const { handleLevelMessage } = require("./services/leveling");
 const { handleMemberJoin, handleMemberLeave } = require("./services/welcome");
 const { handlePrefixMessage } = require("./services/prefixCommands");
+const {
+  handleLoggedMessageDelete,
+  handleLoggedMessageUpdate,
+  handleLoggedMemberJoin,
+  handleLoggedMemberLeave,
+  handleLoggedGuildBan,
+  handleLoggedVoiceState,
+  handleModerationMessage,
+} = require("./services/dashboardEvents");
 
 const token = process.env.BOT_TOKEN;
 const ownerId = process.env.OWNER_ID;
@@ -30,7 +39,7 @@ if (!ownerId) throw new Error("Missing OWNER_ID");
 if (!databaseUrl) throw new Error("Missing DATABASE_URL");
 
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildMessages, GatewayIntentBits.DirectMessages, GatewayIntentBits.MessageContent, GatewayIntentBits.GuildMessageReactions],
+  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildMessages, GatewayIntentBits.DirectMessages, GatewayIntentBits.MessageContent, GatewayIntentBits.GuildMessageReactions, GatewayIntentBits.GuildVoiceStates, GatewayIntentBits.GuildModeration],
   partials: [Partials.Channel, Partials.Message, Partials.Reaction, Partials.User],
 });
 
@@ -216,6 +225,13 @@ client.on(Events.MessageCreate, async (message) => {
   }
 
   try {
+    const moderated = await handleModerationMessage(message);
+    if (moderated) return;
+  } catch (err) {
+    console.error("Moderation error:", err);
+  }
+
+  try {
     await handleLevelMessage(client, message);
   } catch (err) {
     console.error("Leveling error:", err);
@@ -226,6 +242,7 @@ client.on(Events.MessageCreate, async (message) => {
 client.on(Events.GuildMemberAdd, async (member) => {
   try {
     await handleMemberJoin(member);
+    await handleLoggedMemberJoin(member);
   } catch (err) {
     console.error("Welcome message error:", err);
   }
@@ -234,8 +251,42 @@ client.on(Events.GuildMemberAdd, async (member) => {
 client.on(Events.GuildMemberRemove, async (member) => {
   try {
     await handleMemberLeave(member);
+    await handleLoggedMemberLeave(member);
   } catch (err) {
     console.error("Goodbye message error:", err);
+  }
+});
+
+
+client.on(Events.MessageDelete, async (message) => {
+  try {
+    await handleLoggedMessageDelete(message);
+  } catch (err) {
+    console.error("Message delete log error:", err);
+  }
+});
+
+client.on(Events.MessageUpdate, async (oldMessage, newMessage) => {
+  try {
+    await handleLoggedMessageUpdate(oldMessage, newMessage);
+  } catch (err) {
+    console.error("Message update log error:", err);
+  }
+});
+
+client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
+  try {
+    await handleLoggedVoiceState(oldState, newState);
+  } catch (err) {
+    console.error("Voice log error:", err);
+  }
+});
+
+client.on(Events.GuildBanAdd, async (ban) => {
+  try {
+    await handleLoggedGuildBan(ban);
+  } catch (err) {
+    console.error("Ban log error:", err);
   }
 });
 

@@ -1,5 +1,6 @@
-const { EmbedBuilder } = require('discord.js');
+const { EmbedBuilder, PermissionFlagsBits } = require('discord.js');
 const { getLogSettings, getModerationSettings } = require('./serverSettings');
+const { isUserModerationBypassed } = require('./moderationAccess');
 
 const recentMessages = new Map();
 
@@ -83,6 +84,14 @@ async function handleLoggedMemberLeave(member) {
   ], 0xed4245);
 }
 
+async function handleLoggedGuildBan(ban) {
+  if (!ban?.guild || !ban.user) return;
+  await sendLog(ban.guild, 'moderation', 'Member banned', [
+    { name: 'User', value: `${ban.user.tag || ban.user.username} (${ban.user.id})`, inline: false },
+    { name: 'Reason', value: ban.reason || 'No reason provided.', inline: false },
+  ], 0xed4245);
+}
+
 async function handleLoggedVoiceState(oldState, newState) {
   const guild = newState?.guild || oldState?.guild;
   if (!guild) return;
@@ -120,6 +129,14 @@ async function handleModerationMessage(message) {
   const settings = await getModerationSettings(message.guild.id).catch(() => null);
   if (!settings?.enabled) return false;
 
+  const ownerId = String(process.env.OWNER_ID || process.env.BOT_OWNER_ID || '');
+  const hasDefaultBypass = message.author.id === ownerId
+    || message.member?.permissions?.has(PermissionFlagsBits.ManageGuild);
+  const hasManualBypass = hasDefaultBypass
+    ? false
+    : await isUserModerationBypassed(message.guild.id, message.author.id).catch(() => false);
+  if (hasDefaultBypass || hasManualBypass) return false;
+
   const content = message.content;
   const blockedWords = String(settings.blocked_words || '')
     .split(/[\n,]/)
@@ -154,6 +171,7 @@ module.exports = {
   handleLoggedMessageUpdate,
   handleLoggedMemberJoin,
   handleLoggedMemberLeave,
+  handleLoggedGuildBan,
   handleLoggedVoiceState,
   handleModerationMessage,
   sendLog,

@@ -45,8 +45,11 @@ async function ensureLevelTables() {
       xp_min INT NOT NULL DEFAULT 15,
       xp_max INT NOT NULL DEFAULT 25,
       cooldown_seconds INT NOT NULL DEFAULT 60,
+      stack_roles BOOLEAN NOT NULL DEFAULT TRUE,
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
+
+    ALTER TABLE level_settings ADD COLUMN IF NOT EXISTS stack_roles BOOLEAN NOT NULL DEFAULT TRUE;
   `);
 
   await pool.query(`
@@ -88,7 +91,7 @@ async function getLevelSettings(guildId) {
   await ensureLevelTables();
   const res = await pool.query(`SELECT * FROM level_settings WHERE guild_id=$1`, [guildId]);
   if (res.rows[0]) return res.rows[0];
-  return { guild_id: guildId, channel_id: null, enabled: true, xp_min: 15, xp_max: 25, cooldown_seconds: 60 };
+  return { guild_id: guildId, channel_id: null, enabled: true, xp_min: 15, xp_max: 25, cooldown_seconds: 60, stack_roles: true };
 }
 
 async function updateLevelSettings(guildId, settings = {}) {
@@ -105,6 +108,7 @@ async function updateLevelSettings(guildId, settings = {}) {
 
   const cooldownRaw = settings.cooldownSeconds ?? settings.cooldown_seconds ?? current.cooldown_seconds ?? 60;
   const cooldownSeconds = Math.max(5, Math.min(3600, Math.floor(Number(cooldownRaw) || 60)));
+  const stackRoles = typeof settings.stackRoles === "boolean" ? settings.stackRoles : current.stack_roles !== false;
 
   if (channelId && !/^\d{15,25}$/.test(channelId)) {
     const err = new Error("Invalid level-up channel ID.");
@@ -113,17 +117,18 @@ async function updateLevelSettings(guildId, settings = {}) {
   }
 
   const res = await pool.query(
-    `INSERT INTO level_settings (guild_id, channel_id, enabled, xp_min, xp_max, cooldown_seconds, updated_at)
-     VALUES ($1, $2, $3, $4, $4, $5, NOW())
+    `INSERT INTO level_settings (guild_id, channel_id, enabled, xp_min, xp_max, cooldown_seconds, stack_roles, updated_at)
+     VALUES ($1, $2, $3, $4, $4, $5, $6, NOW())
      ON CONFLICT (guild_id) DO UPDATE SET
        channel_id=EXCLUDED.channel_id,
        enabled=EXCLUDED.enabled,
        xp_min=EXCLUDED.xp_min,
        xp_max=EXCLUDED.xp_max,
        cooldown_seconds=EXCLUDED.cooldown_seconds,
+       stack_roles=EXCLUDED.stack_roles,
        updated_at=NOW()
      RETURNING *`,
-    [guildId, channelId, enabled, xpPerMessage, cooldownSeconds]
+    [guildId, channelId, enabled, xpPerMessage, cooldownSeconds, stackRoles]
   );
 
   return res.rows[0] || await getLevelSettings(guildId);
@@ -165,13 +170,28 @@ async function ensureLevelRewardRoles(guild) {
   return createdOrFound;
 }
 
-async function assignLevelRoles(member, level) {
-  const rewards = await pool.query(
-    `SELECT level, role_id FROM level_role_rewards WHERE guild_id=$1 AND level <= $2 ORDER BY level ASC`,
-    [member.guild.id, level]
+async function assignLevelRoles(member, level, stackRoles = true) {
+  const allRewards = await pool.query(
+    `SELECT level, role_id FROM level_role_rewards WHERE guild_id=$1 ORDER BY level ASC`,
+    [member.guild.id]
   );
+  const eligible = allRewards.rows.filter((row) => Number(row.level) <= Number(level));
+  if (!eligible.length) return [];
+
+  const targetRows = stackRoles ? eligible : [eligible[eligible.length - 1]];
+  const targetIds = new Set(targetRows.map((row) => row.role_id));
+
+  if (!stackRoles) {
+    const removableIds = allRewards.rows
+      .map((row) => row.role_id)
+      .filter((roleId) => !targetIds.has(roleId) && member.roles.cache.has(roleId));
+    if (removableIds.length) {
+      await member.roles.remove(removableIds, 'Replacing previous level reward role').catch(() => null);
+    }
+  }
+
   const added = [];
-  for (const row of rewards.rows) {
+  for (const row of targetRows) {
     const role = member.guild.roles.cache.get(row.role_id);
     if (!role || member.roles.cache.has(role.id)) continue;
     try {
@@ -303,7 +323,7 @@ async function handleLevelMessage(client, message) {
     return;
   }
 
-  const addedRoles = await assignLevelRoles(member, newLevel).catch(() => []);
+  const addedRoles = await assignLevelRoles(member, newLevel, settings.stack_roles !== false).catch(() => []);
   const embed = buildLevelUpEmbed({ member, oldLevel, newLevel, totalXp: newTotal, addedRoles });
 
   if (channel?.isTextBased()) {

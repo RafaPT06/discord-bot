@@ -26,8 +26,11 @@ async function ensureLogTables() {
       message_events BOOLEAN NOT NULL DEFAULT TRUE,
       member_events BOOLEAN NOT NULL DEFAULT TRUE,
       moderation_events BOOLEAN NOT NULL DEFAULT TRUE,
+      voice_events BOOLEAN NOT NULL DEFAULT FALSE,
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
+
+    ALTER TABLE log_settings ADD COLUMN IF NOT EXISTS voice_events BOOLEAN NOT NULL DEFAULT FALSE;
   `);
 }
 
@@ -41,6 +44,7 @@ async function getLogSettings(guildId) {
     message_events: true,
     member_events: true,
     moderation_events: true,
+    voice_events: false,
     updated_at: null,
   };
 }
@@ -53,19 +57,21 @@ async function updateLogSettings(guildId, settings = {}) {
   const messageEvents = boolOr(current.message_events, settings.messageEvents);
   const memberEvents = boolOr(current.member_events, settings.memberEvents);
   const moderationEvents = boolOr(current.moderation_events, settings.moderationEvents);
+  const voiceEvents = boolOr(current.voice_events, settings.voiceEvents);
 
   const res = await pool.query(
-    `INSERT INTO log_settings (guild_id, enabled, channel_id, message_events, member_events, moderation_events, updated_at)
-     VALUES ($1, $2, $3, $4, $5, $6, NOW())
+    `INSERT INTO log_settings (guild_id, enabled, channel_id, message_events, member_events, moderation_events, voice_events, updated_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
      ON CONFLICT (guild_id) DO UPDATE SET
        enabled=EXCLUDED.enabled,
        channel_id=EXCLUDED.channel_id,
        message_events=EXCLUDED.message_events,
        member_events=EXCLUDED.member_events,
        moderation_events=EXCLUDED.moderation_events,
+       voice_events=EXCLUDED.voice_events,
        updated_at=NOW()
      RETURNING *`,
-    [guildId, enabled, channelId, messageEvents, memberEvents, moderationEvents]
+    [guildId, enabled, channelId, messageEvents, memberEvents, moderationEvents, voiceEvents]
   );
   return res.rows[0] || getLogSettings(guildId);
 }

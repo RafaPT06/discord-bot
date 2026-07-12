@@ -1,56 +1,54 @@
 const { createCanvas } = require("canvas");
-const { hexFromColor, imageFromUrl, drawDefaultBackground, drawAccentShapes, roundRect, drawCircularImage, drawAvatarFallback } = require("./cardBase");
-const { drawPixelText, fitPixelText } = require("./pixelText");
-const { drawPixelEmojiText } = require("./unicodeText");
+const {
+  hexFromColor,
+  imageFromUrl,
+  drawDefaultBackground,
+  drawAccentShapes,
+  roundRect,
+  drawCircularImage,
+  drawAvatarFallback,
+} = require("./cardBase");
+const FONT_STACK = '"DejaVu Sans", "Liberation Sans", Arial, sans-serif';
 
-function renderMemberEventTemplate(messageTemplate, {
+function fitCanvasFont(ctx, value, maxWidth, startSize, minSize = 24, weight = 800) {
+  const text = String(value || "Unknown");
+  let size = startSize;
+  while (size > minSize) {
+    ctx.font = `${weight} ${size}px ${FONT_STACK}`;
+    if (ctx.measureText(text).width <= maxWidth) break;
+    size -= 2;
+  }
+  return size;
+}
+
+function drawCenteredText(ctx, value, x, y, maxWidth, startSize, options = {}) {
+  const text = String(value || "Unknown");
+  const weight = Number(options.weight || 800);
+  const size = fitCanvasFont(ctx, text, maxWidth, startSize, Number(options.minSize || 24), weight);
+  ctx.save();
+  ctx.font = `${weight} ${size}px ${FONT_STACK}`;
+  ctx.fillStyle = options.color || "#ffffff";
+  ctx.globalAlpha = Number(options.alpha ?? 1);
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(text, x, y);
+  ctx.restore();
+  return size;
+}
+
+function renderMemberEventTemplate(_messageTemplate, {
   type = "welcome",
   displayName,
   username,
-  guildName,
   memberNumber,
 } = {}) {
   const isGoodbye = String(type).toLowerCase() === "goodbye";
   const safeName = String(displayName || username || "Unknown");
-  const safeGuild = String(guildName || "this server");
-  const raw = String(messageTemplate || "").trim();
-
-  if (!raw) {
-    return {
-      headlineText: `${isGoodbye ? "GOODBYE" : "WELCOME"} ${safeName}`,
-      subText: isGoodbye ? "LEFT" : "TO",
-      guildText: safeGuild,
-    };
-  }
-
-  const rendered = raw
-    .replaceAll("{user}", safeName)
-    .replaceAll("{server}", safeGuild)
-    .replaceAll("{memberCount}", String(memberNumber || ""));
-  const lines = rendered.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
-
-  if (lines.length >= 3) {
-    const guildText = lines.pop();
-    const subText = lines.pop();
-    return {
-      headlineText: lines.join(" "),
-      subText,
-      guildText,
-    };
-  }
-
-  if (lines.length === 2) {
-    return {
-      headlineText: lines[0],
-      subText: isGoodbye ? "LEFT" : "TO",
-      guildText: lines[1],
-    };
-  }
-
   return {
-    headlineText: lines[0] || `${isGoodbye ? "GOODBYE" : "WELCOME"} ${safeName}`,
-    subText: isGoodbye ? "LEFT" : "TO",
-    guildText: safeGuild,
+    nameText: safeName,
+    memberText: memberNumber
+      ? (isGoodbye ? `MEMBER #${memberNumber}` : `YOU ARE MEMBER #${memberNumber}`)
+      : '',
   };
 }
 
@@ -60,107 +58,78 @@ async function createMemberEventCardBuffer({
   displayName,
   avatarUrl,
   memberNumber,
-  guildName,
   accentColor = 0x7c3aed,
   backgroundUrl,
-  messageTemplate,
   showMember = true,
   showAvatar = true,
 }) {
-  const EVENT_WIDTH = 1200;
-  const EVENT_HEIGHT = 650;
-
+  const width = 1200;
+  const height = 650;
   const accent = hexFromColor(accentColor);
-  const isGoodbye = String(type).toLowerCase() === "goodbye";
-  const safeName = String(displayName || username || "Unknown");
-  const safeGuild = String(guildName || "this server");
-  const memberText = memberNumber
-    ? `MEMBER #${memberNumber}`
-    : isGoodbye
-      ? "GOODBYE"
-      : "WELCOME";
-  const { headlineText, subText, guildText } = renderMemberEventTemplate(messageTemplate, {
+  const { nameText, memberText } = renderMemberEventTemplate(null, {
     type,
-    displayName: safeName,
+    displayName,
     username,
-    guildName: safeGuild,
     memberNumber,
   });
 
-  const canvas = createCanvas(EVENT_WIDTH, EVENT_HEIGHT);
+  const canvas = createCanvas(width, height);
   const ctx = canvas.getContext("2d");
 
   if (backgroundUrl) {
     try {
       const bg = await imageFromUrl(backgroundUrl);
-      const scale = Math.max(EVENT_WIDTH / bg.width, EVENT_HEIGHT / bg.height);
+      const scale = Math.max(width / bg.width, height / bg.height);
       const sw = bg.width * scale;
       const sh = bg.height * scale;
-
-      ctx.drawImage(bg, (EVENT_WIDTH - sw) / 2, (EVENT_HEIGHT - sh) / 2, sw, sh);
-      ctx.fillStyle = "rgba(0,0,0,0.66)";
-      ctx.fillRect(0, 0, EVENT_WIDTH, EVENT_HEIGHT);
+      ctx.drawImage(bg, (width - sw) / 2, (height - sh) / 2, sw, sh);
+      ctx.fillStyle = "rgba(0,0,0,0.62)";
+      ctx.fillRect(0, 0, width, height);
     } catch {
-      drawDefaultBackground(ctx, accent, EVENT_WIDTH, EVENT_HEIGHT);
+      drawDefaultBackground(ctx, accent, width, height);
     }
   } else {
-    drawDefaultBackground(ctx, accent, EVENT_WIDTH, EVENT_HEIGHT);
+    drawDefaultBackground(ctx, accent, width, height);
   }
 
-  drawAccentShapes(ctx, accent, EVENT_WIDTH, EVENT_HEIGHT);
+  drawAccentShapes(ctx, accent, width, height);
 
-  roundRect(ctx, 40, 55, EVENT_WIDTH - 80, EVENT_HEIGHT - 110, 18);
-  ctx.fillStyle = "rgba(0,0,0,0.50)";
+  roundRect(ctx, 54, 54, width - 108, height - 108, 30);
+  ctx.fillStyle = "rgba(8,10,17,0.76)";
   ctx.fill();
+  ctx.strokeStyle = "rgba(255,255,255,0.08)";
+  ctx.lineWidth = 2;
+  ctx.stroke();
 
-  if (showMember !== false) {
-    roundRect(ctx, 410, 80, 380, 54, 14);
-    ctx.fillStyle = "rgba(255,255,255,0.12)";
-    ctx.fill();
-
-    drawPixelText(
-      ctx,
-      memberText,
-      600,
-      98,
-      fitPixelText(memberText, 315, 4, 3),
-      "#ffffff",
-      "center",
-      0.95
-    );
-  }
-
+  const avatarSize = showAvatar === false ? 0 : 200;
   if (showAvatar !== false) {
+    const avatarX = (width - avatarSize) / 2;
+    const avatarY = 128;
     try {
       const avatar = await imageFromUrl(avatarUrl);
-      drawCircularImage(ctx, avatar, 505, 165, 170);
+      drawCircularImage(ctx, avatar, avatarX, avatarY, avatarSize);
     } catch {
-      drawAvatarFallback(ctx, 505, 165, 170);
+      drawAvatarFallback(ctx, avatarX, avatarY, avatarSize);
     }
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(width / 2, avatarY + avatarSize / 2, avatarSize / 2 + 8, 0, Math.PI * 2);
+    ctx.strokeStyle = "rgba(255,255,255,0.88)";
+    ctx.lineWidth = 6;
+    ctx.stroke();
+    ctx.restore();
   }
 
-  await drawPixelEmojiText(ctx, headlineText, 600, 395, {
-    maxWidth: 760,
-    startSize: 6,
-    minSize: 3,
-    align: "center",
-  });
-
-  await drawPixelEmojiText(ctx, subText, 600, 465, {
-    maxWidth: 500,
-    startSize: 4,
-    minSize: 3,
-    align: "center",
-    alpha: 0.75,
-  });
-
-  await drawPixelEmojiText(ctx, guildText, 600, 525, {
-    maxWidth: 760,
-    startSize: 5,
-    minSize: 3,
-    align: "center",
-    alpha: 0.9,
-  });
+  const nameY = showAvatar === false ? 300 : 410;
+  drawCenteredText(ctx, nameText, width / 2, nameY, 850, 66, { minSize: 30, weight: 850 });
+  if (showMember !== false && memberText) {
+    drawCenteredText(ctx, memberText, width / 2, nameY + 66, 760, 28, {
+      minSize: 20,
+      weight: 650,
+      alpha: 0.66,
+      color: "#e7e7ef",
+    });
+  }
 
   return canvas.toBuffer("image/png");
 }
