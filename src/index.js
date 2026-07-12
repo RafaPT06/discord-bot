@@ -40,7 +40,9 @@ const hostedProduction = String(process.env.NODE_ENV || "").toLowerCase() === "p
 if (!token) throw new Error("Missing BOT_TOKEN");
 if (!ownerId) throw new Error("Missing OWNER_ID");
 if (!databaseUrl) throw new Error("Missing DATABASE_URL");
-if (hostedProduction && !botApiToken) throw new Error("Missing BOT_API_TOKEN. The bot API cannot start unauthenticated in production.");
+if (hostedProduction && !botApiToken) {
+  console.warn("Warning: BOT_API_TOKEN is missing. Configure the same token on the bot and website Railway services to secure the bot API.");
+}
 
 const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildMessages, GatewayIntentBits.DirectMessages, GatewayIntentBits.MessageContent, GatewayIntentBits.GuildMessageReactions, GatewayIntentBits.GuildVoiceStates, GatewayIntentBits.GuildModeration],
