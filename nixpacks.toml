@@ -3,6 +3,7 @@ aptPkgs = [
   "fontconfig",
   "fonts-dejavu-core",
   "fonts-liberation",
+  "fonts-noto-core",
   "libcairo2-dev",
   "libpango1.0-dev",
   "libjpeg-dev",
