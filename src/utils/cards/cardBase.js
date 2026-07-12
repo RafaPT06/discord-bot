@@ -35,19 +35,69 @@ function roundRect(ctx, x, y, w, h, r) {
   ctx.closePath();
 }
 
+function imageUrlCandidates(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return [];
+
+  const candidates = new Set([raw]);
+  try {
+    const parsed = new URL(raw);
+    if (parsed.pathname.toLowerCase().endsWith(".gif")) {
+      const staticUrl = new URL(parsed);
+      staticUrl.pathname = staticUrl.pathname.replace(/\.gif$/i, ".png");
+      candidates.add(staticUrl.toString());
+    }
+    if (parsed.hostname === "cdn.discordapp.com") {
+      const mediaUrl = new URL(parsed);
+      mediaUrl.hostname = "media.discordapp.net";
+      candidates.add(mediaUrl.toString());
+    }
+  } catch {
+    // The loadImage fallback below will report the invalid URL.
+  }
+
+  return [...candidates];
+}
+
+async function fetchImage(candidate) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 12000);
+  try {
+    const res = await fetch(candidate, {
+      redirect: "follow",
+      signal: controller.signal,
+      headers: {
+        "User-Agent": "Mozilla/5.0 MeowzDiscordBot/1.0",
+        Accept: "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
+      },
+    });
+    if (!res.ok) throw new Error(`Failed to fetch image: ${res.status}`);
+    const type = String(res.headers.get("content-type") || "").toLowerCase();
+    if (type && !type.startsWith("image/")) throw new Error(`Unexpected image content type: ${type}`);
+    return loadImage(Buffer.from(await res.arrayBuffer()));
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 async function imageFromUrl(url) {
-  if (!url) throw new Error("Missing image URL");
+  const candidates = imageUrlCandidates(url);
+  if (!candidates.length) throw new Error("Missing image URL");
 
-  const res = await fetch(url, {
-    headers: {
-      "User-Agent": "Mozilla/5.0 DiscordBot LevelCard",
-    },
-  });
+  let lastError = null;
+  for (const candidate of candidates) {
+    try {
+      return await fetchImage(candidate);
+    } catch (err) {
+      lastError = err;
+    }
+  }
 
-  if (!res.ok) throw new Error(`Failed to fetch image: ${res.status}`);
-
-  const buffer = Buffer.from(await res.arrayBuffer());
-  return loadImage(buffer);
+  try {
+    return await loadImage(candidates[0]);
+  } catch (err) {
+    throw lastError || err;
+  }
 }
 
 function drawDefaultBackground(ctx, accent, width = WIDTH, height = HEIGHT) {
@@ -100,7 +150,7 @@ function drawAccentShapes(ctx, accent, width = WIDTH, height = HEIGHT) {
   ctx.fill();
 }
 
-function drawAvatarFallback(ctx, x, y, size) {
+function drawAvatarFallback(ctx, x, y, size, label = "?") {
   ctx.save();
 
   ctx.beginPath();
@@ -114,7 +164,14 @@ function drawAvatarFallback(ctx, x, y, size) {
   ctx.lineWidth = 8;
   ctx.stroke();
 
-  drawPixelText(ctx, "?", x + size / 2, y + size / 2 - 24, 10, "#ffffff", "center");
+  const initial = String(label || "?")
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^A-Za-z0-9]/g, "")
+    .charAt(0)
+    .toUpperCase() || "?";
+  const pixelSize = Math.max(7, Math.round(size / 20));
+  drawPixelText(ctx, initial, x + size / 2, y + size / 2 - (7 * pixelSize) / 2, pixelSize, "#ffffff", "center");
 
   ctx.restore();
 }
