@@ -222,7 +222,7 @@ function buildLevelUpEmbed({ member, oldLevel, newLevel, totalXp, addedRoles, si
       name: simulated ? "Level-up preview" : "Level up!",
       iconURL: member.user.displayAvatarURL({ size: 64 }),
     })
-    .setDescription(`${member} levelled up to **lvl ${newLevel}**${simulated ? " *(simulation)*" : ""}.`)
+    .setDescription(`${member} leveled up to **lvl ${newLevel}**${simulated ? " *(simulation)*" : ""}.`)
     .setThumbnail(member.user.displayAvatarURL({ size: 128 }))
     .addFields(
       { name: "Level", value: `**${oldLevel}** → **${newLevel}**`, inline: true },
@@ -346,7 +346,7 @@ async function handleLevelMessage(client, message) {
         title: `Level up! ${oldLevel} → ${newLevel}`,
       });
       const attachment = new AttachmentBuilder(image, { name: "level-up.png" });
-      await channel.send({ content: `${member} levelled up to **lvl ${newLevel}**!`, files: [attachment] }).catch(() => {});
+      await channel.send({ content: `${member} leveled up to **lvl ${newLevel}**!`, files: [attachment] }).catch(() => {});
       const stats = await getUserStats(message.guild.id, message.author.id).catch(() => ({}));
       await checkAchievementUnlocks({ guild: message.guild, member, level: newLevel, stats, channel }).catch(() => {});
     } catch (err) {

@@ -100,7 +100,28 @@ async function imageFromUrl(url) {
   }
 }
 
-function drawDefaultBackground(ctx, accent, width = WIDTH, height = HEIGHT) {
+function hashSeed(value) {
+  const text = String(value ?? "");
+  let hash = 2166136261;
+  for (let i = 0; i < text.length; i += 1) {
+    hash ^= text.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+function seededRandom(seed) {
+  let state = seed >>> 0 || 0x9e3779b9;
+  return () => {
+    state += 0x6d2b79f5;
+    let value = state;
+    value = Math.imul(value ^ (value >>> 15), value | 1);
+    value ^= value + Math.imul(value ^ (value >>> 7), value | 61);
+    return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function drawDefaultBackground(ctx, accent, width = WIDTH, height = HEIGHT, seed = null) {
   const gradient = ctx.createLinearGradient(0, 0, width, height);
 
   gradient.addColorStop(0, "#050505");
@@ -111,14 +132,17 @@ function drawDefaultBackground(ctx, accent, width = WIDTH, height = HEIGHT) {
   ctx.fillRect(0, 0, width, height);
 
   ctx.globalAlpha = 0.16;
+  const random = seed === null || seed === undefined || seed === ""
+    ? Math.random
+    : seededRandom(hashSeed(seed));
 
   for (let i = 0; i < 26; i += 1) {
     ctx.fillStyle = i % 2 ? "#ffffff" : accent;
     ctx.beginPath();
     ctx.arc(
-      Math.random() * width,
-      Math.random() * height,
-      60 + Math.random() * 150,
+      random() * width,
+      random() * height,
+      60 + random() * 150,
       0,
       Math.PI * 2
     );

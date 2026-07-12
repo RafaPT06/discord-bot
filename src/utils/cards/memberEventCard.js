@@ -120,7 +120,7 @@ function renderMemberEventTemplate(_messageTemplate, {
   return {
     nameText: safeName,
     memberText: memberNumber
-      ? (isGoodbye ? `MEMBER #${memberNumber}` : `YOU ARE MEMBER #${memberNumber}`)
+      ? `MEMBER #${memberNumber}`
       : (isGoodbye ? "THANKS FOR BEING HERE" : "WELCOME TO THE SERVER"),
   };
 }
@@ -137,7 +137,7 @@ async function createMemberEventCardBuffer({
   showAvatar = true,
 }) {
   const width = 1200;
-  const height = 650;
+  const height = 560;
   const accent = hexFromColor(accentColor);
   const { nameText, memberText } = renderMemberEventTemplate(null, {
     type,
@@ -146,6 +146,7 @@ async function createMemberEventCardBuffer({
     memberNumber,
   });
 
+  const backgroundSeed = `${type}:${nameText}:${memberNumber || 0}:${accent}`;
   const canvas = createCanvas(width, height);
   const ctx = canvas.getContext("2d");
 
@@ -159,25 +160,25 @@ async function createMemberEventCardBuffer({
       ctx.fillStyle = "rgba(0,0,0,0.62)";
       ctx.fillRect(0, 0, width, height);
     } catch {
-      drawDefaultBackground(ctx, accent, width, height);
+      drawDefaultBackground(ctx, accent, width, height, backgroundSeed);
     }
   } else {
-    drawDefaultBackground(ctx, accent, width, height);
+    drawDefaultBackground(ctx, accent, width, height, backgroundSeed);
   }
 
   drawAccentShapes(ctx, accent, width, height);
 
-  roundRect(ctx, 54, 54, width - 108, height - 108, 30);
+  roundRect(ctx, 54, 44, width - 108, height - 88, 30);
   ctx.fillStyle = "rgba(8,10,17,0.76)";
   ctx.fill();
   ctx.strokeStyle = "rgba(255,255,255,0.08)";
   ctx.lineWidth = 2;
   ctx.stroke();
 
-  const avatarSize = showAvatar === false ? 0 : 200;
+  const avatarSize = showAvatar === false ? 0 : 178;
   if (showAvatar !== false) {
     const avatarX = (width - avatarSize) / 2;
-    const avatarY = 128;
+    const avatarY = 82;
     try {
       const avatar = await imageFromUrl(avatarUrl);
       drawCircularImage(ctx, avatar, avatarX, avatarY, avatarSize);
@@ -193,11 +194,11 @@ async function createMemberEventCardBuffer({
     ctx.restore();
   }
 
-  const nameY = showAvatar === false ? 300 : 410;
-  drawCenteredText(ctx, nameText, width / 2, nameY, 850, 66, { minSize: 30, weight: 800 });
+  const nameY = showAvatar === false ? 255 : 330;
+  drawCenteredText(ctx, nameText, width / 2, nameY, 900, 72, { minSize: 32, weight: 800 });
   if (showMember !== false && memberText) {
-    drawCenteredText(ctx, memberText, width / 2, nameY + 66, 760, 28, {
-      minSize: 20,
+    drawCenteredText(ctx, memberText, width / 2, nameY + 62, 820, 30, {
+      minSize: 21,
       weight: 600,
       alpha: 0.72,
       color: "#e7e7ef",

@@ -33,10 +33,14 @@ const {
 const token = process.env.BOT_TOKEN;
 const ownerId = process.env.OWNER_ID;
 const databaseUrl = process.env.DATABASE_URL;
+const botApiToken = process.env.BOT_API_TOKEN;
+const hostedProduction = String(process.env.NODE_ENV || "").toLowerCase() === "production"
+  || Boolean(process.env.RAILWAY_PROJECT_ID || process.env.RAILWAY_ENVIRONMENT_ID || process.env.RAILWAY_SERVICE_ID);
 
 if (!token) throw new Error("Missing BOT_TOKEN");
 if (!ownerId) throw new Error("Missing OWNER_ID");
 if (!databaseUrl) throw new Error("Missing DATABASE_URL");
+if (hostedProduction && !botApiToken) throw new Error("Missing BOT_API_TOKEN. The bot API cannot start unauthenticated in production.");
 
 const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildMessages, GatewayIntentBits.DirectMessages, GatewayIntentBits.MessageContent, GatewayIntentBits.GuildMessageReactions, GatewayIntentBits.GuildVoiceStates, GatewayIntentBits.GuildModeration],
@@ -240,21 +244,21 @@ client.on(Events.MessageCreate, async (message) => {
 
 
 client.on(Events.GuildMemberAdd, async (member) => {
-  try {
-    await handleMemberJoin(member);
-    await handleLoggedMemberJoin(member);
-  } catch (err) {
-    console.error("Welcome message error:", err);
-  }
+  const [welcomeResult, logResult] = await Promise.allSettled([
+    handleMemberJoin(member),
+    handleLoggedMemberJoin(member),
+  ]);
+  if (welcomeResult.status === "rejected") console.error("Welcome message error:", welcomeResult.reason);
+  if (logResult.status === "rejected") console.error("Member join log error:", logResult.reason);
 });
 
 client.on(Events.GuildMemberRemove, async (member) => {
-  try {
-    await handleMemberLeave(member);
-    await handleLoggedMemberLeave(member);
-  } catch (err) {
-    console.error("Goodbye message error:", err);
-  }
+  const [goodbyeResult, logResult] = await Promise.allSettled([
+    handleMemberLeave(member),
+    handleLoggedMemberLeave(member),
+  ]);
+  if (goodbyeResult.status === "rejected") console.error("Goodbye message error:", goodbyeResult.reason);
+  if (logResult.status === "rejected") console.error("Member leave log error:", logResult.reason);
 });
 
 

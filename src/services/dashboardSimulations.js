@@ -98,7 +98,7 @@ async function simulateLevelUp(guild, member) {
     title: `Level up! ${previousLevel} → ${level}`,
   });
   await channel.send({
-    content: `${member} levelled up to **lvl ${level}**! *(simulation)*`,
+    content: `${member} leveled up to **lvl ${level}**! *(simulation)*`,
     files: [new AttachmentBuilder(image, { name: 'level-up-simulation.png' })],
   });
   return result('level-up', `Level-up simulation sent to #${channel.name}.`, channel, { level, previousLevel });

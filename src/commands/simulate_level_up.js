@@ -76,7 +76,7 @@ module.exports = {
 
       const attachment = new AttachmentBuilder(image, { name: "level-up-preview.png" });
       return interaction.reply({
-        content: `${member} levelled up to **lvl ${previewLevel}**! *(simulation)*`,
+        content: `${member} leveled up to **lvl ${previewLevel}**! *(simulation)*`,
         files: [attachment],
         ephemeral: !isPublic,
       });
