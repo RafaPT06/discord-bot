@@ -1,0 +1,41 @@
+name: Meowz bot API token deployment hotfix
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/meowz-api-token-hotfix.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Keep deployment online while warning about missing token
+        run: |
+          python <<'PY'
+          from pathlib import Path
+          path = Path('src/index.js')
+          text = path.read_text()
+          old = 'if (hostedProduction && !botApiToken) throw new Error("Missing BOT_API_TOKEN. The bot API cannot start unauthenticated in production.");'
+          new = '''if (hostedProduction && !botApiToken) {\n  console.warn("Warning: BOT_API_TOKEN is missing. Configure the same token on the bot and website Railway services to secure the bot API.");\n}'''
+          if old not in text and new not in text:
+              raise SystemExit('Expected BOT_API_TOKEN startup check was not found.')
+          path.write_text(text.replace(old, new))
+          PY
+          node --check src/index.js
+
+      - name: Commit hotfix
+        run: |
+          git config user.name "Meowz Automation"
+          git config user.email "actions@github.com"
+          git add src/index.js
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Keep bot online when API token is not configured"
+          git push
