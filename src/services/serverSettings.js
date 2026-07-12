@@ -79,8 +79,15 @@ async function ensureModerationTables() {
       automod_enabled BOOLEAN NOT NULL DEFAULT FALSE,
       mod_log_channel_id TEXT,
       blocked_words TEXT NOT NULL DEFAULT '',
+      anti_spam BOOLEAN NOT NULL DEFAULT FALSE,
+      link_filter BOOLEAN NOT NULL DEFAULT FALSE,
+      invite_filter BOOLEAN NOT NULL DEFAULT FALSE,
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
+
+    ALTER TABLE moderation_settings ADD COLUMN IF NOT EXISTS anti_spam BOOLEAN NOT NULL DEFAULT FALSE;
+    ALTER TABLE moderation_settings ADD COLUMN IF NOT EXISTS link_filter BOOLEAN NOT NULL DEFAULT FALSE;
+    ALTER TABLE moderation_settings ADD COLUMN IF NOT EXISTS invite_filter BOOLEAN NOT NULL DEFAULT FALSE;
   `);
 }
 
@@ -94,6 +101,9 @@ async function getModerationSettings(guildId) {
     automod_enabled: false,
     mod_log_channel_id: null,
     blocked_words: '',
+    anti_spam: false,
+    link_filter: false,
+    invite_filter: false,
     updated_at: null,
   };
 }
@@ -109,18 +119,25 @@ async function updateModerationSettings(guildId, settings = {}) {
     ? String(settings.blockedWords || '').trim().slice(0, 2000)
     : current.blocked_words;
 
+  const antiSpam = typeof settings.antiSpam === 'boolean' ? settings.antiSpam : Boolean(current.anti_spam);
+  const linkFilter = typeof settings.linkFilter === 'boolean' ? settings.linkFilter : Boolean(current.link_filter);
+  const inviteFilter = typeof settings.inviteFilter === 'boolean' ? settings.inviteFilter : Boolean(current.invite_filter);
+
   const res = await pool.query(
-    `INSERT INTO moderation_settings (guild_id, enabled, warnings_enabled, automod_enabled, mod_log_channel_id, blocked_words, updated_at)
-     VALUES ($1, $2, $3, $4, $5, $6, NOW())
+    `INSERT INTO moderation_settings (guild_id, enabled, warnings_enabled, automod_enabled, mod_log_channel_id, blocked_words, anti_spam, link_filter, invite_filter, updated_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
      ON CONFLICT (guild_id) DO UPDATE SET
        enabled=EXCLUDED.enabled,
        warnings_enabled=EXCLUDED.warnings_enabled,
        automod_enabled=EXCLUDED.automod_enabled,
        mod_log_channel_id=EXCLUDED.mod_log_channel_id,
        blocked_words=EXCLUDED.blocked_words,
+       anti_spam=EXCLUDED.anti_spam,
+       link_filter=EXCLUDED.link_filter,
+       invite_filter=EXCLUDED.invite_filter,
        updated_at=NOW()
      RETURNING *`,
-    [guildId, enabled, warningsEnabled, automodEnabled, modLogChannelId, blockedWords]
+    [guildId, enabled, warningsEnabled, automodEnabled, modLogChannelId, blockedWords, antiSpam, linkFilter, inviteFilter]
   );
   return res.rows[0] || getModerationSettings(guildId);
 }
