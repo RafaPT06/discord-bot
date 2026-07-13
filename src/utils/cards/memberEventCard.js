@@ -148,28 +148,6 @@ function drawGoodbyeBadge(ctx, centerX, y) {
   });
 }
 
-function drawMemberBadge(ctx, centerX, y, text) {
-  const width = Math.max(190, Math.min(330, 118 + String(text || "").length * 11));
-  const height = 42;
-  const x = centerX - width / 2;
-
-  ctx.save();
-  roundRect(ctx, x, y, width, height, height / 2);
-  ctx.fillStyle = brandRgba(0.10);
-  ctx.fill();
-  ctx.strokeStyle = brandRgba(0.24);
-  ctx.lineWidth = 2;
-  ctx.stroke();
-  ctx.restore();
-
-  drawCenteredText(ctx, text, centerX, y + height / 2, width - 28, 22, {
-    minSize: 17,
-    weight: 600,
-    alpha: 0.92,
-    color: BRAND_PURPLE,
-  });
-}
-
 function renderMemberEventTemplate(_messageTemplate, {
   type = "welcome",
   displayName,
@@ -270,10 +248,6 @@ async function createMemberEventCardBuffer({
       alpha: 0.78,
       color: "#f4f1fa",
     });
-
-    if (showMember !== false && memberNumber) {
-      drawMemberBadge(ctx, width / 2, nameY + 94, `MEMBER #${memberNumber}`);
-    }
   } else {
     const nameY = showAvatar === false ? 255 : 330;
     drawCenteredText(ctx, nameText, width / 2, nameY, 900, 72, { minSize: 32, weight: 800 });
