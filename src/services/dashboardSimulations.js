@@ -63,7 +63,17 @@ function result(event, message, channel = null, extra = {}) {
   };
 }
 
-async function removeGuildFromDashboard(guild) {
+async function removeGuildFromDashboard(client, guild, options = {}) {
+  if (!process.env.BOT_API_TOKEN) {
+    throw Object.assign(new Error('BOT_API_TOKEN must be configured before remote server removal can be used.'), { statusCode: 503 });
+  }
+
+  const ownerId = botOwnerId(client);
+  const requestedBy = String(options.userId || '').trim();
+  if (!ownerId || requestedBy !== ownerId) {
+    throw Object.assign(new Error('Only the configured bot owner can remove Meowz from a server.'), { statusCode: 403 });
+  }
+
   const guildId = guild.id;
   const guildName = guild.name;
   await guild.leave();
@@ -71,6 +81,7 @@ async function removeGuildFromDashboard(guild) {
     guildId,
     guildName,
     removed: true,
+    requestedBy,
   });
 }
 
@@ -186,7 +197,7 @@ async function runDashboardSimulation(client, guild, event, options = {}) {
       online: client.isReady(),
     });
   }
-  if (normalized === 'owner-remove-guild') return removeGuildFromDashboard(guild);
+  if (normalized === 'owner-remove-guild') return removeGuildFromDashboard(client, guild, options);
 
   const member = await resolveMember(guild, options.userId);
   if (normalized === 'welcome' || normalized === 'goodbye') return simulateWelcomeEvent(guild, member, normalized);
