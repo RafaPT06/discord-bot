@@ -116,74 +116,6 @@ function drawCenteredText(ctx, value, x, y, maxWidth, startSize, options = {}) {
   return size;
 }
 
-function strokeRoundedRect(ctx, x, y, width, height, radius, color, lineWidth) {
-  ctx.save();
-  roundRect(ctx, x, y, width, height, radius);
-  ctx.strokeStyle = color;
-  ctx.lineWidth = lineWidth;
-  ctx.stroke();
-  ctx.restore();
-}
-
-function drawGoodbyeFrame(ctx, width, height) {
-  ctx.save();
-
-  const glow = ctx.createRadialGradient(width / 2, height / 2, 40, width / 2, height / 2, 520);
-  glow.addColorStop(0, brandRgba(0.20));
-  glow.addColorStop(0.55, brandRgba(0.08));
-  glow.addColorStop(1, "rgba(0,0,0,0)");
-  ctx.fillStyle = glow;
-  ctx.fillRect(0, 0, width, height);
-
-  strokeRoundedRect(ctx, 64, 72, width - 128, height - 144, 58, brandRgba(0.78), 28);
-  strokeRoundedRect(ctx, 86, 88, width - 172, height - 176, 48, brandRgba(0.24), 5);
-
-  ctx.restore();
-}
-
-function drawGoodbyeAtmosphere(ctx, width, height) {
-  ctx.save();
-  const glow = ctx.createRadialGradient(width / 2, 214, 0, width / 2, 214, 390);
-  glow.addColorStop(0, brandRgba(0.22));
-  glow.addColorStop(0.5, brandRgba(0.10));
-  glow.addColorStop(1, "rgba(0,0,0,0)");
-  ctx.fillStyle = glow;
-  ctx.fillRect(110, 50, width - 220, height - 100);
-  ctx.restore();
-}
-
-function drawGoodbyeBadge(ctx, centerX, y) {
-  const width = 250;
-  const height = 46;
-  const x = centerX - width / 2;
-
-  ctx.save();
-  roundRect(ctx, x, y, width, height, height / 2);
-  ctx.fillStyle = brandRgba(0.16);
-  ctx.fill();
-  ctx.strokeStyle = brandRgba(0.62);
-  ctx.lineWidth = 2;
-  ctx.stroke();
-  ctx.restore();
-
-  drawCenteredText(ctx, "UNTIL NEXT TIME", centerX, y + height / 2, width - 30, 22, {
-    minSize: 17,
-    weight: 800,
-    color: BRAND_PURPLE,
-  });
-}
-
-function drawGoodbyeDivider(ctx, centerX, y, width = 270) {
-  const gradient = ctx.createLinearGradient(centerX - width / 2, y, centerX + width / 2, y);
-  gradient.addColorStop(0, "rgba(139,92,246,0)");
-  gradient.addColorStop(0.5, brandRgba(0.58));
-  gradient.addColorStop(1, "rgba(139,92,246,0)");
-  ctx.save();
-  ctx.fillStyle = gradient;
-  ctx.fillRect(centerX - width / 2, y, width, 2);
-  ctx.restore();
-}
-
 function renderMemberEventTemplate(_messageTemplate, {
   type = "welcome",
   displayName,
@@ -244,29 +176,18 @@ async function createMemberEventCardBuffer({
     drawDefaultBackground(ctx, eventAccent, width, height, backgroundSeed);
   }
 
-  if (isGoodbye) {
-    drawGoodbyeFrame(ctx, width, height);
-    roundRect(ctx, 112, 52, width - 224, height - 104, 42);
-    ctx.fillStyle = "rgba(8,8,17,0.88)";
-    ctx.fill();
-    ctx.strokeStyle = brandRgba(0.28);
-    ctx.lineWidth = 2;
-    ctx.stroke();
-    drawGoodbyeAtmosphere(ctx, width, height);
-  } else {
-    drawAccentShapes(ctx, eventAccent, width, height);
-    roundRect(ctx, 54, 44, width - 108, height - 88, 30);
-    ctx.fillStyle = "rgba(8,10,17,0.76)";
-    ctx.fill();
-    ctx.strokeStyle = brandRgba(0.16);
-    ctx.lineWidth = 2;
-    ctx.stroke();
-  }
+  // Welcome and goodbye cards intentionally share the exact same outer shape,
+  // accent geometry, glass panel, avatar size, and vertical layout.
+  drawAccentShapes(ctx, eventAccent, width, height);
+  roundRect(ctx, 54, 44, width - 108, height - 88, 30);
+  ctx.fillStyle = "rgba(8,10,17,0.76)";
+  ctx.fill();
+  ctx.strokeStyle = brandRgba(0.16);
+  ctx.lineWidth = 2;
+  ctx.stroke();
 
-  const avatarSize = showAvatar === false ? 0 : (isGoodbye ? 154 : 178);
-  const avatarY = isGoodbye ? 132 : 82;
-
-  if (isGoodbye) drawGoodbyeBadge(ctx, width / 2, 74);
+  const avatarSize = showAvatar === false ? 0 : 178;
+  const avatarY = 82;
 
   if (showAvatar !== false) {
     const avatarX = (width - avatarSize) / 2;
@@ -281,33 +202,26 @@ async function createMemberEventCardBuffer({
     ctx.arc(width / 2, avatarY + avatarSize / 2, avatarSize / 2 + 9, 0, Math.PI * 2);
     ctx.strokeStyle = brandRgba(0.96);
     ctx.lineWidth = 6;
-    ctx.shadowColor = brandRgba(0.48);
-    ctx.shadowBlur = 22;
+    ctx.shadowColor = brandRgba(0.34);
+    ctx.shadowBlur = 16;
     ctx.stroke();
     ctx.restore();
   }
 
+  const nameY = showAvatar === false ? 255 : 330;
+
   if (isGoodbye) {
-    const nameY = showAvatar === false ? 252 : 350;
-    drawCenteredText(ctx, `GOODBYE ${nameText}`, width / 2, nameY, 820, 62, {
+    drawCenteredText(ctx, `GOODBYE ${nameText}`, width / 2, nameY, 900, 64, {
       minSize: 30,
       weight: 800,
     });
-    drawGoodbyeDivider(ctx, width / 2, nameY + 48);
-    drawCenteredText(ctx, "FROM", width / 2, nameY + 78, 240, 20, {
-      minSize: 16,
-      weight: 700,
-      alpha: 0.72,
-      color: BRAND_PURPLE,
-    });
-    drawCenteredText(ctx, safeGuildName, width / 2, nameY + 118, 760, 34, {
-      minSize: 22,
+    drawCenteredText(ctx, `FROM ${safeGuildName}`, width / 2, nameY + 62, 820, 30, {
+      minSize: 20,
       weight: 700,
       alpha: 0.92,
-      color: "#f4f1fa",
+      color: BRAND_PURPLE,
     });
   } else {
-    const nameY = showAvatar === false ? 255 : 330;
     drawCenteredText(ctx, nameText, width / 2, nameY, 900, 72, { minSize: 32, weight: 800 });
     if (showMember !== false && memberText) {
       drawCenteredText(ctx, memberText, width / 2, nameY + 62, 820, 30, {
