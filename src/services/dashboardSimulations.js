@@ -63,6 +63,17 @@ function result(event, message, channel = null, extra = {}) {
   };
 }
 
+async function removeGuildFromDashboard(guild) {
+  const guildId = guild.id;
+  const guildName = guild.name;
+  await guild.leave();
+  return result('owner-remove-guild', `Meowz left ${guildName}.`, null, {
+    guildId,
+    guildName,
+    removed: true,
+  });
+}
+
 async function simulateWelcomeEvent(guild, member, type) {
   const settings = await getWelcomeSettings(guild.id);
   const isGoodbye = type === 'goodbye';
@@ -175,6 +186,7 @@ async function runDashboardSimulation(client, guild, event, options = {}) {
       online: client.isReady(),
     });
   }
+  if (normalized === 'owner-remove-guild') return removeGuildFromDashboard(guild);
 
   const member = await resolveMember(guild, options.userId);
   if (normalized === 'welcome' || normalized === 'goodbye') return simulateWelcomeEvent(guild, member, normalized);
