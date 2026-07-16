@@ -6,53 +6,46 @@ let currentStatus = "online"; // dot status (online/idle/dnd/invisible)
 let rotationEnabled = false;
 let intervalMs = 30_000;
 
-function formatUptime(seconds) {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = Math.floor(seconds % 60);
-  if (h > 0) return `${h}h ${m}m`;
-  if (m > 0) return `${m}m ${s}s`;
-  return `${s}s`;
-}
-
-async function buildActivityText(client) {
+async function buildActivity() {
   const maintenance = await getMaintenanceEnabled().catch(() => false);
 
   if (maintenance) {
-    // Maintenance ON: show an updating message (activity only)
-    return "Updating…";
+    return {
+      name: "Updating…",
+      type: ActivityType.Watching,
+    };
   }
 
-  const guilds = client?.guilds?.cache?.size || 0;
-  const uptime = formatUptime(process.uptime());
-  return `Serving ${guilds} server${guilds === 1 ? "" : "s"} • ${uptime}`;
+  return {
+    name: "Custom Status",
+    type: ActivityType.Custom,
+    state: "🎉 Happy Birthday Rafa!",
+  };
 }
 
 async function applyPresence(client) {
   if (!client?.user) return;
 
-  const name = await buildActivityText(client);
+  const activity = await buildActivity();
 
-  // IMPORTANT: maintenance does NOT change dot status — only command does
+  // Maintenance changes only the activity; the configured dot status is preserved.
   try {
     client.user.setPresence({
       status: currentStatus,
-      activities: [{ name, type: ActivityType.Watching }],
+      activities: [activity],
     });
-  } catch {}
+  } catch (error) {
+    console.error("Failed to update bot presence:", error);
+  }
 }
 
 function startPresenceRotation(client, opts = {}) {
-  // rotationEnabled is optional; by default we just refresh every 30s to keep uptime current
   rotationEnabled = Boolean(opts.rotationEnabled ?? false);
   intervalMs = Math.max(10_000, Number(opts.intervalMs || intervalMs));
 
   if (timer) clearInterval(timer);
 
-  // Always apply once immediately
   applyPresence(client);
-
-  // Keep refreshing so uptime updates on the activity line
   timer = setInterval(() => {
     applyPresence(client);
   }, intervalMs);
@@ -67,7 +60,6 @@ async function refreshPresenceRotation(client) {
   await applyPresence(client);
 }
 
-// Dot status setter (only via command)
 async function setDotStatus(client, status) {
   const allowed = new Set(["online", "idle", "dnd", "invisible"]);
   if (!allowed.has(status)) throw new Error("Invalid status. Use: online, idle, dnd, invisible");
