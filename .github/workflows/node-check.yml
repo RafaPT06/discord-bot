@@ -1,0 +1,39 @@
+name: Node Check
+
+on:
+  pull_request:
+    paths:
+      - 'index.js'
+      - 'src/**/*.js'
+      - 'package.json'
+      - '.github/workflows/node-check.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'index.js'
+      - 'src/**/*.js'
+      - 'package.json'
+      - '.github/workflows/node-check.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  node-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Validate JavaScript syntax
+        run: |
+          node --check index.js
+          node --check src/web/roleCreationPatch.js
