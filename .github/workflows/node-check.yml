@@ -36,5 +36,7 @@ jobs:
       - name: Validate JavaScript syntax
         run: |
           node --check index.js
+          node --check src/services/dashboardRoles.js
           node --check src/web/roleCreationPatch.js
           node --check src/web/roleDeletionPatch.js
+          node --check src/web/dashboardRoleListPatch.js
