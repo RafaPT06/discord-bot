@@ -1,5 +1,6 @@
 const express = require('express');
 const { PermissionFlagsBits } = require('discord.js');
+const { getDashboardRoleRecord, trackDashboardRole } = require('../services/dashboardRoles');
 
 let installed = false;
 let listenPatched = false;
@@ -26,7 +27,7 @@ function normalizeRoleName(value) {
   return name;
 }
 
-function rolePayload(guild, role) {
+function rolePayload(guild, role, record = null) {
   const me = guild.members.me;
   const editable = Boolean(
     role
@@ -43,6 +44,9 @@ function rolePayload(guild, role) {
     position: role.position || 0,
     managed: Boolean(role.managed),
     editable,
+    createdByMeowz: Boolean(record),
+    dashboardCreatedAt: record?.created_at || null,
+    dashboardCreatedBy: record?.created_by || null,
   };
 }
 
@@ -70,9 +74,16 @@ async function createDashboardRole(req, res) {
     const name = normalizeRoleName(req.body?.name);
     const duplicate = guild.roles.cache.find((role) => !role.managed && role.name.toLowerCase() === name.toLowerCase());
     if (duplicate) {
-      const role = rolePayload(guild, duplicate);
+      const record = await getDashboardRoleRecord(guild.id, duplicate.id);
+      const role = rolePayload(guild, duplicate, record);
       if (!role.editable) {
         return res.status(409).json({ ok: false, error: 'A role with this name already exists but Meowz cannot manage it.' });
+      }
+      if (!record) {
+        return res.status(409).json({
+          ok: false,
+          error: 'A role with this name already exists, but it was not created by Meowz. Use a different name so dashboard reward roles stay isolated.',
+        });
       }
       return res.json({
         ok: true,
@@ -80,7 +91,7 @@ async function createDashboardRole(req, res) {
         existing: true,
         guildId: guild.id,
         role,
-        message: 'An editable role with this name already exists and was selected.',
+        message: 'An existing Meowz-created role with this name was selected.',
         updatedAt: new Date().toISOString(),
       });
     }
@@ -91,7 +102,8 @@ async function createDashboardRole(req, res) {
       : 'Created from the Meowz dashboard for a level reward';
 
     const createdRole = await guild.roles.create({ name, reason });
-    const role = rolePayload(guild, createdRole);
+    const record = await trackDashboardRole(guild.id, createdRole, { createdBy: createdBy || null });
+    const role = rolePayload(guild, createdRole, record);
 
     return res.status(201).json({
       ok: true,
