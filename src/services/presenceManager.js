@@ -19,7 +19,7 @@ async function buildActivity() {
   return {
     name: "Custom Status",
     type: ActivityType.Custom,
-    state: "🎉 Happy Birthday Rafa!",
+    state: "Casey is gay!",
   };
 }
 
