@@ -3,30 +3,69 @@ const { getMaintenanceEnabled } = require("./maintenance");
 
 let timer = null;
 let currentStatus = "online"; // dot status (online/idle/dnd/invisible)
-let rotationEnabled = false;
+let rotationEnabled = true;
 let intervalMs = 30_000;
+let activityIndex = 0;
 
-async function buildActivity() {
+function pluralize(count, singular, plural = `${singular}s`) {
+  return Number(count) === 1 ? singular : plural;
+}
+
+function buildUsefulActivities(client) {
+  const guildCount = client?.guilds?.cache?.size || 0;
+  const memberCount = client?.guilds?.cache?.reduce(
+    (total, guild) => total + Math.max(0, Number(guild.memberCount) || 0),
+    0,
+  ) || 0;
+
+  return [
+    {
+      name: "Custom Status",
+      type: ActivityType.Custom,
+      state: "Use /help for commands",
+    },
+    {
+      name: "Custom Status",
+      type: ActivityType.Custom,
+      state: `Serving ${guildCount.toLocaleString()} ${pluralize(guildCount, "server")}`,
+    },
+    {
+      name: "Custom Status",
+      type: ActivityType.Custom,
+      state: `Helping ${memberCount.toLocaleString()} ${pluralize(memberCount, "member")}`,
+    },
+    {
+      name: "Custom Status",
+      type: ActivityType.Custom,
+      state: "Dashboard: meowz.up.railway.app",
+    },
+  ];
+}
+
+async function buildActivity(client) {
   const maintenance = await getMaintenanceEnabled().catch(() => false);
 
   if (maintenance) {
     return {
-      name: "Updating…",
+      name: "Maintenance in progress",
       type: ActivityType.Watching,
     };
   }
 
-  return {
-    name: "Custom Status",
-    type: ActivityType.Custom,
-    state: "Casey is gay!!",
-  };
+  const activities = buildUsefulActivities(client);
+  const activity = activities[activityIndex % activities.length];
+
+  if (rotationEnabled) {
+    activityIndex = (activityIndex + 1) % activities.length;
+  }
+
+  return activity;
 }
 
 async function applyPresence(client) {
   if (!client?.user) return;
 
-  const activity = await buildActivity();
+  const activity = await buildActivity(client);
 
   // Maintenance changes only the activity; the configured dot status is preserved.
   try {
@@ -40,8 +79,9 @@ async function applyPresence(client) {
 }
 
 function startPresenceRotation(client, opts = {}) {
-  rotationEnabled = Boolean(opts.rotationEnabled ?? false);
+  rotationEnabled = Boolean(opts.rotationEnabled ?? true);
   intervalMs = Math.max(10_000, Number(opts.intervalMs || intervalMs));
+  activityIndex = 0;
 
   if (timer) clearInterval(timer);
 
