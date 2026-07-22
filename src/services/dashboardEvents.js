@@ -4,6 +4,8 @@ const { isUserModerationBypassed } = require('./moderationAccess');
 const { BRAND_COLORS } = require('../utils/brandColors');
 
 const recentMessages = new Map();
+const HTTP_URL_PATTERN = /https?:\/\/[^\s<]+/gi;
+const TRAILING_URL_PUNCTUATION = /[\])}>.,!?;:'"]+$/;
 
 function trim(text, max = 900) {
   const value = String(text || '').trim();
@@ -110,8 +112,64 @@ function hasDiscordInvite(content) {
   return /(discord\.gg|discord\.com\/invite|discordapp\.com\/invite)\//i.test(content || '');
 }
 
+function extractHttpUrls(content) {
+  return (String(content || '').match(HTTP_URL_PATTERN) || [])
+    .map((value) => value.replace(TRAILING_URL_PUNCTUATION, ''))
+    .filter((value) => {
+      try {
+        const url = new URL(value);
+        return url.protocol === 'http:' || url.protocol === 'https:';
+      } catch {
+        return false;
+      }
+    });
+}
+
+function hostnameMatches(hostname, domain) {
+  return hostname === domain || hostname.endsWith(`.${domain}`);
+}
+
+function hasGifExtension(pathname) {
+  return /\.(?:gif|gifv)$/i.test(pathname);
+}
+
+function isTrustedGifUrl(value) {
+  let url;
+  try {
+    url = new URL(value);
+  } catch {
+    return false;
+  }
+
+  const hostname = url.hostname.toLowerCase().replace(/\.$/, '');
+  const pathname = url.pathname;
+
+  if (hostnameMatches(hostname, 'tenor.com')) {
+    return hostname === 'tenor.com' || hostname === 'www.tenor.com'
+      ? pathname.toLowerCase().startsWith('/view/')
+      : hasGifExtension(pathname);
+  }
+
+  if (hostnameMatches(hostname, 'giphy.com')) {
+    if (hostname === 'giphy.com' || hostname === 'www.giphy.com') {
+      return pathname.toLowerCase().startsWith('/gifs/');
+    }
+    return pathname.toLowerCase().startsWith('/media/') || hasGifExtension(pathname);
+  }
+
+  if (hostname === 'cdn.discordapp.com' || hostname === 'media.discordapp.net') {
+    return pathname.toLowerCase().startsWith('/attachments/') && hasGifExtension(pathname);
+  }
+
+  if (hostname === 'i.imgur.com') {
+    return hasGifExtension(pathname);
+  }
+
+  return false;
+}
+
 function hasExternalLink(content) {
-  return /https?:\/\//i.test(content || '');
+  return extractHttpUrls(content).some((url) => !isTrustedGifUrl(url));
 }
 
 function isSpam(message) {
@@ -177,4 +235,7 @@ module.exports = {
   handleModerationMessage,
   sendLog,
   sendModerationLog,
+  extractHttpUrls,
+  isTrustedGifUrl,
+  hasExternalLink,
 };

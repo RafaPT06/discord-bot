@@ -91,6 +91,7 @@ Optional:
 Overview includes Quick Actions buttons (restricted) for Maintenance toggle, Backup Now, Feed Test, Deploy Test, and Clear Logs.
 
 - Panel Quick Actions include **Setup Channels** (creates category + system channels and configures them).
+- The moderation link filter allows recognized GIF links from Tenor, Giphy, Discord's attachment CDN and direct Imgur GIFs, while continuing to block other links from non-trusted users.
 
 
 
