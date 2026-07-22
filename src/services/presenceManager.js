@@ -6,6 +6,14 @@ let currentStatus = "online"; // dot status (online/idle/dnd/invisible)
 let rotationEnabled = true;
 let intervalMs = 30_000;
 let activityIndex = 0;
+let bubbleText = null;
+
+function normalizeBubbleText(value) {
+  const text = String(value || "").trim();
+  if (!text) throw new Error("Bubble status text cannot be empty.");
+  if (text.length > 128) throw new Error("Bubble status text cannot exceed 128 characters.");
+  return text;
+}
 
 function pluralize(count, singular, plural = `${singular}s`) {
   return Number(count) === 1 ? singular : plural;
@@ -49,6 +57,14 @@ async function buildActivity(client) {
     return {
       name: "Maintenance in progress",
       type: ActivityType.Watching,
+    };
+  }
+
+  if (bubbleText) {
+    return {
+      name: "Custom Status",
+      type: ActivityType.Custom,
+      state: bubbleText,
     };
   }
 
@@ -109,12 +125,19 @@ async function setDotStatus(client, status) {
   return currentStatus;
 }
 
+async function setBubbleText(client, value) {
+  bubbleText = normalizeBubbleText(value);
+  await applyPresence(client);
+  return bubbleText;
+}
+
 function getPresenceState() {
   return {
     status: currentStatus,
     intervalMs,
     rotationEnabled,
     running: Boolean(timer),
+    bubbleText,
   };
 }
 
@@ -123,5 +146,7 @@ module.exports = {
   stopPresenceRotation,
   refreshPresenceRotation,
   setDotStatus,
+  setBubbleText,
   getPresenceState,
+  normalizeBubbleText,
 };
