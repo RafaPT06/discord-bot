@@ -38,6 +38,7 @@ Owner-only by default (can be overridden with `/perm_set` if you want):
 - `/edit_image <image> <prompt>` — edit an uploaded image with OpenAI
 - `/edit_image_access add|remove|list` — control who can use `/edit_image`
 - `/maintenance <on|off|status>`
+- `/set_bubble_status <text>` — set the bot's custom bubble status text; this command cannot be delegated through `/perm_set`
 - `/roblox_status`
 - Simulation: `/simulate_deploy` `/simulate_error` `/simulate_backup` `/simulate_roblox` `/simulate_feed`
 
