@@ -81,12 +81,18 @@ const OWNER_COMMANDS = new Set([
   "edit_image",
   "maintenance",
   "presence",
+  "set_bubble_status",
   "roblox_status",
   "simulate_deploy",
   "simulate_error",
   "simulate_backup",
   "simulate_roblox",
   "simulate_feed",
+]);
+
+// Never delegable through /perm_set because these change the bot account itself.
+const STRICT_OWNER_COMMANDS = new Set([
+  "set_bubble_status",
 ]);
 
 function isOwner(interaction) {
@@ -140,6 +146,11 @@ async function explainCommandPermission(interaction, commandName, targetMember =
   if (targetIsOwner) {
     reasons.push("Bot owner bypass applies.");
     return result(true, "owner");
+  }
+
+  if (STRICT_OWNER_COMMANDS.has(commandName)) {
+    reasons.push("This command is restricted to the bot owner and cannot be delegated.");
+    return result(false, "strict_owner_only");
   }
 
   if (commandName === "edit_image") {
@@ -202,4 +213,4 @@ async function canRunCommand(interaction, commandName) {
   return info.allowed;
 }
 
-module.exports = { canRunCommand, explainCommandPermission, PUBLIC_COMMANDS, MANAGE_GUILD_COMMANDS, OWNER_COMMANDS };
+module.exports = { canRunCommand, explainCommandPermission, PUBLIC_COMMANDS, MANAGE_GUILD_COMMANDS, OWNER_COMMANDS, STRICT_OWNER_COMMANDS };

@@ -52,6 +52,7 @@ module.exports = {
                 content: [
                     "Presence",
                     `Status: ${s.status}`,
+                    `Bubble text: ${s.bubbleText || "Automatic rotation"}`,
                     `Interval: ${Math.round(s.intervalMs / 1000)}s`,
                     `Running: ${s.running}`,
                 ].join("\n"),
