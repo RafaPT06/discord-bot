@@ -3,6 +3,7 @@ const {
   ButtonBuilder,
   ButtonStyle,
   EmbedBuilder,
+  Events,
 } = require("discord.js");
 const { pool } = require("../db/pool");
 const { BRAND_COLORS } = require("../utils/brandColors");
@@ -309,8 +310,30 @@ async function handleDailySentenceButton(interaction, client, parts = []) {
   await interaction.reply({ content: "That phrase action is no longer available." });
 }
 
+function installDailySentenceButtons(client) {
+  if (client.__dailySentenceButtonsInstalled) return;
+  client.__dailySentenceButtonsInstalled = true;
+  client.on(Events.InteractionCreate, async (interaction) => {
+    if (!interaction.isButton?.() || !interaction.customId?.startsWith("daily_sentence:")) return;
+    const [, ...parts] = interaction.customId.split(":");
+    try {
+      await handleDailySentenceButton(interaction, client, parts);
+    } catch (err) {
+      console.error("Daily sentence button error:", err);
+      if (!interaction.isRepliable?.()) return;
+      const payload = { content: "I could not complete that phrase action right now." };
+      if (interaction.deferred || interaction.replied) {
+        await interaction.followUp(payload).catch(() => {});
+      } else {
+        await interaction.reply(payload).catch(() => {});
+      }
+    }
+  });
+}
+
 function startDailySentenceDm(client) {
   if (timer) clearInterval(timer);
+  installDailySentenceButtons(client);
 
   setTimeout(async () => {
     await sendReleasePreviewOnce(client);
