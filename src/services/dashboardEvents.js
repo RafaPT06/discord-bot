@@ -1,9 +1,11 @@
 const { EmbedBuilder, PermissionFlagsBits } = require('discord.js');
 const { getLogSettings, getModerationSettings } = require('./serverSettings');
 const { isUserModerationBypassed } = require('./moderationAccess');
+const { hasUnsafeExternalLink } = require('./mediaLinkSafety');
 const { BRAND_COLORS } = require('../utils/brandColors');
 
 const recentMessages = new Map();
+const automodDeletedMessageIds = new Set();
 const HTTP_URL_PATTERN = /https?:\/\/[^\s<]+/gi;
 const TRAILING_URL_PUNCTUATION = /[\])}>.,!?;:'"]+$/;
 
@@ -50,6 +52,7 @@ async function sendModerationLog(guild, title, fields = [], color = BRAND_COLORS
 
 async function handleLoggedMessageDelete(message) {
   if (!message?.guild || message.author?.bot) return;
+  if (message.id && automodDeletedMessageIds.delete(message.id)) return;
   await sendLog(message.guild, 'message', 'Message deleted', [
     { name: 'Author', value: message.author ? `${message.author.tag || message.author.username} (${message.author.id})` : 'Unknown', inline: false },
     { name: 'Channel', value: `${message.channel}`, inline: true },
@@ -165,6 +168,10 @@ function isTrustedGifUrl(value) {
     return hasGifExtension(pathname);
   }
 
+  if (hostnameMatches(hostname, 'klipy.com')) {
+    return pathname.toLowerCase().startsWith('/gifs/');
+  }
+
   return false;
 }
 
@@ -204,12 +211,16 @@ async function handleModerationMessage(message) {
 
   let reason = null;
   if (settings.invite_filter && hasDiscordInvite(content)) reason = 'Discord invite link';
-  else if (settings.link_filter && hasExternalLink(content)) reason = 'External link';
+  else if (settings.link_filter && await hasUnsafeExternalLink(message)) reason = 'External link';
   else if (settings.anti_spam && isSpam(message)) reason = 'Spam detected';
   else if (settings.automod_enabled && blockedWords.some((word) => content.toLowerCase().includes(word))) reason = 'Blocked word';
 
   if (!reason) return false;
 
+  if (message.id) {
+    automodDeletedMessageIds.add(message.id);
+    setTimeout(() => automodDeletedMessageIds.delete(message.id), 15_000).unref?.();
+  }
   await message.delete().catch(() => null);
   await sendModerationLog(message.guild, 'Automod action', [
     { name: 'Reason', value: reason, inline: true },
