@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node index.js",
     "deploy": "node deploy-commands.js",
-    "test:links": "node scripts/test-media-links.js"
+    "test:links": "node scripts/test-media-links.js",
+    "test:daily-sentence": "node scripts/test-daily-sentence.js"
   },
   "engines": {
     "node": ">=18"
