@@ -1,6 +1,6 @@
 const assert = require('node:assert/strict');
 const { SENTENCES, getSentenceForIndex } = require('../src/services/dailySentencePhrases');
-const { buildSentencePayload, shouldSendNow } = require('../src/services/dailySentenceDm');
+const { buildSentencePayload, shouldSendNow } = require('../src/services/dailySentenceCard');
 
 assert.ok(SENTENCES.length >= 60, 'The phrase library should contain enough unique entries.');
 
@@ -21,15 +21,16 @@ assert.equal(payload.embeds.length, 1);
 assert.equal(payload.components.length, 1);
 assert.deepEqual(payload.allowedMentions, { parse: [] });
 
-const embed = payload.embeds[0].toJSON();
+const embed = payload.embeds[0];
 assert.equal(embed.title, 'Daily phrase upgraded');
 assert.equal(embed.author.name, 'Meowz');
+assert.equal(embed.author.icon_url, 'https://cdn.discordapp.com/embed/avatars/0.png');
 assert.ok(embed.fields[0].value.startsWith('```text\n'), 'The quote must be placed in a copy-friendly code block.');
 assert.ok(embed.fields[0].value.includes(firstFreshEntry.quote));
 assert.equal(embed.fields[1].name, 'Meaning');
 assert.equal(embed.fields[1].value, firstFreshEntry.meaning);
 
-const row = payload.components[0].toJSON();
+const row = payload.components[0];
 assert.equal(row.components.length, 2);
 assert.equal(row.components[0].custom_id, `daily_sentence:copy:${firstFreshEntry.index}`);
 assert.equal(row.components[1].custom_id, `daily_sentence:refresh:${firstFreshEntry.index}`);
