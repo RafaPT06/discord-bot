@@ -40,11 +40,17 @@ jobs:
           node --check index.js
           node --check src/services/dashboardEvents.js
           node --check src/services/mediaLinkSafety.js
+          node --check src/services/dailySentenceDm.js
+          node --check src/services/dailySentencePhrases.js
           node --check src/services/dashboardRoles.js
           node --check src/web/roleCreationPatch.js
           node --check src/web/roleDeletionPatch.js
           node --check src/web/dashboardRoleListPatch.js
           node --check scripts/test-media-links.js
+          node --check scripts/test-daily-sentence.js
 
       - name: Test media link moderation
         run: npm run test:links
+
+      - name: Test daily sentence cards
+        run: npm run test:daily-sentence
