@@ -40,15 +40,15 @@ function sourceTitle(source) {
 
 function sourceIntro(source) {
   if (source === 'upgrade') {
-    return 'The daily phrase now has a cleaner card, a copy-friendly quote and controls for another phrase.';
+    return 'The daily phrase now leaves more room between the words and what they might mean.';
   }
-  if (source === 'refresh') return 'Here is another thought for you.';
-  return 'A small thought to carry with you today.';
+  if (source === 'refresh') return 'Another line to sit with for a while.';
+  return 'Read it once now. It may sound different later.';
 }
 
 function buildSentencePayload(entry, { source = 'scheduled', botAvatarUrl = null } = {}) {
   const quote = safeCodeBlock(entry.quote);
-  const meaning = String(entry.meaning || '').trim() || 'A feeling worth sitting with for a moment.';
+  const reflection = String(entry.meaning || '').trim() || 'There may be more than one way to read it.';
   const embed = {
     color: BRAND_COLORS.primary,
     title: sourceTitle(source),
@@ -60,8 +60,8 @@ function buildSentencePayload(entry, { source = 'scheduled', botAvatarUrl = null
         inline: false,
       },
       {
-        name: 'Meaning',
-        value: meaning.slice(0, 1024),
+        name: 'Reflection',
+        value: reflection.slice(0, 1024),
         inline: false,
       },
     ],
