@@ -5,12 +5,14 @@ const { buildSentencePayload, shouldSendNow } = require('../src/services/dailySe
 assert.ok(SENTENCES.length >= 60, 'The phrase library should contain enough unique entries.');
 
 const normalizedQuotes = new Set();
+const literalEmotionWords = /\b(healing|healed|pain|hurt|hope|sadness|giving up|gave up|closure|trauma|recovery|survive|forgive|broken)\b/i;
 for (const [index, entry] of SENTENCES.entries()) {
   assert.equal(typeof entry.quote, 'string', `Phrase ${index + 1} must have a quote.`);
-  assert.equal(typeof entry.meaning, 'string', `Phrase ${index + 1} must have a meaning.`);
-  assert.ok(entry.quote.trim().length >= 28, `Phrase ${index + 1} is too short to carry the intended depth.`);
-  assert.ok(entry.meaning.trim().length >= 55, `Meaning ${index + 1} needs a fuller emotional explanation.`);
+  assert.equal(typeof entry.meaning, 'string', `Phrase ${index + 1} must have a reflection.`);
+  assert.ok(entry.quote.trim().length >= 16, `Phrase ${index + 1} is too short to carry the intended depth.`);
+  assert.ok(entry.meaning.trim().length >= 40, `Reflection ${index + 1} needs enough room without directly decoding the phrase.`);
   assert.ok(!/part\s+\d+/i.test(entry.quote), `Phrase ${index + 1} must not use placeholder text.`);
+  assert.ok(!literalEmotionWords.test(entry.quote), `Phrase ${index + 1} explains its emotion too literally.`);
 
   const normalized = entry.quote.trim().toLowerCase();
   assert.ok(!normalizedQuotes.has(normalized), `Phrase ${index + 1} duplicates an earlier quote.`);
@@ -38,9 +40,10 @@ const embed = payload.embeds[0];
 assert.equal(embed.title, 'Daily phrase upgraded');
 assert.equal(embed.author.name, 'Meowz');
 assert.equal(embed.author.icon_url, 'https://cdn.discordapp.com/embed/avatars/0.png');
+assert.ok(embed.description.includes('more room'), 'The upgraded intro should emphasize open interpretation.');
 assert.ok(embed.fields[0].value.startsWith('```text\n'), 'The quote must be placed in a copy-friendly code block.');
 assert.ok(embed.fields[0].value.includes(firstFreshEntry.quote));
-assert.equal(embed.fields[1].name, 'Meaning');
+assert.equal(embed.fields[1].name, 'Reflection');
 assert.equal(embed.fields[1].value, firstFreshEntry.meaning);
 
 const row = payload.components[0];
@@ -55,4 +58,4 @@ const afterSchedule = new Date('2026-08-04T21:00:00.000Z'); // 22:00 Lisbon in s
 assert.equal(shouldSendNow(beforeSchedule), false);
 assert.equal(shouldSendNow(afterSchedule), true);
 
-console.log(`Daily sentence tests passed (${SENTENCES.length} deep healing phrases).`);
+console.log(`Daily sentence tests passed (${SENTENCES.length} subtle, open-ended phrases).`);
