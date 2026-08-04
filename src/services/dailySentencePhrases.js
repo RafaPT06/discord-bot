@@ -1,74 +1,299 @@
 const SENTENCES = [
-  { quote: "The ocean never keeps what it cannot hold.", meaning: "Sometimes love means letting go." },
-  { quote: "The wind still knows the way home.", meaning: "Part of me still wants to return to you." },
-  { quote: "The rain came right on time today.", meaning: "I finally allowed myself to cry." },
-  { quote: "The candle burned long after everyone left.", meaning: "My feelings remained even when it was over." },
-  { quote: "The moon looks lonely tonight.", meaning: "I miss you." },
-  { quote: "The room remembered your laughter.", meaning: "Some memories stay even after someone leaves." },
-  { quote: "The door closed softly, but I still heard it.", meaning: "Goodbyes can hurt even when they are gentle." },
-  { quote: "The stars looked brighter from far away.", meaning: "Distance can make feelings feel stronger." },
-  { quote: "The song ended, but I kept listening.", meaning: "I was not ready for something to be over." },
-  { quote: "The garden grew around the empty chair.", meaning: "Life continues, even around absence." },
-  { quote: "The letter stayed folded in my pocket.", meaning: "Some things are felt more than they are said." },
-  { quote: "The shore waited without asking the sea to return.", meaning: "Real love can be patient without forcing anything." },
-  { quote: "The window kept the last light of the day.", meaning: "I held onto the final good moments." },
-  { quote: "The echo sounded softer each morning.", meaning: "Healing happens slowly, even when it is hard to notice." },
-  { quote: "The clock moved, but my heart stayed behind.", meaning: "Time passed before I felt ready to move on." },
-  { quote: "The sky changed colors without warning me.", meaning: "Life can shift before we are prepared for it." },
-  { quote: "The path was quiet, but I kept walking.", meaning: "I am trying to continue even while hurting." },
-  { quote: "The light touched places I tried to hide.", meaning: "Healing reveals feelings I avoided." },
-  { quote: "The bridge stayed even after we crossed it.", meaning: "Some connections still matter after they change." },
-  { quote: "The night carried words I never sent.", meaning: "I still think about what I wish I had said." },
-  { quote: "The empty cup still smelled like coffee.", meaning: "Small reminders can bring back big memories." },
-  { quote: "The waves returned, but never the same way.", meaning: "Feelings can come back differently each time." },
-  { quote: "The sun rose without needing my permission.", meaning: "New days arrive even when I am not ready." },
-  { quote: "The book opened to a page I had avoided.", meaning: "Some truths wait until we are ready to face them." },
-  { quote: "The flowers leaned toward the rain.", meaning: "Even pain can help something grow." },
-  { quote: "The silence was not empty after all.", meaning: "Being alone can still be full of feelings." },
-  { quote: "The road did not ask me to forget.", meaning: "Moving forward does not mean erasing the past." },
-  { quote: "The mirror learned my tired face.", meaning: "I have been carrying more than people can see." },
-  { quote: "The house was quiet, but my thoughts were loud.", meaning: "Peace outside does not always mean peace inside." },
-  { quote: "The rain washed the street, not the memory.", meaning: "Some things cannot be cleaned away quickly." },
-  { quote: "The morning found me still awake.", meaning: "Some nights are heavier than others." },
-  { quote: "The flame flickered, but it did not leave.", meaning: "Hope can be small and still survive." },
-  { quote: "The clouds moved like they knew where to go.", meaning: "I wish moving on felt that simple." },
-  { quote: "The bench kept space for someone gone.", meaning: "Absence can feel like a presence." },
-  { quote: "The tide returned what I tried to bury.", meaning: "Feelings come back when they are not fully healed." },
-  { quote: "The first light found a crack in the curtains.", meaning: "Hope can enter quietly, even after a difficult night." },
-  { quote: "The train left, but the platform kept its warmth.", meaning: "A goodbye does not erase what was shared." },
-  { quote: "The page turned before I finished the sentence.", meaning: "Life sometimes moves forward before we feel ready." },
-  { quote: "The river carried yesterday without becoming it.", meaning: "The past can travel with us without defining us." },
-  { quote: "The key still fit, but the room felt different.", meaning: "Returning does not always restore what changed." },
-  { quote: "The sunrise arrived in colors I had forgotten.", meaning: "Joy can return in ways we no longer expect." },
-  { quote: "The old road looked smaller from the hill.", meaning: "Distance can make previous struggles easier to understand." },
-  { quote: "The tree kept growing around its broken branch.", meaning: "Healing can include the parts of us that were hurt." },
-  { quote: "The music returned when I stopped forcing the silence.", meaning: "Some peace appears only after we stop chasing it." },
-  { quote: "The lantern did not light the whole path, only the next step.", meaning: "We do not need every answer to keep moving." },
-  { quote: "The snow covered the footprints, not the journey.", meaning: "Evidence can fade while the experience remains." },
-  { quote: "The horizon stayed, even when the weather changed.", meaning: "A difficult moment does not remove every possibility ahead." },
-  { quote: "The glass held the sunlight for a second.", meaning: "Brief moments can still be meaningful." },
-  { quote: "The quiet room finally felt like mine again.", meaning: "Healing can turn loneliness into peace." },
-  { quote: "The compass shook, but it still pointed somewhere.", meaning: "Uncertainty does not mean we are completely lost." },
-  { quote: "The sea was restless, yet the moon stayed reflected.", meaning: "Something steady can remain inside emotional chaos." },
-  { quote: "The unopened message became easier to leave alone.", meaning: "Progress can be choosing not to reopen an old wound." },
-  { quote: "The bridge disappeared into fog, but I took one step.", meaning: "Courage can begin before certainty arrives." },
-  { quote: "The room changed when I opened the window.", meaning: "A small decision can make space for something new." },
-  { quote: "The rain stopped without asking whether I noticed.", meaning: "Hard seasons can end gradually and quietly." },
-  { quote: "The photograph stayed the same while I changed.", meaning: "Memories can remain even as we grow beyond them." },
-  { quote: "The sky made room for both the storm and the stars.", meaning: "Pain and hope can exist at the same time." },
-  { quote: "The path bent, but it did not end.", meaning: "A change in direction is not the same as failure." },
-  { quote: "The heartbeat became louder than the goodbye.", meaning: "Life inside us can eventually become stronger than loss." },
-  { quote: "The morning carried no answers, only another chance.", meaning: "A fresh start does not require everything to be solved." },
-  { quote: "The empty shelf became space for something new.", meaning: "Loss can eventually create room for a different future." },
-  { quote: "The wind moved the curtains, and the room breathed again.", meaning: "Change can bring life back into places that felt still." },
-  { quote: "The distant light was enough to keep walking.", meaning: "Even a small reason can help us continue." },
-  { quote: "The roots held on while the leaves learned to let go.", meaning: "We can keep our foundation while releasing what has ended." },
-  { quote: "The silence stopped feeling like a punishment.", meaning: "Time alone can become rest instead of rejection." },
-  { quote: "The last chapter did not ruin the whole story.", meaning: "An ending cannot erase every good part that came before it." },
-  { quote: "The window reflected me before it showed the view.", meaning: "Sometimes we must understand ourselves before looking ahead." },
-  { quote: "The storm moved on, leaving the air easier to breathe.", meaning: "Relief can arrive after emotions have finally passed through." },
-  { quote: "The flower opened on a day nobody was watching.", meaning: "Growth still counts even when no one sees it." },
-  { quote: "The road home felt new beneath familiar streetlights.", meaning: "We can return to old places as changed people." }
+  // Exhaustion, numbness and the moment someone stops forcing themselves to be okay.
+  {
+    quote: "The room grew quiet after I stopped explaining myself.",
+    meaning: "I gave up trying to make people understand pain they had already decided not to see.",
+  },
+  {
+    quote: "I kept the door unlocked long after I knew no one was returning.",
+    meaning: "Part of me was still waiting even after hope had become another kind of pain.",
+  },
+  {
+    quote: "The bandage stayed clean because I finally stopped touching the wound.",
+    meaning: "Healing began when I stopped reopening the same hurt just to understand it again.",
+  },
+  {
+    quote: "I called it peace because I was too tired to call it emptiness.",
+    meaning: "Sometimes numbness feels safer than admitting how exhausted and disconnected we have become.",
+  },
+  {
+    quote: "The night stopped asking me to be strong.",
+    meaning: "I finally allowed myself to be tired instead of performing strength for everyone else.",
+  },
+  {
+    quote: "The apology arrived after the part of me that needed it had gone quiet.",
+    meaning: "Some closure comes too late to repair what the waiting already destroyed inside us.",
+  },
+  {
+    quote: "I stopped chasing the version of me that existed before the hurt.",
+    meaning: "Healing is not always becoming who we were; sometimes it is learning to live as who survived.",
+  },
+  {
+    quote: "The flowers died while I was learning how much water was enough.",
+    meaning: "I tried so hard to save something that I did not notice I was slowly losing myself.",
+  },
+  {
+    quote: "I left the light on for a memory that no longer knew my address.",
+    meaning: "I kept making space for someone who had already learned how to live without me.",
+  },
+  {
+    quote: "The silence hurt less once I stopped expecting an answer.",
+    meaning: "Giving up on being answered can be painful, but it can also be the first form of acceptance.",
+  },
+  {
+    quote: "I learned to sleep beside the ache instead of waiting for it to leave.",
+    meaning: "Some pain does not disappear quickly; we slowly learn how to live without letting it own every night.",
+  },
+  {
+    quote: "The mirror stopped asking why I looked tired.",
+    meaning: "I became used to carrying pain so quietly that even I stopped questioning its weight.",
+  },
+  {
+    quote: "I held myself together so quietly that everyone thought I was healed.",
+    meaning: "Surviving without showing the damage is not the same thing as genuinely recovering from it.",
+  },
+  {
+    quote: "The storm passed, but my body still listened for thunder.",
+    meaning: "Even after the danger is gone, the heart can remain prepared to be hurt again.",
+  },
+  {
+    quote: "I stopped counting the days because healing refused to move in a straight line.",
+    meaning: "Progress can disappear, return and change shape without meaning that we have failed.",
+  },
+  {
+    quote: "The words 'I am fine' became easier than explaining where it still hurt.",
+    meaning: "Emotional exhaustion can make silence feel safer than repeatedly translating our pain.",
+  },
+  {
+    quote: "I buried the hope, but it kept breathing beneath the soil.",
+    meaning: "Even after giving up, a hidden part of us may still believe that life can become softer.",
+  },
+  {
+    quote: "The road home felt longer after I realized I had changed.",
+    meaning: "Healing can make familiar places feel unfamiliar because we no longer fit our old life in the same way.",
+  },
+
+  // Slow healing: small, almost invisible changes that happen while the person still feels broken.
+  {
+    quote: "I did not wake up healed; I only woke up a little less afraid.",
+    meaning: "Recovery often begins with tiny changes that are too quiet to feel like progress at first.",
+  },
+  {
+    quote: "The wound still ached, but it was no longer the first thing I touched each morning.",
+    meaning: "Healing can mean the pain is still present without being the center of every day.",
+  },
+  {
+    quote: "I started breathing between the memories instead of inside them.",
+    meaning: "I am slowly learning that remembering what happened does not require reliving it completely.",
+  },
+  {
+    quote: "The sadness stayed, but it stopped using every room in the house.",
+    meaning: "Pain can remain while gradually taking up less space in our mind and identity.",
+  },
+  {
+    quote: "I still miss who I was, but I no longer blame who I became.",
+    meaning: "Healing includes forgiving the version of ourselves that changed in order to survive.",
+  },
+  {
+    quote: "The morning did not feel beautiful, only possible.",
+    meaning: "Sometimes hope is not happiness; it is simply believing we can make it through another day.",
+  },
+  {
+    quote: "I stopped asking when the pain would end and started noticing when it became quieter.",
+    meaning: "Recovery becomes easier to see when we stop demanding a complete cure and recognize smaller relief.",
+  },
+  {
+    quote: "The crack in me never vanished; light just learned how to enter through it.",
+    meaning: "Our damage can remain part of us while still becoming a place where growth begins.",
+  },
+  {
+    quote: "I smiled without checking whether it was allowed.",
+    meaning: "A spontaneous moment of joy can reveal that healing has been happening beneath our awareness.",
+  },
+  {
+    quote: "The song played again, and this time I did not fall apart.",
+    meaning: "A memory can lose some of its power even when it still carries sadness.",
+  },
+  {
+    quote: "I began choosing rest before my body had to beg for it.",
+    meaning: "Healing includes learning to care for ourselves before exhaustion becomes a crisis.",
+  },
+  {
+    quote: "The old pain knocked, but I no longer opened the door immediately.",
+    meaning: "Progress can be the small pause between being triggered and surrendering to the same spiral.",
+  },
+  {
+    quote: "I stopped treating every bad day as proof that nothing had changed.",
+    meaning: "A difficult day does not erase the strength and progress built on all the days before it.",
+  },
+  {
+    quote: "My hands still shook, but they started building again.",
+    meaning: "Courage is not the absence of fear; it is creating a life while fear is still present.",
+  },
+  {
+    quote: "I learned that healing can look like doing less and feeling more.",
+    meaning: "Recovery sometimes begins when we stop running from emotions and allow them to pass through us.",
+  },
+  {
+    quote: "The memory remained sharp, but I stopped using it against myself.",
+    meaning: "Healing can mean remembering the truth without turning it into a reason to hate ourselves.",
+  },
+  {
+    quote: "I was still lost, but I had stopped walking back toward what broke me.",
+    meaning: "Not returning to familiar pain is already progress, even before we know where we are going.",
+  },
+  {
+    quote: "The weight did not disappear; I simply grew stronger in places nobody could see.",
+    meaning: "Sometimes recovery is invisible because life remains difficult while our ability to carry it changes.",
+  },
+
+  // Letting go: no longer chasing answers, people or versions of the past that cannot return.
+  {
+    quote: "I stopped waiting for the old me and started protecting the person left behind.",
+    meaning: "Acceptance began when I cared for who I am now instead of mourning who I used to be.",
+  },
+  {
+    quote: "I gave up trying to be saved by the same hands that taught me to drown.",
+    meaning: "Healing required accepting that the person who caused the wound could not be responsible for closing it.",
+  },
+  {
+    quote: "The answer never came, so I became my own ending.",
+    meaning: "Closure can come from deciding to stop waiting, even when no explanation is ever given.",
+  },
+  {
+    quote: "I returned the key without asking whether the door would miss me.",
+    meaning: "Letting go means leaving something that once felt like home without needing it to regret losing us.",
+  },
+  {
+    quote: "The goodbye became real when I stopped rewriting it in my head.",
+    meaning: "Acceptance begins when we stop imagining a different ending and face the one that actually happened.",
+  },
+  {
+    quote: "I stopped confusing being remembered with being loved.",
+    meaning: "Someone thinking about us does not mean they can give us the care, safety or commitment we need.",
+  },
+  {
+    quote: "The bridge remained, but I no longer crossed it every night.",
+    meaning: "We can remember a connection without repeatedly returning to the pain attached to it.",
+  },
+  {
+    quote: "I let the message stay unsent, and the world did not end.",
+    meaning: "Resisting the urge to reopen contact can feel unbearable until we realize the feeling will pass.",
+  },
+  {
+    quote: "The past still knew my name, but I stopped answering every time it called.",
+    meaning: "Healing is learning that a memory can demand our attention without deserving it.",
+  },
+  {
+    quote: "I stopped asking why I was not enough for someone who never knew how to hold anything gently.",
+    meaning: "Another person's inability to love safely is not proof that we were unworthy of love.",
+  },
+  {
+    quote: "I released the future I had imagined, not because it meant nothing, but because it was hurting me.",
+    meaning: "Letting go can honor what we wanted while accepting that continuing to wait is destroying us.",
+  },
+  {
+    quote: "The photograph stayed, but I stopped asking it to become a doorway.",
+    meaning: "Memories can be kept without being used as a way to escape back into the past.",
+  },
+  {
+    quote: "I forgave myself for staying after my heart had already asked to leave.",
+    meaning: "Healing includes compassion for the choices we made while afraid, attached or still hoping.",
+  },
+  {
+    quote: "The empty chair stopped feeling like a promise.",
+    meaning: "Absence becomes easier to accept when we no longer treat it as proof that someone will return.",
+  },
+  {
+    quote: "I no longer needed them to understand what they did in order to believe my own pain.",
+    meaning: "Validation can come from trusting our experience instead of waiting for the person who hurt us to agree.",
+  },
+  {
+    quote: "I stopped revisiting the wreckage to prove that the crash was real.",
+    meaning: "We do not need to keep hurting ourselves in order to justify that something deeply affected us.",
+  },
+  {
+    quote: "The love was real, and so was the damage; I finally stopped choosing only one truth.",
+    meaning: "Maturity can mean accepting that something mattered while also accepting that it was harmful.",
+  },
+  {
+    quote: "I walked away before my heart agreed, because some decisions must protect us before they comfort us.",
+    meaning: "Leaving can be the right choice even when our emotions are still attached to what we are leaving.",
+  },
+
+  // Fragile hope: not fully healed, but beginning to believe life can become livable again.
+  {
+    quote: "I am not healed, but I am no longer disappearing.",
+    meaning: "I still carry pain, yet I am slowly returning to my own life and identity.",
+  },
+  {
+    quote: "The light was small, but for once I did not turn away from it.",
+    meaning: "Hope can begin as nothing more than allowing one good possibility to exist.",
+  },
+  {
+    quote: "I planted something even though I was not sure I would stay to see it grow.",
+    meaning: "Creating a future can start before we fully believe that we deserve to have one.",
+  },
+  {
+    quote: "The rain returned, but this time I remembered where I kept the umbrella.",
+    meaning: "Healing does not prevent pain from returning; it gives us better ways to care for ourselves when it does.",
+  },
+  {
+    quote: "I began speaking to myself in the voice I once needed from someone else.",
+    meaning: "Recovery can mean becoming the safe and compassionate person we spent years searching for.",
+  },
+  {
+    quote: "The future stopped looking like happiness and started looking like peace.",
+    meaning: "After deep pain, wanting a calm and safe life can matter more than chasing constant joy.",
+  },
+  {
+    quote: "I still had scars, but I stopped introducing myself through them.",
+    meaning: "What happened to us can remain important without becoming the only story we tell about ourselves.",
+  },
+  {
+    quote: "The morning found me tired, but it also found me still here.",
+    meaning: "Sometimes survival itself is the quiet proof that a part of us has not completely given up.",
+  },
+  {
+    quote: "I did not forgive the pain; I only stopped giving it every tomorrow.",
+    meaning: "Moving forward does not require approving what happened, only refusing to let it own the future.",
+  },
+  {
+    quote: "The heart can be tired and still choose one more gentle thing.",
+    meaning: "Even when we have little strength left, one small act of care can keep healing alive.",
+  },
+  {
+    quote: "I stopped waiting to feel whole before allowing myself to live.",
+    meaning: "A meaningful life can begin while we are still healing rather than only after the pain is gone.",
+  },
+  {
+    quote: "The silence became a place to rest instead of a place to be abandoned.",
+    meaning: "Time alone can slowly transform from rejection into safety, reflection and peace.",
+  },
+  {
+    quote: "I learned that missing someone is not the same as needing them back.",
+    meaning: "Love and longing can remain even after we understand that returning would hurt us again.",
+  },
+  {
+    quote: "The broken part of me was not asking to be fixed; it was asking to be held without shame.",
+    meaning: "Healing can begin when we meet our pain with compassion instead of treating it like a defect.",
+  },
+  {
+    quote: "I stopped looking for signs that they cared and started noticing the ways I was caring for myself.",
+    meaning: "Recovery shifts our attention from another person's uncertainty toward our own consistent protection.",
+  },
+  {
+    quote: "Some days I only moved an inch, but I stopped calling that nothing.",
+    meaning: "Tiny progress deserves recognition, especially when simply continuing requires enormous effort.",
+  },
+  {
+    quote: "The version of me that almost gave up still deserves to see what happens next.",
+    meaning: "The exhausted part of us is worthy of the future it could not yet imagine.",
+  },
+  {
+    quote: "I am still learning how to live without the pain being my only proof that it mattered.",
+    meaning: "Healing means allowing the hurt to soften without believing that this erases the depth of what we felt.",
+  },
 ];
 
 function normalizeIndex(index) {

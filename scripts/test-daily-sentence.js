@@ -4,6 +4,19 @@ const { buildSentencePayload, shouldSendNow } = require('../src/services/dailySe
 
 assert.ok(SENTENCES.length >= 60, 'The phrase library should contain enough unique entries.');
 
+const normalizedQuotes = new Set();
+for (const [index, entry] of SENTENCES.entries()) {
+  assert.equal(typeof entry.quote, 'string', `Phrase ${index + 1} must have a quote.`);
+  assert.equal(typeof entry.meaning, 'string', `Phrase ${index + 1} must have a meaning.`);
+  assert.ok(entry.quote.trim().length >= 28, `Phrase ${index + 1} is too short to carry the intended depth.`);
+  assert.ok(entry.meaning.trim().length >= 55, `Meaning ${index + 1} needs a fuller emotional explanation.`);
+  assert.ok(!/part\s+\d+/i.test(entry.quote), `Phrase ${index + 1} must not use placeholder text.`);
+
+  const normalized = entry.quote.trim().toLowerCase();
+  assert.ok(!normalizedQuotes.has(normalized), `Phrase ${index + 1} duplicates an earlier quote.`);
+  normalizedQuotes.add(normalized);
+}
+
 const firstFreshEntry = getSentenceForIndex(35);
 assert.equal(firstFreshEntry.index, 35);
 assert.ok(!/part\s+\d+/i.test(firstFreshEntry.quote), 'Fallback placeholder phrases must not be used.');
@@ -42,4 +55,4 @@ const afterSchedule = new Date('2026-08-04T21:00:00.000Z'); // 22:00 Lisbon in s
 assert.equal(shouldSendNow(beforeSchedule), false);
 assert.equal(shouldSendNow(afterSchedule), true);
 
-console.log(`Daily sentence tests passed (${SENTENCES.length} phrases).`);
+console.log(`Daily sentence tests passed (${SENTENCES.length} deep healing phrases).`);
