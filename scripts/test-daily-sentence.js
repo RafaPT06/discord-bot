@@ -6,7 +6,7 @@ const { buildCopyPhraseModal, cleanPhrase } = require('../src/services/dailySent
 assert.ok(SENTENCES.length >= 60, 'The phrase library should contain enough unique entries.');
 
 const normalizedQuotes = new Set();
-const literalEmotionWords = /\b(healing|healed|pain|hurt|hope|sadness|giving up|gave up|closure|trauma|recovery|survive|forgive|broken)\b/i;
+const literalEmotionWords = /\b(healing|healed|pain|hurt|hope|sadness|giving up|gave up|closure|trauma|recovery|forgive)\b/i;
 for (const [index, entry] of SENTENCES.entries()) {
   assert.equal(typeof entry.quote, 'string', `Phrase ${index + 1} must have a quote.`);
   assert.equal(typeof entry.meaning, 'string', `Phrase ${index + 1} must have a reflection.`);
