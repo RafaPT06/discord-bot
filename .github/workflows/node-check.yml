@@ -42,6 +42,7 @@ jobs:
           node --check src/services/mediaLinkSafety.js
           node --check src/services/dailySentenceCard.js
           node --check src/services/dailySentenceDm.js
+          node --check src/services/dailySentenceModal.js
           node --check src/services/dailySentencePhrases.js
           node --check src/services/dashboardRoles.js
           node --check src/web/roleCreationPatch.js
