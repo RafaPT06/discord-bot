@@ -1,5 +1,6 @@
 const { pool } = require('../db/pool');
 const { getSentenceForIndex } = require('./dailySentencePhrases');
+const { buildCopyPhraseModal } = require('./dailySentenceModal');
 const {
   TIME_ZONE,
   TARGET_HOUR,
@@ -7,7 +8,6 @@ const {
   buildSentencePayload,
   getLisbonParts,
   shouldSendNow,
-  safeCodeBlock,
 } = require('./dailySentenceCard');
 
 const RELEASE_PREVIEW_KEY = 'daily-sentence-embed-refresh-v1';
@@ -165,10 +165,18 @@ async function sendReleasePreviewOnce(client) {
 
 async function handleCopy(interaction, index) {
   const entry = getSentenceForIndex(index);
-  await interaction.reply({
-    content: `**Copy phrase**\n\`\`\`text\n${safeCodeBlock(entry.quote)}\n\`\`\``,
-    allowedMentions: { parse: [] },
-  });
+  await interaction.showModal(buildCopyPhraseModal(entry));
+}
+
+async function handleCopyModalSubmit(interaction) {
+  const userId = getTargetUserId();
+  if (!userId || interaction.user?.id !== userId) {
+    await interaction.reply({ content: 'This phrase control is only available to its recipient.' });
+    return;
+  }
+
+  // Acknowledge the modal without sending another DM or changing the phrase card.
+  await interaction.deferUpdate();
 }
 
 async function handleRefresh(interaction, client, currentIndex) {
@@ -224,12 +232,20 @@ function installDailySentenceButtons(client) {
   if (client.__dailySentenceButtonsInstalled) return;
   client.__dailySentenceButtonsInstalled = true;
   client.on('interactionCreate', async (interaction) => {
-    if (!interaction.isButton?.() || !interaction.customId?.startsWith('daily_sentence:')) return;
-    const [, ...parts] = interaction.customId.split(':');
+    const isDailyButton = interaction.isButton?.() && interaction.customId?.startsWith('daily_sentence:');
+    const isCopyModal = interaction.isModalSubmit?.() && interaction.customId?.startsWith('daily_sentence_copy_modal:');
+    if (!isDailyButton && !isCopyModal) return;
+
     try {
+      if (isCopyModal) {
+        await handleCopyModalSubmit(interaction);
+        return;
+      }
+
+      const [, ...parts] = interaction.customId.split(':');
       await handleDailySentenceButton(interaction, client, parts);
     } catch (err) {
-      console.error('Daily sentence button error:', err);
+      console.error('Daily sentence interaction error:', err);
       if (!interaction.isRepliable?.()) return;
       const payload = { content: 'I could not complete that phrase action right now.' };
       if (interaction.deferred || interaction.replied) {
@@ -258,6 +274,7 @@ module.exports = {
   startDailySentenceDm,
   tickDailySentenceDm: tick,
   handleDailySentenceButton,
+  handleCopyModalSubmit,
   buildSentencePayload,
   sendReleasePreviewOnce,
   getLisbonParts,
