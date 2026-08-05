@@ -1,6 +1,7 @@
 const assert = require('node:assert/strict');
 const { SENTENCES, getSentenceForIndex } = require('../src/services/dailySentencePhrases');
 const { buildSentencePayload, shouldSendNow } = require('../src/services/dailySentenceCard');
+const { buildCopyPhraseModal, cleanPhrase } = require('../src/services/dailySentenceModal');
 
 assert.ok(SENTENCES.length >= 60, 'The phrase library should contain enough unique entries.');
 
@@ -53,9 +54,21 @@ assert.equal(row.components[1].custom_id, `daily_sentence:refresh:${firstFreshEn
 assert.equal(row.components[0].label, 'Copy phrase');
 assert.equal(row.components[1].label, 'New phrase');
 
+const modal = buildCopyPhraseModal(firstFreshEntry);
+assert.equal(modal.custom_id, `daily_sentence_copy_modal:${firstFreshEntry.index}`);
+assert.equal(modal.title, 'Copy phrase');
+assert.equal(modal.components.length, 1);
+assert.equal(modal.components[0].components.length, 1);
+const modalInput = modal.components[0].components[0];
+assert.equal(modalInput.custom_id, 'daily_sentence_copy_value');
+assert.equal(modalInput.label, 'Press and hold, then copy');
+assert.equal(modalInput.value, firstFreshEntry.quote);
+assert.ok(!modalInput.value.includes('```'), 'The modal must contain only the phrase without Markdown fences.');
+assert.equal(cleanPhrase('  First line\nSecond line  '), 'First line Second line');
+
 const beforeSchedule = new Date('2026-08-04T19:00:00.000Z'); // 20:00 Lisbon in summer
 const afterSchedule = new Date('2026-08-04T21:00:00.000Z'); // 22:00 Lisbon in summer
 assert.equal(shouldSendNow(beforeSchedule), false);
 assert.equal(shouldSendNow(afterSchedule), true);
 
-console.log(`Daily sentence tests passed (${SENTENCES.length} subtle, open-ended phrases).`);
+console.log(`Daily sentence tests passed (${SENTENCES.length} subtle, open-ended phrases with a copy-only modal).`);
