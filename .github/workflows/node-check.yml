@@ -45,10 +45,12 @@ jobs:
           node --check src/services/dailySentenceModal.js
           node --check src/services/dailySentencePhrases.js
           node --check src/services/dashboardRoles.js
+          node --check src/services/backupScheduler.js
           node --check src/web/roleCreationPatch.js
           node --check src/web/roleDeletionPatch.js
           node --check src/web/dashboardRoleListPatch.js
           node --check src/web/starboardDashboardPatch.js
+          node --check src/web/backupDashboardPatch.js
           node --check scripts/test-media-links.js
           node --check scripts/test-daily-sentence.js
 
