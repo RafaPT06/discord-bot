@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } = require("discord.js");
-const { getBackupSetting, sendBackupToChannel } = require("../services/backupScheduler");
+const { getBackupSetting, runBackupNow } = require("../services/backupScheduler");
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -15,10 +15,10 @@ module.exports = {
       return interaction.editReply({ embeds: [embed] });
     }
 
-    const ok = await sendBackupToChannel(client, s.channel_id, "manual-test").catch(() => false);
+    const status = await runBackupNow(client, interaction.guildId, "manual-test").catch(() => null);
     const embed = new EmbedBuilder()
       .setTitle("Backup")
-      .setDescription(ok ? `Backup sent to <#${s.channel_id}>.` : "Failed to send backup (missing perms or channel not accessible)." );
+      .setDescription(status ? `Backup sent to <#${s.channel_id}>.` : "Failed to send backup (missing perms or channel not accessible)." );
 
     return interaction.editReply({ embeds: [embed] });
   },
