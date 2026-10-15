@@ -48,6 +48,7 @@ jobs:
           node --check src/web/roleCreationPatch.js
           node --check src/web/roleDeletionPatch.js
           node --check src/web/dashboardRoleListPatch.js
+          node --check src/web/starboardDashboardPatch.js
           node --check scripts/test-media-links.js
           node --check scripts/test-daily-sentence.js
 
