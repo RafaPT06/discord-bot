@@ -1,19 +1,12 @@
 const { pool } = require('../db/pool');
 
+// Kept as a compatibility export. The moderation_bypass_users table is
+// initialized centrally by initDb() before the bot API and event handlers start.
 async function ensureModerationBypassTable() {
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS moderation_bypass_users (
-      guild_id TEXT NOT NULL,
-      user_id TEXT NOT NULL,
-      added_by TEXT,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      PRIMARY KEY (guild_id, user_id)
-    );
-  `);
+  return true;
 }
 
 async function listModerationBypassUsers(guildId) {
-  await ensureModerationBypassTable();
   const { rows } = await pool.query(
     `SELECT guild_id, user_id, added_by, created_at
      FROM moderation_bypass_users
@@ -25,7 +18,6 @@ async function listModerationBypassUsers(guildId) {
 }
 
 async function addModerationBypassUser(guildId, userId, addedBy = null) {
-  await ensureModerationBypassTable();
   const { rows } = await pool.query(
     `INSERT INTO moderation_bypass_users (guild_id, user_id, added_by)
      VALUES ($1, $2, $3)
@@ -38,7 +30,6 @@ async function addModerationBypassUser(guildId, userId, addedBy = null) {
 }
 
 async function removeModerationBypassUser(guildId, userId) {
-  await ensureModerationBypassTable();
   const result = await pool.query(
     `DELETE FROM moderation_bypass_users WHERE guild_id = $1 AND user_id = $2`,
     [guildId, userId]
@@ -47,7 +38,6 @@ async function removeModerationBypassUser(guildId, userId) {
 }
 
 async function isUserModerationBypassed(guildId, userId) {
-  await ensureModerationBypassTable();
   const { rows } = await pool.query(
     `SELECT 1 FROM moderation_bypass_users WHERE guild_id = $1 AND user_id = $2 LIMIT 1`,
     [guildId, userId]
