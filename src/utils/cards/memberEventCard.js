@@ -222,15 +222,16 @@ async function createMemberEventCardBuffer({
       color: BRAND_PURPLE,
     });
   } else {
-    drawCenteredText(ctx, nameText, width / 2, nameY, 900, 72, { minSize: 32, weight: 800 });
-    if (showMember !== false && memberText) {
-      drawCenteredText(ctx, memberText, width / 2, nameY + 62, 820, 30, {
-        minSize: 21,
-        weight: 600,
-        alpha: 0.92,
-        color: BRAND_PURPLE,
-      });
-    }
+    drawCenteredText(ctx, `WELCOME ${nameText}`, width / 2, nameY, 900, 64, {
+      minSize: 30,
+      weight: 800,
+    });
+    drawCenteredText(ctx, `TO ${safeGuildName}`, width / 2, nameY + 62, 820, 30, {
+      minSize: 20,
+      weight: 700,
+      alpha: 0.92,
+      color: BRAND_PURPLE,
+    });
   }
 
   return canvas.toBuffer("image/png");
