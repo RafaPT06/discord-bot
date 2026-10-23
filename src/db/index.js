@@ -190,8 +190,15 @@ await pool.query(`
       xp_min INT NOT NULL DEFAULT 15,
       xp_max INT NOT NULL DEFAULT 25,
       cooldown_seconds INT NOT NULL DEFAULT 60,
+      stack_roles BOOLEAN NOT NULL DEFAULT TRUE,
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
+  `);
+
+  // Backward-compatible schema upgrade for databases created before stack_roles.
+  await pool.query(`
+    ALTER TABLE level_settings
+    ADD COLUMN IF NOT EXISTS stack_roles BOOLEAN NOT NULL DEFAULT TRUE;
   `);
 
   await pool.query(`
