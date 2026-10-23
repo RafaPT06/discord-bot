@@ -37,49 +37,11 @@ function progressBar(current, needed, size = 12) {
   return "█".repeat(filled) + "░".repeat(size - filled);
 }
 
-async function ensureLevelTables() {
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS level_settings (
-      guild_id TEXT PRIMARY KEY,
-      channel_id TEXT,
-      enabled BOOLEAN NOT NULL DEFAULT TRUE,
-      xp_min INT NOT NULL DEFAULT 15,
-      xp_max INT NOT NULL DEFAULT 25,
-      cooldown_seconds INT NOT NULL DEFAULT 60,
-      stack_roles BOOLEAN NOT NULL DEFAULT TRUE,
-      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    );
-
-    ALTER TABLE level_settings ADD COLUMN IF NOT EXISTS stack_roles BOOLEAN NOT NULL DEFAULT TRUE;
-  `);
-
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS user_levels (
-      guild_id TEXT NOT NULL,
-      user_id TEXT NOT NULL,
-      total_xp BIGINT NOT NULL DEFAULT 0,
-      level INT NOT NULL DEFAULT 0,
-      last_xp_at TIMESTAMPTZ,
-      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      PRIMARY KEY (guild_id, user_id)
-    );
-  `);
-
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS level_role_rewards (
-      guild_id TEXT NOT NULL,
-      level INT NOT NULL,
-      role_id TEXT NOT NULL,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      PRIMARY KEY (guild_id, level)
-    );
-  `);
-
-  await pool.query(`CREATE INDEX IF NOT EXISTS user_levels_guild_level_idx ON user_levels (guild_id, level DESC, total_xp DESC);`);
-}
+// Kept for compatibility with existing imports. Leveling schema is initialized once
+// by initDb() before the bot API and event services start.
+async function ensureLevelTables() {}
 
 async function upsertLevelChannel(guildId, channelId) {
-  await ensureLevelTables();
   await pool.query(
     `INSERT INTO level_settings (guild_id, channel_id, enabled, updated_at)
      VALUES ($1, $2, TRUE, NOW())
@@ -89,15 +51,12 @@ async function upsertLevelChannel(guildId, channelId) {
 }
 
 async function getLevelSettings(guildId) {
-  await ensureLevelTables();
   const res = await pool.query(`SELECT * FROM level_settings WHERE guild_id=$1`, [guildId]);
   if (res.rows[0]) return res.rows[0];
   return { guild_id: guildId, channel_id: null, enabled: true, xp_min: 15, xp_max: 25, cooldown_seconds: 60, stack_roles: true };
 }
 
 async function updateLevelSettings(guildId, settings = {}) {
-  await ensureLevelTables();
-
   const current = await getLevelSettings(guildId);
   const enabled = typeof settings.enabled === "boolean" ? settings.enabled : current.enabled !== false;
   const channelId = settings.channelId === "" || settings.channelId === null
@@ -136,7 +95,6 @@ async function updateLevelSettings(guildId, settings = {}) {
 }
 
 async function ensureLevelRewardRoles(guild) {
-  await ensureLevelTables();
   const me = guild.members.me;
   if (!me?.permissions?.has(PermissionFlagsBits.ManageRoles)) return [];
 
@@ -236,7 +194,6 @@ function buildLevelUpEmbed({ member, oldLevel, newLevel, totalXp, addedRoles, si
 }
 
 async function getUserRank(guildId, userId) {
-  await ensureLevelTables();
   const res = await pool.query(
     `SELECT rank FROM (
        SELECT user_id, RANK() OVER (ORDER BY level DESC, total_xp DESC) AS rank
@@ -275,7 +232,6 @@ async function handleLevelMessage(client, message) {
   if (!message.content || message.content.trim().length < 2) return;
 
   await incrementMessages(message.guild.id, message.author.id).catch(() => {});
-  await ensureLevelTables();
   const settings = await getLevelSettings(message.guild.id);
   if (settings.enabled === false) return;
 
@@ -357,7 +313,6 @@ async function handleLevelMessage(client, message) {
 }
 
 async function getUserLevel(guildId, userId) {
-  await ensureLevelTables();
   const res = await pool.query(`SELECT * FROM user_levels WHERE guild_id=$1 AND user_id=$2`, [guildId, userId]);
   const row = res.rows[0] || { guild_id: guildId, user_id: userId, total_xp: 0, level: 0 };
   const progress = progressForLevel(Number(row.total_xp || 0), Number(row.level || 0));
@@ -365,7 +320,6 @@ async function getUserLevel(guildId, userId) {
 }
 
 async function getLeaderboard(guildId, limit = 10) {
-  await ensureLevelTables();
   const res = await pool.query(
     `SELECT user_id, total_xp, level FROM user_levels WHERE guild_id=$1 ORDER BY level DESC, total_xp DESC LIMIT $2`,
     [guildId, limit]
@@ -374,7 +328,6 @@ async function getLeaderboard(guildId, limit = 10) {
 }
 
 async function listLevelRewards(guildId) {
-  await ensureLevelTables();
   const res = await pool.query(
     `SELECT level, role_id, created_at FROM level_role_rewards WHERE guild_id=$1 ORDER BY level ASC`,
     [guildId]
@@ -387,7 +340,6 @@ async function listLevelRewards(guildId) {
 }
 
 async function setLevelReward(guildId, level, roleId) {
-  await ensureLevelTables();
   const safeLevel = Math.max(1, Math.min(1000, Math.floor(Number(level) || 0)));
   if (!safeLevel) {
     const err = new Error('Invalid reward level.');
@@ -411,7 +363,6 @@ async function setLevelReward(guildId, level, roleId) {
 }
 
 async function deleteLevelReward(guildId, level) {
-  await ensureLevelTables();
   const safeLevel = Math.max(1, Math.min(1000, Math.floor(Number(level) || 0)));
   const res = await pool.query(
     `DELETE FROM level_role_rewards WHERE guild_id=$1 AND level=$2`,
