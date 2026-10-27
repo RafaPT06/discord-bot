@@ -115,8 +115,6 @@ async function initDb() {
   );
 `);
 
-
-
 await pool.query(`
   CREATE TABLE IF NOT EXISTS app_state (
     key TEXT PRIMARY KEY,
@@ -124,12 +122,10 @@ await pool.query(`
   );
 `);
 
-  // Backward-compatible schema upgrade (older DBs may not have this column)
   await pool.query(`
     ALTER TABLE app_state
     ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
   `);
-
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS starboard_settings (
@@ -181,7 +177,6 @@ await pool.query(`
   `);
   await pool.query(`CREATE INDEX IF NOT EXISTS quotes_guild_id_idx ON quotes (guild_id, id DESC);`);
 
-
   await pool.query(`
     CREATE TABLE IF NOT EXISTS level_settings (
       guild_id TEXT PRIMARY KEY,
@@ -195,7 +190,6 @@ await pool.query(`
     );
   `);
 
-  // Backward-compatible schema upgrade for databases created before stack_roles.
   await pool.query(`
     ALTER TABLE level_settings
     ADD COLUMN IF NOT EXISTS stack_roles BOOLEAN NOT NULL DEFAULT TRUE;
@@ -244,6 +238,15 @@ await pool.query(`
     );
   `);
 
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS persistent_voice_settings (
+      guild_id TEXT PRIMARY KEY,
+      channel_id TEXT NOT NULL,
+      enabled BOOLEAN NOT NULL DEFAULT TRUE,
+      updated_by TEXT,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS user_stats (

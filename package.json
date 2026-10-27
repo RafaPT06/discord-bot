@@ -13,6 +13,7 @@
     "node": ">=18"
   },
   "dependencies": {
+    "@discordjs/voice": "^0.18.0",
     "canvas": "^3.2.3",
     "discord.js": "^14.16.3",
     "dotenv": "^16.4.5",

@@ -17,6 +17,7 @@ const { checkCooldown } = require("./services/cooldowns");
 const { fieldsEmbed, errorEmbed } = require("./utils/embeds");
 const { startPresenceRotation } = require("./services/presenceManager");
 const { startDailySentenceDm } = require("./services/dailySentenceDm");
+const { restorePersistentVoiceConnections } = require("./services/persistentVoice");
 const { startBotApi } = require("./web/api");
 const { handleStarboardReaction } = require("./services/starboard");
 const { handleLevelMessage } = require("./services/leveling");
@@ -70,6 +71,9 @@ client.once(Events.ClientReady, async () => {
   startBotApi(client);
   startPresenceRotation(client);
   startDailySentenceDm(client);
+  await restorePersistentVoiceConnections(client).catch((err) => {
+    console.error("Persistent voice startup error:", err);
+  });
   console.log(" DB init + services started");
 });
 
@@ -98,7 +102,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const cmd = client.commands.get(interaction.commandName);
       if (!cmd) return;
 
-      // Hard maintenance mode: blocks everything except /maintenance (Owner can always bypass)
       const maintenanceEnabled = await getMaintenanceEnabled();
       const isOwner = interaction.user?.id === process.env.OWNER_ID;
       const allowDuringMaintenance = interaction.commandName === "maintenance";
@@ -114,12 +117,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
       const allowed = await canRunCommand(interaction, interaction.commandName);
       if (!allowed) {
-        return interaction.reply({
-          content: "Error: You don’t have permission to use this command here.",
-          ephemeral: true,
-        });
+        return interaction.reply({ content: "Error: You don’t have permission to use this command here.", ephemeral: true });
       }
-      // Cooldowns (owner bypass)
       if (!isOwner) {
         const noCooldown = new Set(["help","ping","maintenance","panel"]);
         if (!noCooldown.has(interaction.commandName)) {
@@ -131,12 +130,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
         }
       }
 
-
       const commandStartedAt = Date.now();
       try {
         await cmd.execute(interaction, client);
         const durationMs = Date.now() - commandStartedAt;
-        // Feed: activity (level 3)
         try {
           const embed = fieldsEmbed("Command Executed", [
             { name: "User", value: `<@${interaction.user.id}>`, inline: true },
@@ -145,23 +142,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
           ]);
           await sendFeed(client, interaction.guildId, 3, embed);
         } catch {}
-        logCommandUsage({
-          guildId: interaction.guildId,
-          userId: interaction.user?.id,
-          commandName: interaction.commandName,
-          ok: true,
-          durationMs,
-        });
+        logCommandUsage({ guildId: interaction.guildId, userId: interaction.user?.id, commandName: interaction.commandName, ok: true, durationMs });
       } catch (err) {
-        logCommandUsage({
-          guildId: interaction.guildId,
-          userId: interaction.user?.id,
-          commandName: interaction.commandName,
-          ok: false,
-          error: err?.message || String(err),
-          durationMs: Date.now() - commandStartedAt,
-        });
-        // Feed: critical (level 1)
+        logCommandUsage({ guildId: interaction.guildId, userId: interaction.user?.id, commandName: interaction.commandName, ok: false, error: err?.message || String(err), durationMs: Date.now() - commandStartedAt });
         try {
           const embed = errorEmbed("Command Failed", `/${interaction.commandName} failed for <@${interaction.user.id}>`);
           await sendFeed(client, interaction.guildId, 1, embed);
@@ -171,7 +154,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
       return;
     }
 
-    
     if (interaction.isStringSelectMenu()) {
       if (interaction.customId === "panel_select") {
         const { handlePanelSelect } = require("./handlers/panelSelect");
@@ -179,7 +161,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       }
     }
 
-if (interaction.isButton()) {
+    if (interaction.isButton()) {
       const [kind, ...rest] = interaction.customId.split(":");
       if (kind === "list") {
         const type = rest[0];
@@ -191,120 +173,72 @@ if (interaction.isButton()) {
         const { handleRobloxRefresh } = require("./handlers/robloxButtons");
         return handleRobloxRefresh(interaction, client);
       }
-
       if (kind === "help") {
         const { handleHelpButton } = require("./handlers/helpButtons");
         return handleHelpButton(interaction);
       }
-
       if (kind === "panel") {
         const { handlePanelButton } = require("./handlers/panelButtons");
         return handlePanelButton(interaction, client);
       }
-
       if (kind === "panelact") {
         const { handlePanelAction } = require("./handlers/panelActionButtons");
         return handlePanelAction(interaction, client);
       }
-
     }
   } catch (err) {
     console.error("Interaction error:", err);
     const msg = err?.message || "Unknown error";
     try {
       if (interaction.isRepliable()) {
-        if (interaction.deferred || interaction.replied) {
-          await interaction.followUp({ content: `Error: ${msg}`, ephemeral: true }).catch(() => {});
-        } else {
-          await interaction.reply({ content: `Error: ${msg}`, ephemeral: true }).catch(() => {});
-        }
+        if (interaction.deferred || interaction.replied) await interaction.followUp({ content: `Error: ${msg}`, ephemeral: true }).catch(() => {});
+        else await interaction.reply({ content: `Error: ${msg}`, ephemeral: true }).catch(() => {});
       }
     } catch {}
   }
 });
 
-
 client.on(Events.MessageCreate, async (message) => {
   try {
     const handledPrefix = await handlePrefixMessage(client, message);
     if (handledPrefix) return;
-  } catch (err) {
-    console.error("Prefix command error:", err);
-  }
+  } catch (err) { console.error("Prefix command error:", err); }
 
   try {
     const moderated = await handleModerationMessage(message);
     if (moderated) return;
-  } catch (err) {
-    console.error("Moderation error:", err);
-  }
+  } catch (err) { console.error("Moderation error:", err); }
 
-  try {
-    await handleLevelMessage(client, message);
-  } catch (err) {
-    console.error("Leveling error:", err);
-  }
+  try { await handleLevelMessage(client, message); }
+  catch (err) { console.error("Leveling error:", err); }
 });
 
-
 client.on(Events.GuildMemberAdd, async (member) => {
-  const [welcomeResult, logResult] = await Promise.allSettled([
-    handleMemberJoin(member),
-    handleLoggedMemberJoin(member),
-  ]);
+  const [welcomeResult, logResult] = await Promise.allSettled([handleMemberJoin(member), handleLoggedMemberJoin(member)]);
   if (welcomeResult.status === "rejected") console.error("Welcome message error:", welcomeResult.reason);
   if (logResult.status === "rejected") console.error("Member join log error:", logResult.reason);
 });
 
 client.on(Events.GuildMemberRemove, async (member) => {
-  const [goodbyeResult, logResult] = await Promise.allSettled([
-    handleMemberLeave(member),
-    handleLoggedMemberLeave(member),
-  ]);
+  const [goodbyeResult, logResult] = await Promise.allSettled([handleMemberLeave(member), handleLoggedMemberLeave(member)]);
   if (goodbyeResult.status === "rejected") console.error("Goodbye message error:", goodbyeResult.reason);
   if (logResult.status === "rejected") console.error("Member leave log error:", logResult.reason);
 });
 
-
 client.on(Events.MessageDelete, async (message) => {
-  try {
-    await handleLoggedMessageDelete(message);
-  } catch (err) {
-    console.error("Message delete log error:", err);
-  }
+  try { await handleLoggedMessageDelete(message); } catch (err) { console.error("Message delete log error:", err); }
 });
-
 client.on(Events.MessageUpdate, async (oldMessage, newMessage) => {
-  try {
-    await handleLoggedMessageUpdate(oldMessage, newMessage);
-  } catch (err) {
-    console.error("Message update log error:", err);
-  }
+  try { await handleLoggedMessageUpdate(oldMessage, newMessage); } catch (err) { console.error("Message update log error:", err); }
 });
-
 client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
-  try {
-    await handleLoggedVoiceState(oldState, newState);
-  } catch (err) {
-    console.error("Voice log error:", err);
-  }
+  try { await handleLoggedVoiceState(oldState, newState); } catch (err) { console.error("Voice log error:", err); }
 });
-
 client.on(Events.GuildBanAdd, async (ban) => {
-  try {
-    await handleLoggedGuildBan(ban);
-  } catch (err) {
-    console.error("Ban log error:", err);
-  }
+  try { await handleLoggedGuildBan(ban); } catch (err) { console.error("Ban log error:", err); }
 });
-
-
 client.on(Events.MessageReactionAdd, async (reaction, user) => {
-  try {
-    await handleStarboardReaction(client, reaction, user);
-  } catch (err) {
-    console.error("Starboard reaction error:", err);
-  }
+  try { await handleStarboardReaction(client, reaction, user); } catch (err) { console.error("Starboard reaction error:", err); }
 });
 
 client.login(token);
