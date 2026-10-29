@@ -4,4 +4,5 @@ require('./src/web/roleDeletionPatch').install();
 require('./src/web/dashboardRoleListPatch').install();
 require('./src/web/starboardDashboardPatch').install();
 require('./src/web/backupDashboardPatch').install();
+require('./src/web/serverLayoutDashboardPatch').install();
 require('./src/index');
