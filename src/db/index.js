@@ -88,44 +88,24 @@ async function initDb() {
                                     );
                                     `);
 
-  await pool.query(
-    `CREATE INDEX IF NOT EXISTS command_usage_guild_idx ON command_usage (guild_id, created_at DESC);`,
-  );
-  await pool.query(
-    `CREATE INDEX IF NOT EXISTS command_usage_cmd_idx ON command_usage (command_name, created_at DESC);`,
-  );
+  await pool.query(`CREATE INDEX IF NOT EXISTS command_usage_guild_idx ON command_usage (guild_id, created_at DESC);`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS command_usage_cmd_idx ON command_usage (command_name, created_at DESC);`);
+  await pool.query(`ALTER TABLE command_usage ADD COLUMN IF NOT EXISTS duration_ms INT;`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS command_usage_guild_duration_idx ON command_usage (guild_id, duration_ms DESC);`);
 
   await pool.query(`
-    ALTER TABLE command_usage
-    ADD COLUMN IF NOT EXISTS duration_ms INT;
+    CREATE TABLE IF NOT EXISTS command_permissions (
+      guild_id TEXT NOT NULL,
+      command_name TEXT NOT NULL,
+      allowed_role_ids TEXT[] NOT NULL DEFAULT '{}',
+      allow_manage_guild BOOLEAN NOT NULL DEFAULT TRUE,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (guild_id, command_name)
+    );
   `);
 
-  await pool.query(
-    `CREATE INDEX IF NOT EXISTS command_usage_guild_duration_idx ON command_usage (guild_id, duration_ms DESC);`,
-  );
-
-  await pool.query(`
-  CREATE TABLE IF NOT EXISTS command_permissions (
-    guild_id TEXT NOT NULL,
-    command_name TEXT NOT NULL,
-    allowed_role_ids TEXT[] NOT NULL DEFAULT '{}',
-    allow_manage_guild BOOLEAN NOT NULL DEFAULT TRUE,
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    PRIMARY KEY (guild_id, command_name)
-  );
-`);
-
-await pool.query(`
-  CREATE TABLE IF NOT EXISTS app_state (
-    key TEXT PRIMARY KEY,
-    value TEXT NOT NULL
-  );
-`);
-
-  await pool.query(`
-    ALTER TABLE app_state
-    ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
-  `);
+  await pool.query(`CREATE TABLE IF NOT EXISTS app_state (key TEXT PRIMARY KEY, value TEXT NOT NULL);`);
+  await pool.query(`ALTER TABLE app_state ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();`);
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS starboard_settings (
@@ -137,7 +117,6 @@ await pool.query(`
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
   `);
-
   await pool.query(`
     CREATE TABLE IF NOT EXISTS starboard_posts (
       guild_id TEXT NOT NULL,
@@ -189,11 +168,7 @@ await pool.query(`
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
   `);
-
-  await pool.query(`
-    ALTER TABLE level_settings
-    ADD COLUMN IF NOT EXISTS stack_roles BOOLEAN NOT NULL DEFAULT TRUE;
-  `);
+  await pool.query(`ALTER TABLE level_settings ADD COLUMN IF NOT EXISTS stack_roles BOOLEAN NOT NULL DEFAULT TRUE;`);
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS user_levels (
@@ -217,7 +192,6 @@ await pool.query(`
       PRIMARY KEY (guild_id, level)
     );
   `);
-
   await pool.query(`
     CREATE TABLE IF NOT EXISTS edit_image_access_users (
       guild_id TEXT NOT NULL,
@@ -227,7 +201,6 @@ await pool.query(`
       PRIMARY KEY (guild_id, user_id)
     );
   `);
-
   await pool.query(`
     CREATE TABLE IF NOT EXISTS moderation_bypass_users (
       guild_id TEXT NOT NULL,
@@ -237,7 +210,6 @@ await pool.query(`
       PRIMARY KEY (guild_id, user_id)
     );
   `);
-
   await pool.query(`
     CREATE TABLE IF NOT EXISTS persistent_voice_settings (
       guild_id TEXT PRIMARY KEY,
@@ -247,7 +219,6 @@ await pool.query(`
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
   `);
-
   await pool.query(`
     CREATE TABLE IF NOT EXISTS user_stats (
       guild_id TEXT NOT NULL,
@@ -261,7 +232,6 @@ await pool.query(`
       PRIMARY KEY (guild_id, user_id)
     );
   `);
-
   await pool.query(`
     CREATE TABLE IF NOT EXISTS achievement_unlocks (
       guild_id TEXT NOT NULL,
@@ -271,7 +241,6 @@ await pool.query(`
       PRIMARY KEY (guild_id, user_id, achievement_id)
     );
   `);
-
   await pool.query(`
     CREATE TABLE IF NOT EXISTS card_backgrounds (
       guild_id TEXT NOT NULL,
@@ -282,7 +251,6 @@ await pool.query(`
       PRIMARY KEY (guild_id, card_type)
     );
   `);
-
   await pool.query(`
     CREATE TABLE IF NOT EXISTS prefix_settings (
       guild_id TEXT PRIMARY KEY,
@@ -292,6 +260,19 @@ await pool.query(`
     );
   `);
 
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS server_layout_snapshots (
+      id BIGSERIAL PRIMARY KEY,
+      guild_id TEXT NOT NULL,
+      name TEXT,
+      reason TEXT,
+      created_by TEXT,
+      snapshot_version INT NOT NULL DEFAULT 1,
+      layout JSONB NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+  await pool.query(`CREATE INDEX IF NOT EXISTS server_layout_snapshots_guild_created_idx ON server_layout_snapshots (guild_id, created_at DESC);`);
 }
 
 module.exports = { initDb };
