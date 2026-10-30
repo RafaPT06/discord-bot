@@ -7,7 +7,6 @@
     "start": "node index.js",
     "deploy": "node deploy-commands.js",
     "test:links": "node scripts/test-media-links.js",
-    "test:daily-sentence": "node scripts/test-daily-sentence.js",
     "test:voice": "node -e \"require('@discordjs/voice'); console.log('Discord voice module loaded successfully')\""
   },
   "engines": {

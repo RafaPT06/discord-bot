@@ -16,7 +16,6 @@ const { sendFeed } = require("./services/feed");
 const { checkCooldown } = require("./services/cooldowns");
 const { fieldsEmbed, errorEmbed } = require("./utils/embeds");
 const { startPresenceRotation } = require("./services/presenceManager");
-const { startDailySentenceDm } = require("./services/dailySentenceDm");
 const { restorePersistentVoiceConnections } = require("./services/persistentVoice");
 const { startBotApi } = require("./web/api");
 const { handleStarboardReaction } = require("./services/starboard");
@@ -70,7 +69,6 @@ client.once(Events.ClientReady, async () => {
   await sendDeployNotices(client);
   startBotApi(client);
   startPresenceRotation(client);
-  startDailySentenceDm(client);
   await restorePersistentVoiceConnections(client).catch((err) => {
     console.error("Persistent voice startup error:", err);
   });
