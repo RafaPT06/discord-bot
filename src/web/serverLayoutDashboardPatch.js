@@ -6,10 +6,12 @@ const {
   getLayoutSnapshot,
   diffLayoutSnapshot,
 } = require('../services/serverLayout');
+const { restoreServerLayout } = require('../services/serverLayoutRestore');
 
 let installed = false;
 let listenPatched = false;
 let activeClient = null;
+const restoreLocks = new Set();
 
 function tokenAllowed(req) {
   const token = process.env.BOT_API_TOKEN || null;
@@ -97,6 +99,30 @@ async function getSnapshotDiff(req, res) {
   }
 }
 
+async function restoreSnapshot(req, res) {
+  const guild = await resolveGuild(req, res);
+  if (!guild) return;
+  if (restoreLocks.has(guild.id)) return res.status(409).json({ ok: false, error: 'A Server Layout restore is already running for this server.' });
+  const mode = String(req.body?.mode || 'merge').toLowerCase() === 'replace' ? 'replace' : 'merge';
+  if (mode === 'replace' && String(req.body?.confirmServerName || '') !== guild.name) {
+    return res.status(400).json({ ok: false, error: 'Replace mode requires the exact current server name as confirmation.' });
+  }
+  restoreLocks.add(guild.id);
+  try {
+    const snapshot = await getLayoutSnapshot(guild.id, req.params.snapshotId);
+    if (!snapshot) return res.status(404).json({ ok: false, error: 'Snapshot not found.' });
+    const result = await restoreServerLayout(guild, snapshot, {
+      mode,
+      actorId: normalizeText(req.body?.actorId, 30),
+    });
+    return res.json({ ok: true, guildId: guild.id, result });
+  } catch (err) {
+    return res.status(500).json({ ok: false, error: err.message || 'Could not restore server layout.' });
+  } finally {
+    restoreLocks.delete(guild.id);
+  }
+}
+
 function patchExpressListen(client) {
   activeClient = client;
   if (listenPatched) return;
@@ -110,6 +136,7 @@ function patchExpressListen(client) {
       this.post('/api/guilds/:guildId/layout/snapshots', createSnapshot);
       this.get('/api/guilds/:guildId/layout/snapshots/:snapshotId', getSnapshot);
       this.get('/api/guilds/:guildId/layout/snapshots/:snapshotId/diff', getSnapshotDiff);
+      this.post('/api/guilds/:guildId/layout/snapshots/:snapshotId/restore', restoreSnapshot);
     }
     return originalListen.apply(this, args);
   };
