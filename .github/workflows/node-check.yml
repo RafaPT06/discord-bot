@@ -52,6 +52,7 @@ jobs:
           node --check src/web/backupDashboardPatch.js
           node --check scripts/test-media-links.js
           node --check src/web/serverLayoutDashboardPatch.js
+          node --check src/services/musicVoiceControl.js
           node --check src/services/serverLayoutRestorePreflight.js
           node --check scripts/test-server-layout-restore-preflight.js
 
