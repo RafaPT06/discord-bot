@@ -1,4 +1,5 @@
 const express = require('express');
+const { listVoiceChannels, currentVoiceState, joinSelectedChannel, disconnectVoice } = require('../services/musicVoiceControl');
 const { preflightRestore } = require('../services/serverLayoutRestorePreflight');
 const {
   captureServerLayout,
@@ -114,6 +115,41 @@ async function getRestorePreflight(req, res) {
   }
 }
 
+async function getVoiceChannels(req, res) {
+  try {
+    const guild = await resolveGuild(req, res);
+    if (!guild) return;
+    await Promise.all([guild.channels.fetch(), guild.members.fetchMe()]);
+    return res.json({ ok: true, guildId: guild.id, channels: listVoiceChannels(guild), voice: currentVoiceState(guild) });
+  } catch (err) {
+    return res.status(500).json({ ok: false, error: 'Could not load voice channels.' });
+  }
+}
+
+async function joinVoice(req, res) {
+  try {
+    const guild = await resolveGuild(req, res);
+    if (!guild) return;
+    const channelId = String(req.body?.channelId || '');
+    if (!/^\\d{16,22}$/.test(channelId)) return res.status(400).json({ ok: false, error: 'Invalid voice channel ID.' });
+    await guild.channels.fetch();
+    const voice = await joinSelectedChannel(guild, channelId);
+    return res.json({ ok: true, guildId: guild.id, voice });
+  } catch (err) {
+    return res.status(err.statusCode || 500).json({ ok: false, error: err.message || 'Could not join voice channel.' });
+  }
+}
+
+async function leaveVoice(req, res) {
+  try {
+    const guild = await resolveGuild(req, res);
+    if (!guild) return;
+    return res.json({ ok: true, guildId: guild.id, voice: disconnectVoice(guild) });
+  } catch (err) {
+    return res.status(err.statusCode || 500).json({ ok: false, error: err.message || 'Could not disconnect voice.' });
+  }
+}
+
 function patchExpressListen(client) {
   activeClient = client;
   if (listenPatched) return;
@@ -122,6 +158,9 @@ function patchExpressListen(client) {
   express.application.listen = function meowzListenWithServerLayoutDashboard(...args) {
     if (!this.locals.meowzServerLayoutRoutes) {
       this.locals.meowzServerLayoutRoutes = true;
+      this.get('/api/guilds/:guildId/music/voice', getVoiceChannels);
+      this.post('/api/guilds/:guildId/music/voice/join', joinVoice);
+      this.post('/api/guilds/:guildId/music/voice/leave', leaveVoice);
       this.get('/api/guilds/:guildId/layout', getLayout);
       this.get('/api/guilds/:guildId/layout/snapshots', listSnapshots);
       this.post('/api/guilds/:guildId/layout/snapshots', createSnapshot);
