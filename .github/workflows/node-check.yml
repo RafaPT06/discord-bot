@@ -49,6 +49,11 @@ jobs:
           node --check src/web/backupDashboardPatch.js
           node --check scripts/test-media-links.js
           node --check src/web/serverLayoutDashboardPatch.js
+          node --check src/services/serverLayoutRestorePreflight.js
+          node --check scripts/test-server-layout-restore-preflight.js
 
       - name: Test media link moderation
         run: npm run test:links
+
+      - name: Test Server Layout restore preflight
+        run: node scripts/test-server-layout-restore-preflight.js
