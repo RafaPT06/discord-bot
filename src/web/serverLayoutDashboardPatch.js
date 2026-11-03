@@ -152,6 +152,12 @@ async function leaveVoice(req, res) {
   }
 }
 
+async function musicSearch(req, res) {
+  const guild = await resolveGuild(req, res);
+  if (!guild) return;
+  try { return res.json({ ok: true, tracks: await music.searchOnline(req.query.q) }); }
+  catch (err) { return res.status(err.statusCode || 502).json({ ok: false, error: err.message || 'Online music search failed.' }); }
+}
 async function musicState(req, res) {
   const guild = await resolveGuild(req, res);
   if (!guild) return;
@@ -178,6 +184,7 @@ function patchExpressListen(client) {
   express.application.listen = function meowzListenWithServerLayoutDashboard(...args) {
     if (!this.locals.meowzServerLayoutRoutes) {
       this.locals.meowzServerLayoutRoutes = true;
+      this.get('/api/guilds/:guildId/music/player/search', musicSearch);
       this.get('/api/guilds/:guildId/music/player', musicState);
       this.post('/api/guilds/:guildId/music/player/queue', musicEnqueue);
       this.post('/api/guilds/:guildId/music/player/control', musicControl);

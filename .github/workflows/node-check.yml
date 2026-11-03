@@ -55,6 +55,7 @@ jobs:
           node --check src/services/musicVoiceControl.js
           node --check src/services/musicQueue.js
           node --check src/services/musicPlayback.js
+          node --check src/services/musicOnlineProvider.js
           node --check src/services/serverLayoutRestorePreflight.js
           node --check scripts/test-server-layout-restore-preflight.js
 
