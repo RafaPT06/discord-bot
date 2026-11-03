@@ -1,4 +1,5 @@
 const express = require('express');
+const { preflightRestore } = require('../services/serverLayoutRestorePreflight');
 const {
   captureServerLayout,
   createLayoutSnapshot,
@@ -98,6 +99,21 @@ async function getSnapshotDiff(req, res) {
   }
 }
 
+async function getRestorePreflight(req, res) {
+  try {
+    const guild = await resolveGuild(req, res);
+    if (!guild) return;
+    const snapshot = await getLayoutSnapshot(guild.id, req.params.snapshotId);
+    if (!snapshot) return res.status(404).json({ ok: false, error: 'Snapshot not found.' });
+    await Promise.all([guild.roles.fetch(), guild.channels.fetch(), guild.members.fetchMe()]);
+    const mode = String(req.query.mode || 'merge').toLowerCase();
+    const preflight = preflightRestore(guild, snapshot, mode);
+    return res.json({ ok: true, guildId: guild.id, preflight });
+  } catch (err) {
+    return res.status(500).json({ ok: false, error: err.message || 'Could not validate restore preflight.' });
+  }
+}
+
 function patchExpressListen(client) {
   activeClient = client;
   if (listenPatched) return;
@@ -111,6 +127,7 @@ function patchExpressListen(client) {
       this.post('/api/guilds/:guildId/layout/snapshots', createSnapshot);
       this.get('/api/guilds/:guildId/layout/snapshots/:snapshotId', getSnapshot);
       this.get('/api/guilds/:guildId/layout/snapshots/:snapshotId/diff', getSnapshotDiff);
+      this.get('/api/guilds/:guildId/layout/snapshots/:snapshotId/restore-preflight', getRestorePreflight);
     }
     return originalListen.apply(this, args);
   };
