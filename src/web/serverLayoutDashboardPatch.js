@@ -1,4 +1,5 @@
 const express = require('express');
+const music = require('../services/musicPlayback');
 const { listVoiceChannels, currentVoiceState, joinSelectedChannel, disconnectVoice } = require('../services/musicVoiceControl');
 const { preflightRestore } = require('../services/serverLayoutRestorePreflight');
 const {
@@ -144,10 +145,29 @@ async function leaveVoice(req, res) {
   try {
     const guild = await resolveGuild(req, res);
     if (!guild) return;
+    music.cleanup(guild.id);
     return res.json({ ok: true, guildId: guild.id, voice: disconnectVoice(guild) });
   } catch (err) {
     return res.status(err.statusCode || 500).json({ ok: false, error: err.message || 'Could not disconnect voice.' });
   }
+}
+
+async function musicState(req, res) {
+  const guild = await resolveGuild(req, res);
+  if (!guild) return;
+  return res.json({ ok: true, music: music.state(guild.id) });
+}
+async function musicEnqueue(req, res) {
+  const guild = await resolveGuild(req, res);
+  if (!guild) return;
+  try { return res.json({ ok: true, music: music.enqueue(guild.id, String(req.body?.trackId || '')) }); }
+  catch (err) { return res.status(err.statusCode || 500).json({ ok: false, error: err.message }); }
+}
+async function musicControl(req, res) {
+  const guild = await resolveGuild(req, res);
+  if (!guild) return;
+  try { return res.json({ ok: true, music: music.control(guild.id, String(req.body?.action || '')) }); }
+  catch (err) { return res.status(err.statusCode || 500).json({ ok: false, error: err.message }); }
 }
 
 function patchExpressListen(client) {
@@ -158,6 +178,9 @@ function patchExpressListen(client) {
   express.application.listen = function meowzListenWithServerLayoutDashboard(...args) {
     if (!this.locals.meowzServerLayoutRoutes) {
       this.locals.meowzServerLayoutRoutes = true;
+      this.get('/api/guilds/:guildId/music/player', musicState);
+      this.post('/api/guilds/:guildId/music/player/queue', musicEnqueue);
+      this.post('/api/guilds/:guildId/music/player/control', musicControl);
       this.get('/api/guilds/:guildId/music/voice', getVoiceChannels);
       this.post('/api/guilds/:guildId/music/voice/join', joinVoice);
       this.post('/api/guilds/:guildId/music/voice/leave', leaveVoice);
