@@ -12,8 +12,9 @@ let listenPatched = false;
 let activeClient = null;
 
 function tokenAllowed(req) {
-  const token = process.env.BOT_API_TOKEN || null;
-  if (!token) return true;
+  const token = process.env.BOT_API_TOKEN;
+  // Fail closed: a missing API secret must never expose guild layout data.
+  if (!token || !token.trim()) return false;
   return req.headers.authorization === `Bearer ${token}`;
 }
 
