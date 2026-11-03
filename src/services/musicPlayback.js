@@ -8,7 +8,7 @@ function catalog() {
   const directory = process.env.MEOWZ_MUSIC_DIR;
   if (!directory || !path.isAbsolute(directory)) return [];
   try {
-    return fs.readdirSync(directory).filter(name => /^[a-zA-Z0-9 _.-]{1,100}\\.(ogg|opus|mp3|wav)$/i.test(name))
+    return fs.readdirSync(directory).filter(name => /^[a-zA-Z0-9 _.-]{1,100}\.(ogg|opus|mp3|wav)$/i.test(name))
       .map(name => ({ id: name, title: path.parse(name).name }));
   } catch { return []; }
 }
