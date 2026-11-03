@@ -131,7 +131,7 @@ async function joinVoice(req, res) {
     const guild = await resolveGuild(req, res);
     if (!guild) return;
     const channelId = String(req.body?.channelId || '');
-    if (!/^\\d{16,22}$/.test(channelId)) return res.status(400).json({ ok: false, error: 'Invalid voice channel ID.' });
+    if (!/^\d{16,22}$/.test(channelId)) return res.status(400).json({ ok: false, error: 'Invalid voice channel ID.' });
     await guild.channels.fetch();
     const voice = await joinSelectedChannel(guild, channelId);
     return res.json({ ok: true, guildId: guild.id, voice });
