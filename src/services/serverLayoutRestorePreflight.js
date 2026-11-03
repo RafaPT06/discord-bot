@@ -4,7 +4,7 @@ const VALID_MODES = new Set(['merge', 'replace']);
 const REQUIRED_PERMISSIONS = ['ManageGuild', 'ManageRoles', 'ManageChannels'];
 
 function normalizeId(value) {
-  return typeof value === 'string' && /^\\d{16,22}$/.test(value) ? value : null;
+  return typeof value === 'string' && /^\d{16,22}$/.test(value) ? value : null;
 }
 
 function validateCollection(items, label, errors) {
