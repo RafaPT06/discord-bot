@@ -15,6 +15,26 @@ async function json(url, diagnostic = false) {
     return data;
   } finally { await res.body.dump().catch(() => {}); }
 }
+// Compare documented request variants without consuming or exposing data from a denied list.
+async function compareDocumentedFriendsVariant(userId) {
+  const url = `https://friends.roblox.com/v1/users/${userId}/friends?userSort=2`;
+  try {
+    const response = await request(url, {
+      headersTimeout: 8000,
+      bodyTimeout: 8000,
+      maxRedirections: 0,
+      headers: { accept: 'application/json' },
+    });
+    try {
+      console.info('[Roblox Friends] userSort=2 diagnostic HTTP status:', response.statusCode);
+      // Never parse or display this response: this check is status-only.
+    } finally {
+      await response.body.dump().catch(() => {});
+    }
+  } catch (error) {
+    console.warn('[Roblox Friends] userSort=2 diagnostic request failed:', error?.code || error?.name || 'unknown');
+  }
+}
 async function loadThumbnails(friends) {
   const thumbnails = new Map();
   const ids = friends.map(friend => friend.id);
@@ -76,6 +96,7 @@ module.exports = {
       const user = await resolveUsername(username);
       console.info('[Roblox Friends] Username resolved');
       const response = await json(`https://friends.roblox.com/v1/users/${user.userId}/friends`, true);
+      if (response.restricted) await compareDocumentedFriendsVariant(user.userId);
       if (response.restricted || response.missing || !Array.isArray(response.data)) {
         console.warn('[Roblox Friends] Lookup unavailable:', response.restricted ? 'access-denied' : response.missing ? 'not-found' : 'unexpected-response');
         return interaction.editReply({ content: 'This friends list is not publicly available through Roblox. Meowz respects Roblox privacy settings.' });
