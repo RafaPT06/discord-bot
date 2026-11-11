@@ -42,8 +42,8 @@ function render(user, friends, page, thumbnails) {
     const id = Number(friend.id);
     const name = String(friend.name || 'Unknown').slice(0, 50);
     const display = String(friend.displayName || name).slice(0, 50);
-    const safeName = name.replace(/[`*_~|>\\[\\]()]/g, '');
-    const safeDisplay = display.replace(/[`*_~|>\\[\\]()]/g, '');
+    const safeName = name.replace(/[^a-zA-Z0-9_]/g, '');
+    const safeDisplay = display.replace(/[\\r\\n]/g, ' ').slice(0, 50);
     const embed = new EmbedBuilder()
       .setColor(0x151a2b)
       .setAuthor({ name: `${safeDisplay} (@${safeName})`, url: `https://www.roblox.com/users/${id}/profile` })
