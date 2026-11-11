@@ -3,13 +3,16 @@ const { request } = require('undici');
 const { resolveUsername } = require('../services/robloxApi');
 
 const PAGE_SIZE = 5;
-async function json(url) {
+async function json(url, diagnostic = false) {
   const res = await request(url, { headersTimeout: 8000, bodyTimeout: 8000, maxRedirections: 0 });
   try {
+    if (diagnostic) console.info('[Roblox Friends] Friends API HTTP status:', res.statusCode);
     if (res.statusCode === 403 || res.statusCode === 401) return { restricted: true };
     if (res.statusCode === 404) return { missing: true };
     if (res.statusCode < 200 || res.statusCode >= 300) throw new Error('Roblox unavailable');
-    return await res.body.json();
+    const data = await res.body.json();
+    if (diagnostic) console.info('[Roblox Friends] Response shape:', Array.isArray(data?.data) ? 'data-array' : Array.isArray(data) ? 'array' : 'unexpected', 'count:', Array.isArray(data?.data) ? data.data.length : 'n/a');
+    return data;
   } finally { await res.body.dump().catch(() => {}); }
 }
 async function loadThumbnails(friends) {
@@ -69,12 +72,16 @@ module.exports = {
     await interaction.deferReply();
     try {
       const username = interaction.options.getString('username', true).trim();
+      console.info('[Roblox Friends] Lookup started');
       const user = await resolveUsername(username);
-      const response = await json(`https://friends.roblox.com/v1/users/${user.userId}/friends`);
+      console.info('[Roblox Friends] Username resolved');
+      const response = await json(`https://friends.roblox.com/v1/users/${user.userId}/friends`, true);
       if (response.restricted || response.missing || !Array.isArray(response.data)) {
+        console.warn('[Roblox Friends] Lookup unavailable:', response.restricted ? 'access-denied' : response.missing ? 'not-found' : 'unexpected-response');
         return interaction.editReply({ content: 'This friends list is not publicly available through Roblox. Meowz respects Roblox privacy settings.' });
       }
       const friends = response.data.filter(f => Number.isSafeInteger(f.id) && f.id > 0).slice(0, 500);
+      console.info('[Roblox Friends] Public friends returned:', friends.length);
       if (!friends.length) return interaction.editReply({ content: `No publicly available friends found for @${user.name}.` });
       const thumbnails = await loadThumbnails(friends.slice(0, PAGE_SIZE));
       const message = await interaction.editReply(render(user, friends, 0, thumbnails));
@@ -93,6 +100,7 @@ module.exports = {
       });
       collector.on('end', () => interaction.editReply({ components: [] }).catch(() => {}));
     } catch (error) {
+      console.error('[Roblox Friends] Lookup failed:', error?.name || 'Error', error?.code || 'no-code', String(error?.message || '').slice(0, 120).replace(/https?:\\/\\/\\S+/g, '[url]'));
       const message = /not found/i.test(error.message) ? 'Roblox user not found.' : 'Roblox friends are unavailable right now. Please try again later.';
       return interaction.editReply({ content: message, embeds: [], components: [] });
     }
