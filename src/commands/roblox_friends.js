@@ -62,7 +62,7 @@ function render(user, friends, page, thumbnails) {
 
 module.exports = {
   data: new SlashCommandBuilder().setName('roblox_friends')
-    .setDescription('Show a Roblox user’s publicly available friends.')
+    .setDescription('Show a Roblox users publicly available friends.')
     .setContexts(InteractionContextType.Guild, InteractionContextType.BotDM, InteractionContextType.PrivateChannel)
     .addStringOption(o => o.setName('username').setDescription('Roblox username').setRequired(true).setMaxLength(20)),
   async execute(interaction) {
