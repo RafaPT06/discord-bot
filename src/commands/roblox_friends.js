@@ -12,28 +12,54 @@ async function json(url) {
     return await res.body.json();
   } finally { await res.body.dump().catch(() => {}); }
 }
+async function loadThumbnails(friends) {
+  const thumbnails = new Map();
+  const ids = friends.map(friend => friend.id);
+  for (let index = 0; index < ids.length; index += 100) {
+    try {
+      const batch = ids.slice(index, index + 100);
+      const data = await json(`https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=${batch.join(',')}&size=150x150&format=Png&isCircular=false`);
+      for (const item of data.data || []) {
+        if (item.state === 'Completed' && /^https:\/\//.test(item.imageUrl || '')) {
+          thumbnails.set(Number(item.targetId), item.imageUrl);
+        }
+      }
+    } catch {
+      // Roblox thumbnail failures must not prevent friends from being shown.
+    }
+  }
+  return thumbnails;
+}
 function render(user, friends, page, thumbnails) {
   const pages = Math.max(1, Math.ceil(friends.length / PAGE_SIZE));
   const subset = friends.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
-  const description = subset.map((friend) => {
-    const id = Number(friend.id);
-    const name = String(friend.name || 'Unknown').slice(0, 50);
-    const display = String(friend.displayName || name).slice(0, 50);
-    return `**[${display}](https://www.roblox.com/users/${id}/profile)** (@${name.replace(/[`*_~|>]/g, '')})\nID: \`${id}\``;
-  }).join('\n\n');
-  const embed = new EmbedBuilder()
+  const header = new EmbedBuilder()
     .setColor(0x22d3ee)
     .setTitle(`Friends (${friends.length}) — @${user.name}`)
     .setURL(`https://www.roblox.com/users/${user.userId}/profile`)
-    .setDescription(description || 'No friends available.')
-    .setFooter({ text: `Page ${page + 1} of ${pages} · Public Roblox data only` });
-  if (subset.length === 1 && thumbnails.get(subset[0].id)) embed.setThumbnail(thumbnails.get(subset[0].id));
+    .setDescription(`Showing publicly available friends · Page ${page + 1} of ${pages}`);
+  const embeds = [header, ...subset.map(friend => {
+    const id = Number(friend.id);
+    const name = String(friend.name || 'Unknown').slice(0, 50);
+    const display = String(friend.displayName || name).slice(0, 50);
+    const safeName = name.replace(/[^a-zA-Z0-9_]/g, '');
+    const safeDisplay = display.replace(/[\\r\\n]/g, ' ').slice(0, 50);
+    const embed = new EmbedBuilder()
+      .setColor(0x151a2b)
+      .setAuthor({ name: `${safeDisplay} (@${safeName})`, url: `https://www.roblox.com/users/${id}/profile` })
+      .setDescription(`User ID: \`${id}\``);
+    const image = thumbnails.get(id);
+    if (image) embed.setThumbnail(image);
+    return embed;
+  })];
   const row = new ActionRowBuilder().addComponents(
     new ButtonBuilder().setCustomId('prev').setLabel('Previous').setStyle(ButtonStyle.Secondary).setDisabled(page === 0),
+    new ButtonBuilder().setCustomId('page').setLabel(`${page + 1} / ${pages}`).setStyle(ButtonStyle.Secondary).setDisabled(true),
     new ButtonBuilder().setCustomId('next').setLabel('Next').setStyle(ButtonStyle.Secondary).setDisabled(page + 1 >= pages),
   );
-  return { embeds: [embed], components: pages > 1 ? [row] : [] };
+  return { embeds, components: pages > 1 ? [row] : [], allowedMentions: { parse: [] } };
 }
+
 module.exports = {
   data: new SlashCommandBuilder().setName('roblox_friends')
     .setDescription('Show a Roblox user’s publicly available friends.')
@@ -50,7 +76,7 @@ module.exports = {
       }
       const friends = response.data.filter(f => Number.isSafeInteger(f.id) && f.id > 0).slice(0, 500);
       if (!friends.length) return interaction.editReply({ content: `No publicly available friends found for @${user.name}.` });
-      const thumbnails = new Map();
+      const thumbnails = await loadThumbnails(friends.slice(0, PAGE_SIZE));
       const message = await interaction.editReply(render(user, friends, 0, thumbnails));
       let page = 0;
       const collector = message.createMessageComponentCollector({ time: 120000 });
@@ -59,7 +85,11 @@ module.exports = {
           return press.reply({ content: 'Only the command requester can change pages.', flags: MessageFlags.Ephemeral });
         }
         page = Math.max(0, Math.min(Math.ceil(friends.length / PAGE_SIZE) - 1, page + (press.customId === 'next' ? 1 : -1)));
-        return press.update(render(user, friends, page, thumbnails));
+        await press.deferUpdate();
+        const pageFriends = friends.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE).filter(friend => !thumbnails.has(friend.id));
+        const loaded = await loadThumbnails(pageFriends);
+        for (const [id, url] of loaded) thumbnails.set(id, url);
+        return interaction.editReply(render(user, friends, page, thumbnails));
       });
       collector.on('end', () => interaction.editReply({ components: [] }).catch(() => {}));
     } catch (error) {
