@@ -41,6 +41,7 @@ jobs:
       - name: Validate JavaScript syntax
         run: |
           node --check index.js
+          node --check src/commands/roblox_friends.js
           node --check src/services/dashboardEvents.js
           node --check src/services/mediaLinkSafety.js
           node --check src/services/dashboardRoles.js
