@@ -100,7 +100,7 @@ module.exports = {
       });
       collector.on('end', () => interaction.editReply({ components: [] }).catch(() => {}));
     } catch (error) {
-      console.error('[Roblox Friends] Lookup failed:', error?.name || 'Error', error?.code || 'no-code', String(error?.message || '').slice(0, 120).replace(/https?:\\/\\/\\S+/g, '[url]'));
+      console.error('[Roblox Friends] Lookup failed:', error?.name || 'Error', error?.code || 'no-code');
       const message = /not found/i.test(error.message) ? 'Roblox user not found.' : 'Roblox friends are unavailable right now. Please try again later.';
       return interaction.editReply({ content: message, embeds: [], components: [] });
     }
