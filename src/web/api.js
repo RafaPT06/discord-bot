@@ -929,7 +929,7 @@ function startBotApi(client) {
       const guild = client.guilds.cache.get(req.params.guildId);
       if (!guild) return res.status(404).json({ ok: false, error: 'Server not found.' });
       const channelId = String(req.body?.channelId || '');
-      if (!/^\\d{15,25}$/.test(channelId)) return res.status(400).json({ ok: false, error: 'Invalid channel ID.' });
+      if (!/^\d{15,25}$/.test(channelId)) return res.status(400).json({ ok: false, error: 'Invalid channel ID.' });
       const channel = await guild.channels.fetch(channelId).catch(() => null);
       if (!channel || channel.type !== ChannelType.GuildText) return res.status(400).json({ ok: false, error: 'Select a text channel from this server.' });
       const botMember = guild.members.me || await guild.members.fetchMe();
@@ -937,7 +937,7 @@ function startBotApi(client) {
         return res.status(400).json({ ok: false, error: 'Meowz needs View Channel, Send Messages and Embed Links permissions.' });
       }
       const input = String(req.body?.user || '').trim();
-      const match = input.match(/^(?:https?:\\/\\/(?:www\\.)?roblox\\.com\\/users\\/)?(\\d{1,20})(?:\\/profile\\/?(?:\\?.*)?)?$/i);
+      const match = input.match(/^(?:https?:\/\/(?:www\.)?roblox\.com\/users\/)?(\d{1,20})(?:\/profile\/?(?:\?.*)?)?$/i);
       let userId, username;
       if (match) {
         userId = match[1];
