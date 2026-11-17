@@ -1,4 +1,4 @@
-const { EmbedBuilder } = require('discord.js');
+const { EmbedBuilder, AttachmentBuilder } = require('discord.js');
 const { pool } = require('../db/pool');
 const { request } = require('undici');
 
@@ -15,9 +15,7 @@ async function json(url) {
 
 function canonical(value) {
   if (Array.isArray(value)) return value.map(canonical);
-  if (value && typeof value === 'object') {
-    return Object.fromEntries(Object.keys(value).sort().map(key => [key, canonical(value[key])]));
-  }
+  if (value && typeof value === 'object') return Object.fromEntries(Object.keys(value).sort().map(key => [key, canonical(value[key])]));
   return value;
 }
 
@@ -37,9 +35,24 @@ async function getAvatar(userId) {
   return normalizeAvatar(await json('https://avatar.roblox.com/v1/users/' + encodeURIComponent(userId) + '/avatar'));
 }
 
-async function getThumbnail(userId) {
-  const data = await json('https://thumbnails.roblox.com/v1/users/avatar?userIds=' + encodeURIComponent(userId) + '&size=420x420&format=Png&isCircular=false');
-  return data?.data?.[0]?.imageUrl || null;
+const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+async function getThumbnailBuffer(userId) {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const data = await json('https://thumbnails.roblox.com/v1/users/avatar?userIds=' + encodeURIComponent(userId) + '&size=420x420&format=Png&isCircular=false');
+    const entry = data?.data?.[0];
+    if (entry?.state === 'Completed' && entry.imageUrl) {
+      const response = await request(entry.imageUrl, { headersTimeout: 10000, bodyTimeout: 10000 });
+      if (response.statusCode === 200 && String(response.headers['content-type'] || '').startsWith('image/')) {
+        const bytes = Buffer.from(await response.body.arrayBuffer());
+        if (bytes.length > 0 && bytes.length < 5_000_000) return bytes;
+      } else {
+        await response.body.dump();
+      }
+    }
+    if (attempt < 2) await sleep(1500);
+  }
+  return null;
 }
 
 async function tick(client) {
@@ -56,22 +69,38 @@ async function tick(client) {
         const serialized = JSON.stringify(canonical(current));
         const previous = row.avatar_snapshot ? JSON.stringify(canonical(row.avatar_snapshot)) : null;
         if (!previous) {
-          await pool.query('UPDATE roblox_avatar_trackers SET avatar_snapshot=$3::jsonb, updated_at=NOW() WHERE guild_id=$1 AND roblox_user_id=$2 AND avatar_snapshot IS NULL', [row.guild_id,id,serialized]);
+          const image = await getThumbnailBuffer(id).catch(() => null);
+          await pool.query('UPDATE roblox_avatar_trackers SET avatar_snapshot=$3::jsonb, avatar_image=$4, updated_at=NOW() WHERE guild_id=$1 AND roblox_user_id=$2 AND avatar_snapshot IS NULL', [row.guild_id,id,serialized,image]);
           continue;
         }
-        if (previous === serialized) continue;
+        if (previous === serialized) {
+          if (!row.avatar_image) {
+            const image = await getThumbnailBuffer(id).catch(() => null);
+            if (image) await pool.query('UPDATE roblox_avatar_trackers SET avatar_image=$3 WHERE guild_id=$1 AND roblox_user_id=$2 AND avatar_image IS NULL', [row.guild_id,id,image]);
+          }
+          continue;
+        }
         const channel = await client.channels.fetch(row.channel_id).catch(() => null);
         if (!channel?.isTextBased?.() || channel.guild?.id !== row.guild_id) continue;
+        const image = await getThumbnailBuffer(id).catch(() => null);
         const embed = new EmbedBuilder().setTitle('Roblox avatar changed')
           .setDescription('**' + row.roblox_username + '** updated their avatar.\n[View profile](https://www.roblox.com/users/' + id + '/profile)')
           .setColor(0x5865f2).setTimestamp();
-        const thumbnail = await getThumbnail(id).catch(() => null);
-        if (thumbnail) embed.setImage(thumbnail);
-        await channel.send({ embeds: [embed], allowedMentions: { parse: [] } });
-        await pool.query('UPDATE roblox_avatar_trackers SET avatar_snapshot=$3::jsonb, updated_at=NOW() WHERE guild_id=$1 AND roblox_user_id=$2', [row.guild_id,id,serialized]);
-      } catch (error) {
-        console.error('Avatar tracker:', row.guild_id, row.roblox_user_id, error.message);
-      }
+        const files = [];
+        if (row.avatar_image) {
+          files.push(new AttachmentBuilder(row.avatar_image, { name: 'before.png' }));
+          embed.addFields({ name: 'Before', value: 'Previous avatar attached below.' });
+        }
+        if (image) {
+          files.push(new AttachmentBuilder(image, { name: 'after.png' }));
+          embed.setImage('attachment://after.png');
+          if (row.avatar_image) embed.addFields({ name: 'After', value: 'Updated avatar shown above.' });
+        } else {
+          embed.addFields({ name: 'Avatar image', value: 'Roblox is still processing the new thumbnail.' });
+        }
+        await channel.send({ embeds: [embed], files, allowedMentions: { parse: [] } });
+        await pool.query('UPDATE roblox_avatar_trackers SET avatar_snapshot=$3::jsonb, avatar_image=$4, updated_at=NOW() WHERE guild_id=$1 AND roblox_user_id=$2', [row.guild_id,id,serialized,image]);
+      } catch (error) { console.error('Avatar tracker:', row.guild_id, row.roblox_user_id, error.message); }
     }
   } finally { running = false; }
 }

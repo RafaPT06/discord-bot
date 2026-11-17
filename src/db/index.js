@@ -14,6 +14,8 @@ async function initDb() {
     );
   `);
 
+  await pool.query('ALTER TABLE roblox_avatar_trackers ADD COLUMN IF NOT EXISTS avatar_image BYTEA');
+
   await pool.query(`
     CREATE TABLE IF NOT EXISTS roasts (
       id BIGSERIAL PRIMARY KEY,
