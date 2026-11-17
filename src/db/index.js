@@ -2,6 +2,19 @@ const { pool } = require("./pool");
 
 async function initDb() {
   await pool.query(`
+    CREATE TABLE IF NOT EXISTS roblox_avatar_trackers (
+      guild_id TEXT NOT NULL,
+      roblox_user_id TEXT NOT NULL,
+      roblox_username TEXT NOT NULL,
+      channel_id TEXT NOT NULL,
+      enabled BOOLEAN NOT NULL DEFAULT TRUE,
+      avatar_snapshot JSONB,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (guild_id, roblox_user_id)
+    );
+  `);
+
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS roasts (
       id BIGSERIAL PRIMARY KEY,
       guild_id TEXT NOT NULL,
