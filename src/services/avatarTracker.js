@@ -84,7 +84,7 @@ async function tick(client) {
         if (!channel?.isTextBased?.() || channel.guild?.id !== row.guild_id) continue;
         const image = await getThumbnailBuffer(id).catch(() => null);
         const embed = new EmbedBuilder().setTitle('Roblox avatar changed')
-          .setDescription('**' + row.roblox_username + '** updated their avatar.\\n[View profile](https://www.roblox.com/users/' + id + '/profile)')
+          .setDescription('**' + row.roblox_username + '** updated their avatar.\n[View profile](https://www.roblox.com/users/' + id + '/profile)')
           .setColor(0x5865f2).setTimestamp();
         const files = [];
         if (row.avatar_image) {
