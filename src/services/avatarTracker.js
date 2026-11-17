@@ -13,6 +13,14 @@ async function json(url) {
   return body;
 }
 
+function canonical(value) {
+  if (Array.isArray(value)) return value.map(canonical);
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(Object.keys(value).sort().map(key => [key, canonical(value[key])]));
+  }
+  return value;
+}
+
 function normalizeAvatar(data) {
   return {
     assets: (data.assets || []).map(a => ({ id: String(a.id), type: a.assetType?.id || null })).sort((a,b) => a.id.localeCompare(b.id)),
@@ -45,8 +53,8 @@ async function tick(client) {
         const id = String(row.roblox_user_id);
         if (!cache.has(id)) cache.set(id, await getAvatar(id));
         const current = cache.get(id);
-        const serialized = JSON.stringify(current);
-        const previous = row.avatar_snapshot ? JSON.stringify(row.avatar_snapshot) : null;
+        const serialized = JSON.stringify(canonical(current));
+        const previous = row.avatar_snapshot ? JSON.stringify(canonical(row.avatar_snapshot)) : null;
         if (!previous) {
           await pool.query('UPDATE roblox_avatar_trackers SET avatar_snapshot=$3::jsonb, updated_at=NOW() WHERE guild_id=$1 AND roblox_user_id=$2 AND avatar_snapshot IS NULL', [row.guild_id,id,serialized]);
           continue;
