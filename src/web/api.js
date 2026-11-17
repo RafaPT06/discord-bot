@@ -372,7 +372,7 @@ function startBotApi(client) {
   app.use((req, res, next) => {
     res.setHeader('Access-Control-Allow-Origin', process.env.WEBSITE_ORIGIN || '*');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
     if (req.method === 'OPTIONS') return res.sendStatus(204);
     return next();
   });
@@ -911,6 +911,78 @@ function startBotApi(client) {
     } catch (err) {
       res.status(500).json({ ok: false, error: err.message || 'Could not remove moderation bypass user.' });
     }
+  });
+
+
+  // Roblox avatar tracker management (website proxies these authenticated endpoints).
+  app.get('/api/guilds/:guildId/avatar-trackers', requireToken, async (req, res) => {
+    try {
+      if (!client.guilds.cache.has(req.params.guildId)) return res.status(404).json({ ok: false, error: 'Server not found.' });
+      const { pool } = require('../db/pool');
+      const { rows } = await pool.query('SELECT roblox_user_id AS "userId", roblox_username AS username, channel_id AS "channelId", enabled FROM roblox_avatar_trackers WHERE guild_id=$1 ORDER BY roblox_username', [req.params.guildId]);
+      return res.json({ ok: true, trackers: rows });
+    } catch (err) { return res.status(500).json({ ok: false, error: 'Unable to load avatar trackers.' }); }
+  });
+
+  app.post('/api/guilds/:guildId/avatar-trackers', requireToken, async (req, res) => {
+    try {
+      const guild = client.guilds.cache.get(req.params.guildId);
+      if (!guild) return res.status(404).json({ ok: false, error: 'Server not found.' });
+      const channelId = String(req.body?.channelId || '');
+      if (!/^\d{15,25}$/.test(channelId)) return res.status(400).json({ ok: false, error: 'Invalid channel ID.' });
+      const channel = await guild.channels.fetch(channelId).catch(() => null);
+      if (!channel || channel.type !== ChannelType.GuildText) return res.status(400).json({ ok: false, error: 'Select a text channel from this server.' });
+      const botMember = guild.members.me || await guild.members.fetchMe();
+      if (!channel.permissionsFor(botMember)?.has([PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.EmbedLinks])) {
+        return res.status(400).json({ ok: false, error: 'Meowz needs View Channel, Send Messages and Embed Links permissions.' });
+      }
+      const input = String(req.body?.user || '').trim();
+      const match = input.match(/^(?:https?:\/\/(?:www\.)?roblox\.com\/users\/)?(\d{1,20})(?:\/profile\/?(?:\?.*)?)?$/i);
+      let userId, username;
+      if (match) {
+        userId = match[1];
+        const { request } = require('undici');
+        const response = await request('https://users.roblox.com/v1/users/' + userId);
+        if (response.statusCode !== 200) return res.status(400).json({ ok: false, error: 'Roblox user not found.' });
+        username = (await response.body.json()).name;
+      } else {
+        if (!/^[A-Za-z0-9_]{3,20}$/.test(input)) return res.status(400).json({ ok: false, error: 'Enter a valid Roblox username or profile URL.' });
+        const { resolveUsername } = require('../services/robloxApi');
+        const result = await resolveUsername(input);
+        userId = String(result.userId);
+        username = result.name;
+      }
+      if (!username) return res.status(400).json({ ok: false, error: 'Roblox user not found.' });
+      const { pool } = require('../db/pool');
+      await pool.query(`INSERT INTO roblox_avatar_trackers (guild_id, roblox_user_id, roblox_username, channel_id, enabled) VALUES ($1,$2,$3,$4,TRUE)
+        ON CONFLICT (guild_id,roblox_user_id) DO UPDATE SET roblox_username=EXCLUDED.roblox_username,channel_id=EXCLUDED.channel_id,enabled=TRUE,updated_at=NOW()`,
+        [guild.id,userId,username,channelId]);
+      return res.json({ ok: true, userId, username, channelId });
+    } catch (err) { console.error('Avatar tracker create:', err); return res.status(502).json({ ok: false, error: 'Could not add Roblox user.' }); }
+  });
+
+  app.patch('/api/guilds/:guildId/avatar-trackers/:userId', requireToken, async (req, res) => {
+    try {
+      const guild = client.guilds.cache.get(req.params.guildId);
+      if (!guild) return res.status(404).json({ ok: false, error: 'Server not found.' });
+      const channelId = String(req.body?.channelId || '');
+      const channel = await guild.channels.fetch(channelId).catch(() => null);
+      if (!channel || channel.type !== ChannelType.GuildText) return res.status(400).json({ ok: false, error: 'Select a text channel from this server.' });
+      const botMember = guild.members.me || await guild.members.fetchMe();
+      if (!channel.permissionsFor(botMember)?.has([PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.EmbedLinks])) return res.status(400).json({ ok: false, error: 'Missing channel permissions.' });
+      const { pool } = require('../db/pool');
+      const { rowCount } = await pool.query('UPDATE roblox_avatar_trackers SET channel_id=$3, enabled=$4, updated_at=NOW() WHERE guild_id=$1 AND roblox_user_id=$2', [guild.id,req.params.userId,channelId,req.body?.enabled === true]);
+      return res.status(rowCount ? 200 : 404).json({ ok: !!rowCount });
+    } catch (err) { return res.status(500).json({ ok: false, error: 'Could not update tracker.' }); }
+  });
+
+  app.delete('/api/guilds/:guildId/avatar-trackers/:userId', requireToken, async (req, res) => {
+    try {
+      if (!client.guilds.cache.has(req.params.guildId)) return res.status(404).json({ ok: false, error: 'Server not found.' });
+      const { pool } = require('../db/pool');
+      await pool.query('DELETE FROM roblox_avatar_trackers WHERE guild_id=$1 AND roblox_user_id=$2', [req.params.guildId,req.params.userId]);
+      return res.json({ ok: true });
+    } catch (err) { return res.status(500).json({ ok: false, error: 'Could not delete tracker.' }); }
   });
 
   app.get('/api/stats', requireToken, (_req, res) => {
