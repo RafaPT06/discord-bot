@@ -7,6 +7,7 @@ const path = require("path");
 const { initDb } = require("./db");
 const { attachErrorAlerts } = require("./services/errorAlerts");
 const { startRobloxAlerts } = require("./services/robloxAlerts");
+const { startAvatarTracker } = require("./services/avatarTracker");
 const { startBackupScheduler } = require("./services/backupScheduler");
 const { sendDeployNotices } = require("./services/deployNotifier");
 const { canRunCommand } = require("./services/commandPerms");
@@ -65,6 +66,7 @@ client.once(Events.ClientReady, async () => {
   await initDb();
   attachErrorAlerts(client);
   startRobloxAlerts(client);
+  startAvatarTracker(client);
   startBackupScheduler(client);
   await sendDeployNotices(client);
   startBotApi(client);
